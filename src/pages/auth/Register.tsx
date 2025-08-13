@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Sparkles, UserPlus } from 'lucide-react'
 import { useAuth } from '../../hooks'
 import { Button } from '../../components/ui/Button'
-import BG from '../../assets/top-view-tableware-collection.jpg'
+
 
 // Phone number regex pattern for validation
 // Using a more permissive pattern to match backend validation
@@ -67,7 +67,7 @@ const Register: React.FC = () => {
         
         {/* Placeholder for your image - replace src with your image */}
         <img
-          src={BG}
+          src="https://i.postimg.cc/SK7k1f30/top-view-tableware-collection.jpg"
           alt="Register Image"
           className={`w-full h-full object-cover transition-transform duration-1000 ease-out transform ${isVisible ? 'scale-100' : 'scale-110'}`}
         />
