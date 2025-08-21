@@ -85,19 +85,25 @@ export const useAdminAuth = () => {
       setIsLoading(true)
       console.log('Admin login attempt with:', { email });
       
-      // Use the adminSignIn method which now matches the API
-      const authData = await authApi.adminSignIn({ email, password })
+      // Use the normal signin method
+      const authData = await authApi.signin({ email, password })
       
       // Verify that the user has admin role
       if (authData.user.role !== 'ADMIN') {
         toast.error('Access denied. Admin privileges required.')
-        authApi.adminLogout(); // Clean up if not admin
+        await authApi.signout(); // Clean up if not admin
         return false
       }
       
       // Store user data in state - localStorage is handled by the API service
       setIsAuthenticated(true)
-      setAdminUser(authData.user)
+      setAdminUser({
+        ...authData.user,
+        isActive: true,
+        phone: null,
+        avatar: null,
+        dateOfBirth: null
+      })
       
       toast.success('Logged in successfully')
       return true
@@ -117,8 +123,8 @@ export const useAdminAuth = () => {
     }
   }
 
-  const logout = () => {
-    authApi.adminLogout() // Use the API method to clean up storage
+  const logout = async () => {
+    await authApi.signout() // Use the normal signout method
     setIsAuthenticated(false)
     setAdminUser(null)
     toast.success('Logged out successfully')

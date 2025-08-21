@@ -37,7 +37,7 @@ export const useAuth = () => {
       setLoading(true)
       
       // Use the signin endpoint from services/authApi
-      const authData = await authApi.signIn({
+      const authData = await authApi.signin({
         email: credentials.email,
         password: credentials.password
       })
@@ -81,10 +81,10 @@ export const useAuth = () => {
         console.error('API connection test failed:', testError);
         // Continue anyway, as the test might fail but the actual request might succeed
       }
-      
-      // Use the signUp endpoint from services/authApi
-      const authData = await authApi.signUp(signupData);
-      
+
+      // Use the signup endpoint from services/authApi
+      const authData = await authApi.signup(signupData);
+
       // Store user data and token in state - using adapter to ensure type safety
       login(adaptUser(authData.user), authData.access_token);
       toast.success('Registration successful!');

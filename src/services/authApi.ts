@@ -1,257 +1,249 @@
-import { post, get, put } from './apiClient'
+import { supabase } from './apiClient'
 
 /**
- * Updated DTOs matching the new API documentation structure
+ * Updated DTOs matching Supabase auth structure
  */
 
 // User profile response structure
 export interface UserProfile {
-  id: string
-  email: string
-  fullName: string
-  phone?: string
-  avatar?: string
-  dateOfBirth?: string
-  role: 'USER' | 'ADMIN'
-  createdAt: string
-  updatedAt: string
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Authentication response structure
 export interface AuthResponse {
-  user: UserProfile
-  accessToken: string
-  refreshToken: string
+  access_token: string;
+  user: UserProfile;
 }
 
 // Registration data
-export interface RegisterData {
-  email: string
-  password: string
-  fullName: string
-  phone?: string
+export interface SignUpData {
+  email: string;
+  password: string;
+  fullName: string;
 }
 
 // Login data
-export interface LoginData {
-  email: string
-  password: string
+export interface SignInData {
+  email: string;
+  password: string;
 }
 
-// Profile update data (multipart form)
+// Profile update data
 export interface ProfileUpdateData {
-  fullName?: string
-  phone?: string
-  dateOfBirth?: string
-  avatar?: File
+  fullName: string;
 }
 
 const authApi = {
   /**
-   * Register new user
-   * POST /api/v1/auth/register
+   * Sign up new user
+   * @param data User registration data
+   * @param isAdmin Optional flag to create an admin user
    */
-  register: async (data: RegisterData): Promise<AuthResponse> => {
-    const response = await post<AuthResponse>('/auth/register', data)
-    
-    if (response.success && response.data) {
-      // Save token and user in localStorage
-      localStorage.setItem('userToken', response.data.accessToken)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-      localStorage.setItem('refreshToken', response.data.refreshToken)
-      
-      return response.data
+  signup: async (data: SignUpData, isAdmin: boolean = false): Promise<AuthResponse> => {
+    const { data: authData, error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          full_name: data.fullName,
+          role: isAdmin ? 'ADMIN' : 'USER'
+        }
+      }
+    });
+
+    if (error) throw error;
+
+    const userData = {
+      id: authData.user?.id || '',
+      email: authData.user?.email || '',
+      fullName: authData.user?.user_metadata?.full_name || '',
+      role: isAdmin ? 'ADMIN' : 'USER',
+      createdAt: authData.user?.created_at || '',
+      updatedAt: authData.user?.updated_at || ''
+    };
+
+    const token = authData.session?.access_token || '';
+
+    // Store in the appropriate storage based on role
+    if (isAdmin) {
+      localStorage.setItem('adminToken', token);
+      localStorage.setItem('adminUser', JSON.stringify(userData));
     } else {
-      throw new Error(response.message || 'Registration failed')
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
     }
+
+    return {
+      access_token: token,
+      user: userData
+    };
   },
 
   /**
-   * Login user
-   * POST /api/v1/auth/login
+   * Sign out user
    */
-  login: async (data: LoginData): Promise<AuthResponse> => {
-    const response = await post<AuthResponse>('/auth/login', data)
-    
-    if (response.success && response.data) {
-      // Save token and user in localStorage
-      localStorage.setItem('userToken', response.data.accessToken)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-      localStorage.setItem('refreshToken', response.data.refreshToken)
-      
-      return response.data
-    } else {
-      throw new Error(response.message || 'Login failed')
-    }
-  },
-
-  /**
-   * Refresh access token
-   * POST /api/v1/auth/refresh
-   */
-  refreshToken: async (): Promise<{ accessToken: string; refreshToken: string }> => {
-    const refreshToken = localStorage.getItem('refreshToken')
-    if (!refreshToken) {
-      throw new Error('No refresh token available')
-    }
-
-    const response = await post<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
-      refreshToken
-    })
-    
-    if (response.success && response.data) {
-      // Update tokens in localStorage
-      localStorage.setItem('userToken', response.data.accessToken)
-      localStorage.setItem('refreshToken', response.data.refreshToken)
-      
-      return response.data
-    } else {
-      throw new Error(response.message || 'Token refresh failed')
-    }
-  },
-
-  /**
-   * Logout user
-   * POST /api/v1/auth/logout
-   */
-  logout: async (): Promise<void> => {
-    try {
-      await post('/auth/logout', {})
-    } finally {
-      // Always clear localStorage regardless of API response
-      localStorage.removeItem('userToken')
-      localStorage.removeItem('user')
-      localStorage.removeItem('refreshToken')
-    }
+  signout: async (): Promise<void> => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
   },
 
   /**
    * Get current user profile
-   * GET /api/v1/users/profile
    */
   getProfile: async (): Promise<UserProfile> => {
-    const response = await get<UserProfile>('/users/profile')
+    const { data: { user }, error } = await supabase.auth.getUser();
     
-    if (response.success && response.data) {
-      // Update user in localStorage
-      localStorage.setItem('user', JSON.stringify(response.data))
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to get profile')
-    }
+    if (error) throw error;
+    if (!user) throw new Error('No user found');
+
+    return {
+      id: user.id,
+      email: user.email || '',
+      fullName: user.user_metadata?.full_name || '',
+      role: user.role || 'user',
+      createdAt: user.created_at || '',
+      updatedAt: user.updated_at || ''
+    };
   },
 
   /**
-   * Update user profile with optional avatar upload
-   * PUT /api/v1/users/profile
+   * Update user profile
    */
   updateProfile: async (data: ProfileUpdateData): Promise<UserProfile> => {
-    const formData = new FormData()
-    
-    if (data.fullName) formData.append('fullName', data.fullName)
-    if (data.phone) formData.append('phone', data.phone)
-    if (data.dateOfBirth) formData.append('dateOfBirth', data.dateOfBirth)
-    if (data.avatar) formData.append('avatar', data.avatar)
+    const { data: userData, error } = await supabase.auth.updateUser({
+      data: { full_name: data.fullName }
+    });
 
-    const response = await put<UserProfile>('/users/profile', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    
-    if (response.success && response.data) {
-      // Update user in localStorage
-      localStorage.setItem('user', JSON.stringify(response.data))
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to update profile')
-    }
+    if (error) throw error;
+    if (!userData.user) throw new Error('No user found');
+
+    return {
+      id: userData.user.id,
+      email: userData.user.email || '',
+      fullName: userData.user.user_metadata?.full_name || '',
+      role: userData.user.role || 'user',
+      createdAt: userData.user.created_at || '',
+      updatedAt: userData.user.updated_at || ''
+    };
   },
 
   /**
-   * Admin login
-   * POST /api/v1/auth/admin/login
-   */
-  adminLogin: async (data: LoginData): Promise<AuthResponse> => {
-    const response = await post<AuthResponse>('/auth/admin/login', data)
-    
-    if (response.success && response.data) {
-      // Save admin token and user in localStorage
-      localStorage.setItem('adminToken', response.data.accessToken)
-      localStorage.setItem('adminUser', JSON.stringify(response.data.user))
-      localStorage.setItem('adminRefreshToken', response.data.refreshToken)
-      
-      return response.data
-    } else {
-      throw new Error(response.message || 'Admin login failed')
-    }
-  },
-
-  /**
-   * Password reset functionality
-   * POST /api/v1/auth/reset-password  
+   * Reset password
    */
   resetPassword: async (email: string): Promise<{ message: string }> => {
-    const response = await post<{ message: string }>('/auth/reset-password', { email })
-    if (response.success) {
-      return { message: response.message }
-    } else {
-      throw new Error(response.message || 'Password reset request failed')
-    }
-  },
-
-  /**
-   * Update password with token
-   * POST /api/v1/auth/update-password
-   */
-  updatePassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await post<{ message: string }>(`/auth/update-password?token=${token}`, { 
-      password: newPassword 
-    })
-    if (response.success) {
-      return { message: response.message }
-    } else {
-      throw new Error(response.message || 'Password update failed')
-    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+    return { message: 'Password reset email sent' };
   },
 
   /**
    * Check if user is logged in
    */
-  isAuthenticated: (): boolean => {
-    return localStorage.getItem('userToken') !== null
+  isAuthenticated: async (): Promise<boolean> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session !== null;
   },
 
   /**
-   * Check if admin is logged in
+   * Get current user data
    */
-  isAdminAuthenticated: (): boolean => {
-    return localStorage.getItem('adminToken') !== null
+  getUser: async (): Promise<UserProfile | null> => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) return null;
+
+    return {
+      id: user.id,
+      email: user.email || '',
+      fullName: user.user_metadata?.full_name || '',
+      role: user.role || 'user',
+      createdAt: user.created_at || '',
+      updatedAt: user.updated_at || ''
+    };
   },
 
   /**
-   * Get current user data from localStorage
+   * Sign up new admin user
    */
-  getUser: (): UserProfile | null => {
-    const user = localStorage.getItem('user')
-    return user ? JSON.parse(user) : null
+  signupAdmin: async (data: SignUpData): Promise<AuthResponse> => {
+    const { data: authData, error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          full_name: data.fullName,
+          role: 'ADMIN'
+        }
+      }
+    });
+
+    if (error) throw error;
+
+    const userData = {
+      id: authData.user?.id || '',
+      email: authData.user?.email || '',
+      fullName: authData.user?.user_metadata?.full_name || '',
+      role: 'ADMIN',
+      createdAt: authData.user?.created_at || '',
+      updatedAt: authData.user?.updated_at || ''
+    };
+
+    // Store admin data immediately
+    if (authData.session) {
+      localStorage.setItem('adminToken', authData.session.access_token);
+      localStorage.setItem('adminUser', JSON.stringify(userData));
+    }
+
+    return {
+      access_token: authData.session?.access_token || '',
+      user: userData
+    };
   },
 
   /**
-   * Get current admin user data from localStorage
+   * Sign in user (works for both admin and regular users)
    */
-  getAdminUser: (): UserProfile | null => {
-    const adminUser = localStorage.getItem('adminUser')
-    return adminUser ? JSON.parse(adminUser) : null
-  },
+  signin: async (data: SignInData): Promise<AuthResponse> => {
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
 
-  /**
-   * Logout admin
-   */
-  adminLogout: (): void => {
-    localStorage.removeItem('adminToken')
-    localStorage.removeItem('adminUser')
-    localStorage.removeItem('adminRefreshToken')
+    if (error) throw error;
+
+    const isAdmin = authData.user?.user_metadata?.role === 'ADMIN';
+    const token = authData.session?.access_token || '';
+    const userData = {
+      id: authData.user?.id || '',
+      email: authData.user?.email || '',
+      fullName: authData.user?.user_metadata?.full_name || '',
+      role: isAdmin ? 'ADMIN' : 'USER',
+      createdAt: authData.user?.created_at || '',
+      updatedAt: authData.user?.updated_at || ''
+    };
+
+    // Store in the appropriate storage based on role
+    if (isAdmin) {
+      localStorage.setItem('adminToken', token);
+      localStorage.setItem('adminUser', JSON.stringify(userData));
+    } else {
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
+
+    return {
+      access_token: token,
+      user: userData
+    };
   }
 }
 
