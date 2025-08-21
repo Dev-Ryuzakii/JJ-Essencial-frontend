@@ -1,82 +1,47 @@
-// API Services Index
-// Centralized export for all API services
+// Base API client
+export { default as apiClient } from './apiClient';
 
-// Client API services
-export { default as apiClient } from './apiClient'
+// Authentication API
+export { default as authApi } from './authApi';
+export type { UserProfile } from './authApi';
 
-// Authentication APIs
-export { default as authApi } from './authApi'
+// Products API
+export { default as productsApi } from './productsApi';
+export type { Product, ProductDetails, ProductsQueryParams, Review, Category } from './productsApi';
 
-// Dashboard APIs
-export { default as dashboardApi } from './dashboardApi'
+// Orders API
+export { default as ordersApi } from './ordersApi';
+export type { Order, OrderDetails, CreateOrderData, OrdersQueryParams, DeliveryAddress, OrderItem } from './ordersApi';
 
-// Product APIs
-export { default as productsApi } from './productsApi'
+// Categories API
+export { default as categoriesApi } from './categoriesApi';
+export type { Category as CategoryType } from './categoriesApi';
 
-// Category APIs
-export { default as categoriesApi } from './categoriesApi'
+// Reviews API
+export { default as reviewsApi } from './reviewsApi';
+export type { Review as ReviewType, AddReviewData } from './reviewsApi';
 
-// Order APIs
-export { default as ordersApi } from './ordersApi'
+// Addresses API
+export { default as addressesApi } from './addressesApi';
+export type { Address, AddAddressData } from './addressesApi';
 
-// Review APIs
-export { default as reviewsApi } from './reviewsApi'
+// Wishlist API
+export { default as wishlistApi } from './wishlistApi';
+export type { WishlistItem } from './wishlistApi';
 
-// Cart APIs
-export { default as cartApi } from './cartApi'
+// Dashboard API
+export { default as dashboardApi } from './dashboardApi';
+export type { 
+  DashboardStats,
+  RevenueData,
+  OrdersData,
+  TopProduct,
+  LowStockProduct,
+  PaymentMethodDistribution,
+  CustomerDemographics,
+  StatMetric,
+  OrderStatusDistribution
+} from './dashboardApi';
 
-// Wishlist APIs
-export { default as wishlistApi } from './wishlistApi'
-
-// Support APIs
-export { default as supportApi } from './supportApi'
-
-// Address APIs
-export { default as addressesApi } from './addressesApi'
-
-// Notification APIs
-export { default as notificationsApi } from './notificationsApi'
-
-// Upload APIs
-export { default as uploadApi } from './uploadApi'
-
-// Admin APIs - Comprehensive administrative functionality
-export { default as adminApi } from './adminApi'
-
-// Specialized Admin APIs - For direct access to specific admin functionality
-export { default as adminUsersApi } from './adminUsersApi'
-export { default as adminProductsApi } from './adminProductsApi'
-export { default as adminOrdersApi } from './adminOrdersApi'
-export { default as adminCategoriesApi } from './adminCategoriesApi'
-export { default as adminReviewsApi } from './adminReviewsApi'
-export { default as adminAnalyticsApi } from './adminAnalyticsApi'
-
-// Re-export commonly used types (avoiding conflicts)
-export type { ApiResponse, ApiError, PaginatedResponse } from './adminApi'
-export type { Order, OrderStatus, PaymentStatus } from './ordersApi'
-export type { Product } from './productsApi'
-export type { Category } from './categoriesApi'
-export type { CartItem } from './cartApi'
-
-// API Types - Common interfaces and types
-export type {
-  ApiResponse,
-  ApiError,
-  PaginatedResponse
-} from './adminApi';
-
-/**
- * Usage Examples:
- * 
- * // Import main admin API (includes all functionality)
- * import { adminApi } from '@/services';
- * 
- * // Import specific admin APIs for focused functionality  
- * import { adminUsersApi, adminProductsApi } from '@/services';
- * 
- * // Import client APIs
- * import { authApi, productsApi, ordersApi } from '@/services';
- * 
- * // Import types
- * import type { ApiResponse, AdminUser, AdminProduct } from '@/services';
- */
+// Common types
+export type { ApiResponse, PaginatedResponse } from './apiClient';

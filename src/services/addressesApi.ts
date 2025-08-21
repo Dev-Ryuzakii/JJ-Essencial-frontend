@@ -1,137 +1,43 @@
-import { get, post, put, del } from './apiClient'
+import { get, post } from './apiClient'
 
-// Address structure
 export interface Address {
-  id: string
-  type: 'SHIPPING' | 'BILLING' | 'BOTH'
-  firstName: string
-  lastName: string
-  company?: string
-  address1: string
-  address2?: string
-  city: string
-  state: string
-  postalCode: string
-  country: string
-  phone: string
-  isDefault: boolean
-  createdAt: string
-  updatedAt: string
+  id: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  isDefault: boolean;
 }
 
-// Create address request
-export interface CreateAddressData {
-  type: 'SHIPPING' | 'BILLING' | 'BOTH'
-  firstName: string
-  lastName: string
-  company?: string
-  address1: string
-  address2?: string
-  city: string
-  state: string
-  postalCode: string
-  country: string
-  phone: string
-  isDefault?: boolean
-}
-
-// Update address request
-export interface UpdateAddressData {
-  type?: 'SHIPPING' | 'BILLING' | 'BOTH'
-  firstName?: string
-  lastName?: string
-  company?: string
-  address1?: string
-  address2?: string
-  city?: string
-  state?: string
-  postalCode?: string
-  country?: string
-  phone?: string
-  isDefault?: boolean
+export interface AddAddressData {
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  isDefault: boolean;
 }
 
 const addressesApi = {
   /**
-   * Get user addresses
-   * GET /api/v1/users/addresses
+   * List user addresses
+   * GET /users/addresses
    */
-  getAddresses: async (): Promise<Address[]> => {
-    const response = await get<Address[]>('/users/addresses')
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to get addresses')
-    }
+  list: async (): Promise<Address[]> => {
+    const response = await get<{ data: Address[] }>('/users/addresses');
+    return response.data.data;
   },
 
   /**
-   * Get address by ID
-   * GET /api/v1/users/addresses/:id
+   * Add a new address
+   * POST /users/addresses
    */
-  getAddress: async (id: string): Promise<Address> => {
-    const response = await get<Address>(`/users/addresses/${id}`)
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to get address')
-    }
-  },
-
-  /**
-   * Create new address
-   * POST /api/v1/users/addresses
-   */
-  createAddress: async (data: CreateAddressData): Promise<Address> => {
-    const response = await post<Address>('/users/addresses', data)
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to create address')
-    }
-  },
-
-  /**
-   * Update address
-   * PUT /api/v1/users/addresses/:id
-   */
-  updateAddress: async (id: string, data: UpdateAddressData): Promise<Address> => {
-    const response = await put<Address>(`/users/addresses/${id}`, data)
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to update address')
-    }
-  },
-
-  /**
-   * Delete address
-   * DELETE /api/v1/users/addresses/:id
-   */
-  deleteAddress: async (id: string): Promise<void> => {
-    const response = await del<null>(`/users/addresses/${id}`)
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to delete address')
-    }
-  },
-
-  /**
-   * Set address as default
-   * PATCH /api/v1/users/addresses/:id/default
-   */
-  setDefaultAddress: async (id: string): Promise<Address> => {
-    const response = await post<Address>(`/users/addresses/${id}/default`, {})
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to set default address')
-    }
+  add: async (data: AddAddressData): Promise<Address> => {
+    const response = await post<{ data: Address }>('/users/addresses', data);
+    return response.data.data;
   }
 }
 

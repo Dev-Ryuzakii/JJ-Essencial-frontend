@@ -39,7 +39,7 @@ export const AdminLogin = () => {
     }
 
     try {
-      console.log('Attempting admin login with:', { email });
+      console.log('Attempting admin login with:', { email, password: '***' });
       const success = await login(email, password)
       
       if (success) {

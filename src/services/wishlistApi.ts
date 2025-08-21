@@ -1,88 +1,41 @@
-import { get, post, del } from './apiClient'
-import type { PaginatedResponse } from './apiClient'
+import { get, post, del } from './apiClient';
 
-// Wishlist item structure
 export interface WishlistItem {
-  id: string
-  productId: string
+  id: string;
   product: {
-    id: string
-    name: string
-    price: string
-    discountPrice?: string
-    images: string[]
-    stock: number
-    rating: number
-    reviewCount: number
-    category: {
-      id: string
-      name: string
-      slug: string
-    }
-  }
-  createdAt: string
-}
-
-// Add to wishlist request
-export interface AddToWishlistData {
-  productId: string
+    id: string;
+    name: string;
+    price: number;
+    images: string[];
+  };
 }
 
 const wishlistApi = {
   /**
-   * Get user wishlist
-   * GET /api/v1/wishlist
+   * Get user's wishlist
+   * GET /wishlist
    */
-  getWishlist: async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<WishlistItem>> => {
-    const response = await get<PaginatedResponse<WishlistItem>>('/wishlist', {
-      params: { page, limit }
-    })
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to get wishlist')
-    }
+  list: async (): Promise<WishlistItem[]> => {
+    const response = await get<{ data: WishlistItem[] }>('/wishlist');
+    return response.data.data;
   },
 
   /**
-   * Add item to wishlist
-   * POST /api/v1/wishlist/items
+   * Add a product to wishlist
+   * POST /wishlist
    */
-  addItem: async (data: AddToWishlistData): Promise<WishlistItem> => {
-    const response = await post<WishlistItem>('/wishlist/items', data)
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to add item to wishlist')
-    }
+  add: async (productId: string): Promise<{ message: string }> => {
+    const response = await post<{ message: string }>('/wishlist', { productId });
+    return response.data;
   },
 
   /**
-   * Remove item from wishlist
-   * DELETE /api/v1/wishlist/items/:productId
+   * Remove a product from wishlist
+   * DELETE /wishlist/:productId
    */
-  removeItem: async (productId: string): Promise<void> => {
-    const response = await del<null>(`/wishlist/items/${productId}`)
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to remove item from wishlist')
-    }
-  },
-
-  /**
-   * Check if product is in wishlist
-   * GET /api/v1/wishlist/check/:productId
-   */
-  checkItem: async (productId: string): Promise<{ inWishlist: boolean }> => {
-    const response = await get<{ inWishlist: boolean }>(`/wishlist/check/${productId}`)
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to check wishlist')
-    }
+  remove: async (productId: string): Promise<{ message: string }> => {
+    const response = await del<{ message: string }>(`/wishlist/${productId}`);
+    return response.data;
   }
 }
 

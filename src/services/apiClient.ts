@@ -1,23 +1,24 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'your-supabase-url';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // API Response structure as per documentation
 export type ApiResponse<T> = {
-  success: boolean;
-  message: string;
   data: T;
-  timestamp: string;
 };
 
 // Paginated response structure
 export type PaginatedResponse<T> = {
-  items: T[];
-  pagination: {
-    page: number;
-    limit: number;
+  data: T[];
+  meta: {
     total: number;
-    pages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
+    page: number;
+    lastPage: number;
+    hasNextPage: boolean;
   };
 };
 
@@ -31,7 +32,9 @@ export type ApiError = {
 };
 
 // Base API URL from the documentation
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+const API_BASE_URL = import.meta.env.PROD
+  ? 'https://api.jjessential.com/api/v1'
+  : 'http://localhost:3000/api/v1';
 
 // Create axios instance with default config
 const apiClient = axios.create({
