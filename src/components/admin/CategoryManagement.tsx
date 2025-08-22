@@ -13,7 +13,8 @@ import adminCategoriesApi from '../../services/adminCategoriesApi'
 import type { AdminCategory } from '../../services/adminCategoriesApi'
 
 export default function CategoryManagement() {
-  const [categories, setCategories] = useState<AdminCategory[]>([])
+  const [allCategories, setAllCategories] = useState<AdminCategory[]>([]) // Store all categories
+  const [categories, setCategories] = useState<AdminCategory[]>([]) // Display categories
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
@@ -35,38 +36,68 @@ export default function CategoryManagement() {
 
   useEffect(() => {
     fetchCategories()
-  }, [page, searchTerm])
+  }, [])
+
+  useEffect(() => {
+    // Update displayed categories when page or search changes
+    updateDisplayedCategories()
+  }, [page, searchTerm, allCategories])
 
   const fetchCategories = async () => {
     try {
       setLoading(true)
       setError(null)
       
+      // Admin categories endpoint - start minimal and add parameters gradually
       const params = {
-        page,
-        limit: 10,
-        search: searchTerm || undefined
+        // Only include search if provided and not empty
+        ...(searchTerm && { search: searchTerm })
+        // Remove other parameters temporarily to test basic functionality
+        // includeInactive: true,
+        // sortBy: 'name',
+        // sortOrder: 'ASC' as const
       }
       
-      const response = await adminCategoriesApi.getCategories(params)
-      setCategories(response.items)
-      setTotalPages(response.pagination.pages)
+      const fetchedCategories = await adminCategoriesApi.getCategories(params)
+      
+      setAllCategories(fetchedCategories || [])
     } catch (err) {
       setError('Failed to fetch categories. Please try again.')
       console.error('Error fetching categories:', err)
+      setAllCategories([])
     } finally {
       setLoading(false)
     }
   }
 
+  const updateDisplayedCategories = () => {
+    // Filter categories based on search term
+    let filteredCategories = allCategories
+    if (searchTerm) {
+      filteredCategories = allCategories.filter(category =>
+        category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        category.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Implement client-side pagination
+    const itemsPerPage = 10
+    const startIndex = (page - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    const paginatedCategories = filteredCategories.slice(startIndex, endIndex)
+    
+    setCategories(paginatedCategories)
+    setTotalPages(Math.ceil(filteredCategories.length / itemsPerPage))
+  }
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
-    fetchCategories()
+    // updateDisplayedCategories will be called automatically via useEffect
   }
 
   const handleSelectAll = () => {
-    if (selectedCategories.length === categories.length) {
+    if (!categories || selectedCategories.length === categories.length) {
       setSelectedCategories([])
     } else {
       setSelectedCategories(categories.map(category => category.id))
@@ -100,12 +131,12 @@ export default function CategoryManagement() {
     setCategoryFormData({
       name: category.name,
       description: category.description || '',
-      parentId: category.parentId || '',
-      sortOrder: category.sortOrder || 0,
-      isActive: category.isActive
+      parentId: category.parent_id || '',
+      sortOrder: category.sort_order || 0,
+      isActive: category.is_active
     })
     setSelectedImage(null)
-    setImagePreview(category.image || null)
+    setImagePreview(category.image_url || null)
     setShowEditModal(true)
   }
 
@@ -114,7 +145,8 @@ export default function CategoryManagement() {
     
     try {
       await adminCategoriesApi.deleteCategory(categoryId)
-      setCategories(categories.filter(category => category.id !== categoryId))
+      // Refetch all categories to ensure we have the latest data
+      await fetchCategories()
       setSelectedCategories(selectedCategories.filter(id => id !== categoryId))
     } catch (err) {
       console.error('Error deleting category:', err)
@@ -129,7 +161,8 @@ export default function CategoryManagement() {
     try {
       // If there's no bulk delete in the API, we'll need to delete one by one
       await Promise.all(selectedCategories.map(id => adminCategoriesApi.deleteCategory(id)))
-      setCategories(categories.filter(category => !selectedCategories.includes(category.id)))
+      // Refetch all categories to ensure we have the latest data
+      await fetchCategories()
       setSelectedCategories([])
     } catch (err) {
       console.error('Error deleting categories:', err)
@@ -140,28 +173,63 @@ export default function CategoryManagement() {
   const handleSubmitCategoryForm = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Client-side validation
+    if (!categoryFormData.name.trim()) {
+      setError('Category name is required')
+      return
+    }
+    
     try {
+      // Clean up form data - remove empty strings and convert to proper types
+      const cleanFormData = {
+        name: categoryFormData.name.trim(),
+        description: categoryFormData.description.trim() || undefined,
+        parentId: categoryFormData.parentId || undefined,
+        sortOrder: categoryFormData.sortOrder || undefined,
+        isActive: categoryFormData.isActive
+      }
+
+      console.log('Sending category data:', cleanFormData)
+
       if (showCreateModal) {
-        // Use the appropriate endpoint based on whether we have an image
-        const createdCategory = selectedImage 
-          ? await adminCategoriesApi.createCategoryWithImage(categoryFormData, selectedImage)
-          : await adminCategoriesApi.createCategory(categoryFormData)
-        setCategories([...categories, createdCategory])
+        // Use the single createCategory method that handles both with/without image
+        await adminCategoriesApi.createCategory(cleanFormData, selectedImage || undefined)
+        // Refetch all categories to ensure we have the latest data and proper pagination
+        await fetchCategories()
+        // Reset to page 1 to show the new category
+        setPage(1)
       } else if (showEditModal && currentCategory) {
-        // For updates, always use the with-image endpoint as it handles both cases
-        const updatedCategory = await adminCategoriesApi.updateCategoryWithImage(currentCategory.id, categoryFormData, selectedImage || undefined)
-        setCategories(categories.map(category => 
-          category.id === currentCategory.id ? updatedCategory : category
-        ))
+        // Use the single updateCategory method that handles both with/without image
+        await adminCategoriesApi.updateCategory(currentCategory.id, cleanFormData, selectedImage || undefined)
+        // Refetch all categories to ensure we have the latest data
+        await fetchCategories()
       }
       
       setShowCreateModal(false)
       setShowEditModal(false)
       setSelectedImage(null)
       setImagePreview(null)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving category:', err)
-      setError('Failed to save category. Please try again.')
+      
+      // Extract error message from API response
+      let errorMessage = 'Failed to save category. Please try again.'
+      
+      if (err?.message) {
+        if (Array.isArray(err.message)) {
+          errorMessage = `Validation errors: ${err.message.join(', ')}`
+        } else {
+          errorMessage = err.message
+        }
+      } else if (err?.response?.data?.message) {
+        if (Array.isArray(err.response.data.message)) {
+          errorMessage = `Validation errors: ${err.response.data.message.join(', ')}`
+        } else {
+          errorMessage = err.response.data.message
+        }
+      }
+      
+      setError(errorMessage)
     }
   }
 
@@ -282,7 +350,7 @@ export default function CategoryManagement() {
               </button>
             </div>
           </div>
-        ) : categories.length === 0 ? (
+        ) : !categories || categories.length === 0 ? (
           <div className="py-12 flex flex-col justify-center items-center">
             <Folder className="h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-1">No categories found</h3>
@@ -322,7 +390,7 @@ export default function CategoryManagement() {
                     <div className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={selectedCategories.length === categories.length && categories.length > 0}
+                        checked={categories && selectedCategories.length === categories.length && categories.length > 0}
                         onChange={handleSelectAll}
                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                       />
@@ -352,7 +420,7 @@ export default function CategoryManagement() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {categories.map((category) => (
+                {(categories || []).map((category) => (
                   <tr key={category.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -367,10 +435,10 @@ export default function CategoryManagement() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">
-                          {category.image ? (
+                          {category.image_url ? (
                             <img
                               className="h-10 w-10 rounded-md object-cover"
-                              src={category.image}
+                              src={category.image_url}
                               alt={category.name}
                             />
                           ) : (
@@ -391,25 +459,25 @@ export default function CategoryManagement() {
                       {category.slug}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {category.parentId ? 
-                        categories.find(cat => cat.id === category.parentId)?.name || 'Unknown'
+                      {category.parent_id ? 
+                        allCategories.find(cat => cat.id === category.parent_id)?.name || 'Unknown'
                         : '-'
                       }
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {category.sortOrder || 0}
+                      {category.sort_order || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        category.isActive 
+                        category.is_active 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {category.isActive ? 'Active' : 'Inactive'}
+                        {category.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {category.productCount || 0}
+                      {category.product_count || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-3 justify-end">
@@ -437,7 +505,7 @@ export default function CategoryManagement() {
         )}
         
         {/* Pagination */}
-        {!loading && !error && categories.length > 0 && (
+        {!loading && !error && categories && categories.length > 0 && (
           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
@@ -602,7 +670,7 @@ export default function CategoryManagement() {
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       >
                         <option value="">No Parent (Top Level)</option>
-                        {categories
+                        {allCategories
                           .filter(cat => cat.id !== currentCategory?.id) // Don't allow self as parent
                           .map(category => (
                             <option key={category.id} value={category.id}>

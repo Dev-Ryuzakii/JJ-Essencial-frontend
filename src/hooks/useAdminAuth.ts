@@ -1,15 +1,8 @@
 import { useState, useEffect } from 'react'
-import { jwtDecode } from 'jwt-decode'
-import authApi from '../services/authApi'
+import { adminAuthApi } from '../services/authApi'
 import toast from 'react-hot-toast'
-
-interface DecodedToken {
-  exp: number
-  sub: string // userId - modern JWT standard uses 'sub' for subject
-  role: string
-  fullName?: string
-  email?: string
-}
+import { validateAdminToken } from '../utils/adminTokenValidator'
+// import useAdminTokenValidation from './useAdminTokenValidation'
 
 interface AdminUser {
   id: string
@@ -25,54 +18,79 @@ interface AdminUser {
 }
 
 export const useAdminAuth = () => {
+  const [token, setToken] = useState(localStorage.getItem('adminToken'))
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null)
+
+  // Temporarily disabled server-side validation to avoid problematic API calls
+  // const { isValidAdmin, isLoading: tokenValidationLoading, adminUser: validatedUser, error, revalidate } = useAdminTokenValidation(token)
 
   useEffect(() => {
     checkAuthStatus()
   }, [])
 
-  const checkAuthStatus = () => {
-    const token = localStorage.getItem('adminToken')
+  const checkAuthStatus = async () => {
+    const storedToken = localStorage.getItem('adminToken')
     const adminUserData = localStorage.getItem('adminUser')
     
-    if (!token || !adminUserData) {
+    if (!storedToken || !adminUserData) {
+      console.log('Admin auth check: No admin token or user data found');
       setIsAuthenticated(false)
       setAdminUser(null)
       setIsLoading(false)
       return
     }
     
-    try {
-      const decodedToken = jwtDecode<DecodedToken>(token)
-      const user = JSON.parse(adminUserData)
-      
-      // Check if token is expired
-      if (decodedToken.exp * 1000 < Date.now()) {
-        // Token expired
-        localStorage.removeItem('adminToken')
-        localStorage.removeItem('adminUser')
-        setIsAuthenticated(false)
-        setAdminUser(null)
-        toast.error('Your session has expired. Please log in again.')
-      } else if (decodedToken.role !== 'ADMIN') {
-        // Not an admin token
-        localStorage.removeItem('adminToken')
-        localStorage.removeItem('adminUser')
-        setIsAuthenticated(false)
-        setAdminUser(null)
-        toast.error('Unauthorized access. Admin privileges required.')
-      } else {
-        // Valid token
-        setIsAuthenticated(true)
-        setAdminUser(user)
-      }
-    } catch (error) {
-      // Invalid token
-      console.error('Token validation error:', error)
+    // Client-side token validation first
+    const clientValidation = validateAdminToken(storedToken)
+    if (!clientValidation.isValid || !clientValidation.isAdmin) {
+      console.log('Admin auth check: Invalid admin token:', clientValidation.reason);
       localStorage.removeItem('adminToken')
       localStorage.removeItem('adminUser')
+      setToken(null)
+      setIsAuthenticated(false)
+      setAdminUser(null)
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const user = JSON.parse(adminUserData)
+      
+      // Check if user has admin role and correct ID
+      if (user.role !== 'ADMIN' || user.id !== 'admin-user') {
+        console.log('Admin auth check: User is not a valid admin');
+        localStorage.removeItem('adminToken')
+        localStorage.removeItem('adminUser')
+        setToken(null)
+        setIsAuthenticated(false)
+        setAdminUser(null)
+        setIsLoading(false)
+        return
+      }
+
+      // Set authenticated state with full user data
+      setToken(storedToken)
+      setIsAuthenticated(true)
+      setAdminUser({
+        ...user,
+        fullName: user.fullName || 'Admin User',
+        phone: user.phone || null,
+        avatar: user.avatar || null,
+        dateOfBirth: user.dateOfBirth || null,
+        isActive: true,
+        createdAt: user.createdAt || new Date().toISOString(),
+        updatedAt: user.updatedAt || new Date().toISOString()
+      })
+      
+      console.log('Admin auth check: Successfully authenticated from local storage');
+      
+    } catch (error) {
+      console.error('Admin auth validation error:', error)
+      localStorage.removeItem('adminToken')
+      localStorage.removeItem('adminUser')
+      setToken(null)
       setIsAuthenticated(false)
       setAdminUser(null)
     } finally {
@@ -84,38 +102,53 @@ export const useAdminAuth = () => {
     try {
       setIsLoading(true)
       console.log('Admin login attempt with:', { email });
+      console.log('Using adminAuthApi.signin from services/authApi - BACKEND ONLY');
       
-      // Use the normal signin method
-      const authData = await authApi.signin({ email, password })
+      // Use dedicated admin signin endpoint - BACKEND ONLY, NO SUPABASE
+      const authData = await adminAuthApi.signin({ email, password })
+      console.log('Admin login: Backend response received successfully');
       
-      // Verify that the user has admin role
-      if (authData.user.role !== 'ADMIN') {
-        toast.error('Access denied. Admin privileges required.')
-        await authApi.signout(); // Clean up if not admin
+      // Extract token from response
+      const token = authData.access_token
+      if (!token) {
+        throw new Error('No access token received from server')
+      }
+      
+      // Validate this is actually an admin token
+      const tokenValidation = validateAdminToken(token)
+      if (!tokenValidation.isValid || !tokenValidation.isAdmin) {
+        console.error('Admin login: Invalid admin token received:', tokenValidation.reason);
+        toast.error('Invalid admin credentials received')
         return false
       }
       
-      // Store user data in state - localStorage is handled by the API service
-      setIsAuthenticated(true)
-      setAdminUser({
-        ...authData.user,
-        isActive: true,
-        phone: null,
-        avatar: null,
-        dateOfBirth: null
-      })
+      // Verify that the user has admin role and correct ID
+      if (authData.user.role !== 'ADMIN' || authData.user.id !== 'admin-user') {
+        console.error('Admin login: User is not a valid admin:', authData.user);
+        toast.error('Access denied. Valid admin account required.')
+        return false
+      }
       
+      // Store token and user data
+      localStorage.setItem('adminToken', token)
+      localStorage.setItem('adminUser', JSON.stringify(authData.user))
+      setToken(token)
+      
+      console.log('Admin login: Success - user authenticated');
       toast.success('Logged in successfully')
       return true
     } catch (error: any) {
-      console.error('Admin login error:', error);
+      console.error('Admin login error - BACKEND API CALL FAILED:', error);
       let errorMessage = 'Login failed. Please check your credentials.';
       
-      // Handle standard API error format
-      if (error.success === false) {
-        errorMessage = error.message || errorMessage;
+      // Handle different error formats
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
+      console.error('Admin login: Error message:', errorMessage);
       toast.error(errorMessage)
       return false
     } finally {
@@ -124,10 +157,31 @@ export const useAdminAuth = () => {
   }
 
   const logout = async () => {
-    await authApi.signout() // Use the normal signout method
+    try {
+      await adminAuthApi.signout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+    
+    // Clear all admin data
+    localStorage.removeItem('adminToken')
+    localStorage.removeItem('adminUser')
+    setToken(null)
     setIsAuthenticated(false)
     setAdminUser(null)
     toast.success('Logged out successfully')
+  }
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      const result = await adminAuthApi.changePassword(currentPassword, newPassword)
+      toast.success(result.message)
+      return true
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to change password'
+      toast.error(errorMessage)
+      return false
+    }
   }
 
   return {
@@ -137,6 +191,7 @@ export const useAdminAuth = () => {
     user: adminUser, // For backward compatibility
     login,
     logout,
+    changePassword,
     checkAuthStatus
   }
 }

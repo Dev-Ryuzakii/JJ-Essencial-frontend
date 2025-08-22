@@ -64,7 +64,7 @@ export interface UserAnalytics {
 const adminUsersApi = {
   /**
    * Get all users (Admin only)
-   * GET /api/v1/admin/users
+   * GET /admin/users
    */
   getUsers: async (filters?: AdminUserFilter): Promise<PaginatedResponse<AdminUser>> => {
     const response = await get<PaginatedResponse<AdminUser>>('/admin/users', { params: filters });
@@ -78,7 +78,7 @@ const adminUsersApi = {
 
   /**
    * Get user details (Admin only)
-   * GET /api/v1/admin/users/:id
+   * GET /admin/users/:id
    */
   getUser: async (id: string): Promise<AdminUser> => {
     const response = await get<AdminUser>(`/admin/users/${id}`);
@@ -92,7 +92,7 @@ const adminUsersApi = {
 
   /**
    * Update user status (Admin only)
-   * PATCH /api/v1/admin/users/:id/status
+   * PATCH /admin/users/:id/status
    */
   updateUserStatus: async (id: string, data: UpdateUserStatusDto): Promise<AdminUser> => {
     const response = await patch<AdminUser>(`/admin/users/${id}/status`, data);
@@ -106,7 +106,7 @@ const adminUsersApi = {
 
   /**
    * Delete user (Admin only)
-   * DELETE /api/v1/admin/users/:id
+   * DELETE /admin/users/:id
    */
   deleteUser: async (id: string): Promise<void> => {
     const response = await del(`/admin/users/${id}`);
@@ -118,7 +118,7 @@ const adminUsersApi = {
 
   /**
    * Get user analytics (Admin only)
-   * GET /api/v1/admin/users/analytics
+   * GET /admin/users/analytics
    */
   getUserAnalytics: async (period?: '7days' | '30days' | '90days' | '1year'): Promise<UserAnalytics> => {
     const response = await get<UserAnalytics>('/admin/users/analytics', { 
@@ -134,19 +134,19 @@ const adminUsersApi = {
 
   /**
    * Export users data (Admin only)
-   * GET /api/v1/admin/users/export
+   * GET /admin/users/export
    */
   exportUsers: (format: 'csv' | 'excel' = 'csv', filters?: AdminUserFilter): string => {
     const queryParams = new URLSearchParams({
       format,
       ...(filters as Record<string, string>)
     }).toString();
-    return `/api/v1/admin/users/export?${queryParams}`;
+    return `/admin/users/export?${queryParams}`;
   },
 
   /**
    * Send email to user (Admin only)
-   * POST /api/v1/admin/users/:id/send-email
+   * POST /admin/users/:id/send-email
    */
   sendEmailToUser: async (id: string, data: {
     subject: string;
@@ -164,7 +164,7 @@ const adminUsersApi = {
 
   /**
    * Bulk update users (Admin only)
-   * PATCH /api/v1/admin/users/bulk
+   * PATCH /admin/users/bulk
    */
   bulkUpdateUsers: async (userIds: string[], data: {
     isActive?: boolean;
@@ -185,7 +185,7 @@ const adminUsersApi = {
 
   /**
    * Get user activity logs (Admin only)
-   * GET /api/v1/admin/users/:id/activity
+   * GET /admin/users/:id/activity
    */
   getUserActivity: async (id: string, params?: {
     page?: number;
@@ -218,7 +218,7 @@ const adminUsersApi = {
 
   /**
    * Search users (Admin only)
-   * GET /api/v1/admin/users/search
+   * GET /admin/users/search
    */
   searchUsers: async (query: string, limit?: number): Promise<AdminUser[]> => {
     const response = await get<AdminUser[]>('/admin/users/search', { 

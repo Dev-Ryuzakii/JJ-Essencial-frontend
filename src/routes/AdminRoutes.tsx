@@ -4,6 +4,12 @@ import Dashboard from '../components/admin/Dashboard'
 import ProductManagement from '../components/admin/ProductManagement'
 import OrderManagement from '../components/admin/OrderManagement'
 import CategoryManagement from '../components/admin/CategoryManagement'
+import CustomerManagement from '../components/admin/CustomerManagement'
+import PaymentManagement from '../components/admin/PaymentManagement'
+import ReviewManagement from '../components/admin/ReviewManagement'
+import SupportManagement from '../components/admin/SupportManagement'
+import Analytics from '../components/admin/Analytics'
+import Settings from '../components/admin/Settings'
 import { AdminLogin } from '../components/admin/AdminLogin'
 import ProtectedAdminRoute from '../components/admin/ProtectedAdminRoute'
 import { useAdminAuth } from '../hooks/useAdminAuth'
@@ -36,7 +42,12 @@ const AdminRoutes = () => {
         <Route path="products" element={<ProductManagement />} />
         <Route path="orders" element={<OrderManagement />} />
         <Route path="categories" element={<CategoryManagement />} />
-        {/* Add more admin routes as needed */}
+        <Route path="users" element={<CustomerManagement />} />
+        <Route path="payments" element={<PaymentManagement />} />
+        <Route path="reviews" element={<ReviewManagement />} />
+        <Route path="support" element={<SupportManagement />} />
+        <Route path="reports" element={<Analytics />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       
       {/* Fallback route for any unmatched admin paths */}

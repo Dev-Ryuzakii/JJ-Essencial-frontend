@@ -43,5 +43,34 @@ export type {
   OrderStatusDistribution
 } from './dashboardApi';
 
+// Admin API - Comprehensive admin management
+export { default as adminApi } from './adminApi';
+export type { 
+  AdminDashboardStats,
+  AdminPaymentDto,
+  AdminPaymentDetailDto,
+  UpdatePaymentStatusDto,
+  VerifyReceiptDto,
+  AdminSupportChatDto,
+  AdminSupportChatDetailDto,
+  UpdateChatStatusDto,
+  ReplySupportChatDto,
+  BankAccountDto,
+  CreateBankAccountDto,
+  UpdateBankAccountDto,
+  SalesReportDto,
+  InventoryReportDto
+} from './adminApi';
+
+// Specialized Admin APIs
+export { 
+  adminUsersApi,
+  adminProductsApi,
+  adminOrdersApi,
+  adminCategoriesApi,
+  adminReviewsApi,
+  adminAnalyticsApi
+} from './adminApi';
+
 // Common types
 export type { ApiResponse, PaginatedResponse } from './apiClient';

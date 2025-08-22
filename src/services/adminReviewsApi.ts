@@ -108,7 +108,7 @@ export interface ReviewAnalytics {
 const adminReviewsApi = {
   /**
    * Get all reviews (Admin view with extended data)
-   * GET /api/v1/admin/reviews
+   * GET /admin/reviews
    */
   getReviews: async (filters?: AdminReviewFilter): Promise<PaginatedResponse<AdminReview>> => {
     const response = await get<PaginatedResponse<AdminReview>>('/admin/reviews', { params: filters });
@@ -122,7 +122,7 @@ const adminReviewsApi = {
 
   /**
    * Get review details (Admin view)
-   * GET /api/v1/admin/reviews/:id
+   * GET /admin/reviews/:id
    */
   getReview: async (id: string): Promise<AdminReview> => {
     const response = await get<AdminReview>(`/admin/reviews/${id}`);
@@ -136,7 +136,7 @@ const adminReviewsApi = {
 
   /**
    * Update review visibility
-   * PATCH /api/v1/admin/reviews/:id/visibility
+   * PATCH /admin/reviews/:id/visibility
    */
   updateReviewVisibility: async (id: string, data: UpdateReviewVisibilityDto): Promise<AdminReview> => {
     const response = await patch<AdminReview>(`/admin/reviews/${id}/visibility`, data);
@@ -150,7 +150,7 @@ const adminReviewsApi = {
 
   /**
    * Update review status (approval, verification, flagging)
-   * PATCH /api/v1/admin/reviews/:id/status
+   * PATCH /admin/reviews/:id/status
    */
   updateReviewStatus: async (id: string, data: UpdateReviewStatusDto): Promise<AdminReview> => {
     const response = await patch<AdminReview>(`/admin/reviews/${id}/status`, data);
@@ -164,7 +164,7 @@ const adminReviewsApi = {
 
   /**
    * Add admin response to review
-   * POST /api/v1/admin/reviews/:id/response
+   * POST /admin/reviews/:id/response
    */
   addAdminResponse: async (id: string, data: AdminResponseDto): Promise<AdminReview> => {
     const response = await post<AdminReview>(`/admin/reviews/${id}/response`, data);
@@ -178,7 +178,7 @@ const adminReviewsApi = {
 
   /**
    * Delete review
-   * DELETE /api/v1/admin/reviews/:id
+   * DELETE /admin/reviews/:id
    */
   deleteReview: async (id: string, reason?: string): Promise<void> => {
     const response = await del(`/admin/reviews/${id}`, {
@@ -192,7 +192,7 @@ const adminReviewsApi = {
 
   /**
    * Bulk update reviews
-   * PATCH /api/v1/admin/reviews/bulk
+   * PATCH /admin/reviews/bulk
    */
   bulkUpdateReviews: async (reviewIds: string[], data: {
     isVisible?: boolean;
@@ -215,7 +215,7 @@ const adminReviewsApi = {
 
   /**
    * Bulk delete reviews
-   * DELETE /api/v1/admin/reviews/bulk
+   * DELETE /admin/reviews/bulk
    */
   bulkDeleteReviews: async (reviewIds: string[], reason?: string): Promise<{ deleted: number }> => {
     const response = await del<{ deleted: number }>('/admin/reviews/bulk', {
@@ -231,7 +231,7 @@ const adminReviewsApi = {
 
   /**
    * Get pending reviews (awaiting approval)
-   * GET /api/v1/admin/reviews/pending
+   * GET /admin/reviews/pending
    */
   getPendingReviews: async (limit?: number): Promise<AdminReview[]> => {
     const response = await get<AdminReview[]>('/admin/reviews/pending', { 
@@ -247,7 +247,7 @@ const adminReviewsApi = {
 
   /**
    * Get flagged reviews
-   * GET /api/v1/admin/reviews/flagged
+   * GET /admin/reviews/flagged
    */
   getFlaggedReviews: async (limit?: number): Promise<AdminReview[]> => {
     const response = await get<AdminReview[]>('/admin/reviews/flagged', { 
@@ -263,7 +263,7 @@ const adminReviewsApi = {
 
   /**
    * Get recent reviews
-   * GET /api/v1/admin/reviews/recent
+   * GET /admin/reviews/recent
    */
   getRecentReviews: async (limit: number = 10): Promise<AdminReview[]> => {
     const response = await get<AdminReview[]>('/admin/reviews/recent', { 
@@ -279,7 +279,7 @@ const adminReviewsApi = {
 
   /**
    * Get review analytics
-   * GET /api/v1/admin/reviews/analytics
+   * GET /admin/reviews/analytics
    */
   getReviewAnalytics: async (period?: '7days' | '30days' | '90days' | '1year'): Promise<ReviewAnalytics> => {
     const response = await get<ReviewAnalytics>('/admin/reviews/analytics', { 
@@ -295,7 +295,7 @@ const adminReviewsApi = {
 
   /**
    * Search reviews
-   * GET /api/v1/admin/reviews/search
+   * GET /admin/reviews/search
    */
   searchReviews: async (query: string, limit?: number): Promise<AdminReview[]> => {
     const response = await get<AdminReview[]>('/admin/reviews/search', { 
@@ -311,7 +311,7 @@ const adminReviewsApi = {
 
   /**
    * Get reviews by product (Admin view)
-   * GET /api/v1/admin/reviews/product/:productId
+   * GET /admin/reviews/product/:productId
    */
   getReviewsByProduct: async (productId: string, filters?: {
     page?: number;
@@ -332,7 +332,7 @@ const adminReviewsApi = {
 
   /**
    * Get reviews by user (Admin view)
-   * GET /api/v1/admin/reviews/user/:userId
+   * GET /admin/reviews/user/:userId
    */
   getReviewsByUser: async (userId: string, filters?: {
     page?: number;
@@ -352,19 +352,19 @@ const adminReviewsApi = {
 
   /**
    * Export reviews
-   * GET /api/v1/admin/reviews/export
+   * GET /admin/reviews/export
    */
   exportReviews: (format: 'csv' | 'excel' = 'csv', filters?: AdminReviewFilter): string => {
     const queryParams = new URLSearchParams({
       format,
       ...(filters as Record<string, string>)
     }).toString();
-    return `/api/v1/admin/reviews/export?${queryParams}`;
+    return `/admin/reviews/export?${queryParams}`;
   },
 
   /**
    * Generate review report
-   * GET /api/v1/admin/reviews/report
+   * GET /admin/reviews/report
    */
   generateReviewReport: async (params: {
     startDate: string;
