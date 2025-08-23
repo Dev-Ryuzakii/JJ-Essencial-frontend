@@ -19,7 +19,6 @@ import adminApi, {
 export default function Analytics() {
   const [dashboardData, setDashboardData] = useState<AdminDashboardStats | null>(null)
   const [salesData, setSalesData] = useState<any[]>([])
-  const [inventoryAlerts, setInventoryAlerts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [salesLoading, setSalesLoading] = useState(false)
   const [inventoryLoading, setInventoryLoading] = useState(false)
@@ -65,7 +64,7 @@ export default function Analytics() {
       
       // For now, we'll use the sales data from dashboard stats
       // In the future, implement a proper sales analytics endpoint
-      if (dashboardData) {
+      if (dashboardData?.salesChart?.labels && dashboardData?.salesChart?.data) {
         const mockSalesData = dashboardData.salesChart.labels.map((label, index) => ({
           date: label,
           revenue: dashboardData.salesChart.data[index] || 0,
@@ -75,7 +74,19 @@ export default function Analytics() {
         }))
         setSalesData(mockSalesData)
       } else {
-        setSalesData([])
+        // Create fallback data if dashboard data is not available yet
+        const fallbackData = Array.from({ length: 7 }, (_, index) => {
+          const date = new Date()
+          date.setDate(date.getDate() - (6 - index))
+          return {
+            date: date.toISOString().split('T')[0],
+            revenue: 0,
+            orders: 0,
+            customers: 0,
+            averageOrderValue: 0
+          }
+        })
+        setSalesData(fallbackData)
       }
     } catch (err) {
       console.error('Error fetching sales report:', err)
@@ -89,32 +100,57 @@ export default function Analytics() {
     try {
       setInventoryLoading(true)
       
-      // For now, use mock data based on dashboard stats
-      // In the future, implement proper inventory analytics endpoint
-      if (dashboardData) {
-        const mockInventoryData = [
-          {
-            id: '1',
-            productName: 'Sample Product 1',
-            sku: 'SKU001',
-            currentStock: 5,
+      // Use real product data from the dashboard stats
+      if (dashboardData?.productStats) {
+        const { totalProducts, lowStock, outOfStock } = dashboardData.productStats
+        
+        // Create inventory alerts based on real data
+        const mockInventoryData = []
+        
+        // Add low stock items
+        for (let i = 0; i < lowStock; i++) {
+          mockInventoryData.push({
+            id: `low-stock-${i + 1}`,
+            productName: `Product ${i + 1} (Low Stock)`,
+            sku: `SKU-LOW-${String(i + 1).padStart(3, '0')}`,
+            currentStock: Math.floor(Math.random() * 5) + 1, // 1-5 items
             minStock: 10,
             status: 'low_stock' as const,
-            lastRestocked: '2024-01-15'
-          },
-          {
-            id: '2',
-            productName: 'Sample Product 2', 
-            sku: 'SKU002',
+            lastRestocked: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          })
+        }
+        
+        // Add out of stock items
+        for (let i = 0; i < outOfStock; i++) {
+          mockInventoryData.push({
+            id: `out-of-stock-${i + 1}`,
+            productName: `Product ${i + 1} (Out of Stock)`,
+            sku: `SKU-OUT-${String(i + 1).padStart(3, '0')}`,
             currentStock: 0,
             minStock: 5,
             status: 'out_of_stock' as const,
-            lastRestocked: '2024-01-10'
-          }
-        ]
-        setInventoryAlerts(mockInventoryData)
+            lastRestocked: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          })
+        }
+        
+        // Add some normal stock items to show total
+        const normalStockCount = Math.max(0, totalProducts - lowStock - outOfStock)
+        for (let i = 0; i < Math.min(normalStockCount, 5); i++) { // Show max 5 for demo
+          mockInventoryData.push({
+            id: `normal-stock-${i + 1}`,
+            productName: `Product ${i + 1} (In Stock)`,
+            sku: `SKU-NORM-${String(i + 1).padStart(3, '0')}`,
+            currentStock: Math.floor(Math.random() * 100) + 20, // 20-119 items
+            minStock: 10,
+            status: 'in_stock' as const,
+            lastRestocked: new Date(Date.now() - Math.random() * 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          })
+        }
+        
+        // Data is now available through dashboardData.productStats
+        // No need to store in separate state
       } else {
-        setInventoryAlerts([])
+        // No product stats available
       }
     } catch (err) {
       console.error('Error fetching inventory report:', err)
@@ -546,7 +582,7 @@ export default function Analytics() {
               <RefreshCw className="h-8 w-8 text-indigo-500 animate-spin" />
               <span className="ml-2 text-gray-500">Loading inventory report...</span>
             </div>
-          ) : inventoryAlerts.length > 0 ? (
+          ) : dashboardData?.productStats ? (
             <div className="space-y-6">
               {/* Inventory Summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -555,7 +591,7 @@ export default function Analytics() {
                     <Package className="h-8 w-8 text-blue-500" />
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-500">Total Products</p>
-                      <p className="text-2xl font-semibold text-gray-900">{inventoryAlerts.length}</p>
+                      <p className="text-2xl font-semibold text-gray-900">{dashboardData?.productStats?.totalProducts || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -565,7 +601,7 @@ export default function Analytics() {
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-500">In Stock</p>
                       <p className="text-2xl font-semibold text-gray-900">
-                        {inventoryAlerts.filter(item => item.status === 'low_stock').length}
+                        {(dashboardData?.productStats?.totalProducts || 0) - (dashboardData?.productStats?.lowStock || 0) - (dashboardData?.productStats?.outOfStock || 0)}
                       </p>
                     </div>
                   </div>
@@ -575,7 +611,7 @@ export default function Analytics() {
                     <Eye className="h-8 w-8 text-yellow-500" />
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-500">Low Stock</p>
-                      <p className="text-2xl font-semibold text-yellow-600">{inventoryAlerts.filter(item => item.status === 'low_stock').length}</p>
+                      <p className="text-2xl font-semibold text-yellow-600">{dashboardData?.productStats?.lowStock || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -584,120 +620,68 @@ export default function Analytics() {
                     <Package className="h-8 w-8 text-red-500" />
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-500">Out of Stock</p>
-                      <p className="text-2xl font-semibold text-red-600">{inventoryAlerts.filter(item => item.status === 'out_of_stock').length}</p>
+                      <p className="text-2xl font-semibold text-red-600">{dashboardData?.productStats?.outOfStock || 0}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Inventory Alerts */}
-              {inventoryAlerts.filter(item => item.status === 'low_stock' || item.status === 'out_of_stock').length > 0 && (
+              {((dashboardData?.productStats?.lowStock || 0) + (dashboardData?.productStats?.outOfStock || 0)) > 0 && (
                 <div className="bg-white rounded-lg shadow">
                   <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">Inventory Alerts</h3>
+                    <h3 className="text-lg font-medium text-gray-900">Inventory Alerts Summary</h3>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Product
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Current Stock
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Min Stock
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {inventoryAlerts.filter(item => item.status === 'low_stock' || item.status === 'out_of_stock').map((product) => (
-                          <tr key={product.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">{product.productName}</div>
-                              <div className="text-sm text-gray-500">{product.sku}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                product.status === 'out_of_stock' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {product.currentStock}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {product.minStock}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                product.status === 'out_of_stock' 
-                                  ? 'bg-red-100 text-red-800' 
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {product.status === 'out_of_stock' ? 'Out of Stock' : 'Low Stock'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(dashboardData?.productStats?.lowStock || 0) > 0 && (
+                        <div className="flex items-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                          <Eye className="h-8 w-8 text-yellow-500" />
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-yellow-800">Low Stock Alert</p>
+                            <p className="text-lg font-semibold text-yellow-900">
+                              {dashboardData.productStats.lowStock} products need restocking
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {(dashboardData?.productStats?.outOfStock || 0) > 0 && (
+                        <div className="flex items-center p-4 bg-red-50 rounded-lg border border-red-200">
+                          <Package className="h-8 w-8 text-red-500" />
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-red-800">Out of Stock Alert</p>
+                            <p className="text-lg font-semibold text-red-900">
+                              {dashboardData.productStats.outOfStock} products are out of stock
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-800">
+                        <strong>Note:</strong> Detailed product-level inventory data will be available when connected to the full inventory management API.
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* All Inventory Items */}
+              {/* Inventory Summary */}
               <div className="bg-white rounded-lg shadow">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">All Inventory Items</h3>
+                  <h3 className="text-lg font-medium text-gray-900">Detailed Inventory Report</h3>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Product
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Stock Level
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Restocked
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {inventoryAlerts.map((item) => (
-                        <tr key={item.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.productName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.currentStock}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              item.status === 'out_of_stock' 
-                                ? 'bg-red-100 text-red-800' 
-                                : item.status === 'low_stock'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-green-100 text-green-800'
-                            }`}>
-                              {item.status.replace('_', ' ').toUpperCase()}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.lastRestocked ? formatDate(item.lastRestocked) : 'Never'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="p-6 text-center">
+                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">Inventory Details Coming Soon</h4>
+                  <p className="text-gray-500 mb-4">
+                    Detailed product-level inventory tracking will be available when the full inventory management API is implemented.
+                  </p>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      This section will show individual product stock levels, SKUs, last restocked dates, and detailed inventory tracking.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

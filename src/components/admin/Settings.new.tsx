@@ -5,6 +5,8 @@ import {
   AlertCircle,
   CheckCircle,
   DollarSign,
+  Globe,
+  Shield,
   Eye,
   EyeOff,
   Plus,
@@ -12,10 +14,10 @@ import {
   Edit2
 } from 'lucide-react'
 import adminApi, { 
-  type AdminSettingsDto, 
-  type BankAccountDto, 
-  type CreateBankAccountDto, 
-  type UpdateBankAccountDto 
+  AdminSettingsDto, 
+  BankAccountDto, 
+  CreateBankAccountDto, 
+  UpdateBankAccountDto 
 } from '../../services/adminApi'
 
 export default function Settings() {

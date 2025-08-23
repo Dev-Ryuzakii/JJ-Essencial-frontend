@@ -43,12 +43,16 @@ export interface Product {
   price: string
   discountPrice?: string
   stock: number
+  stockQuantity?: number // Backend field
   images: string[]
   category: Category
   features?: string[]
   specifications?: Record<string, any>
   averageRating: number
   reviewCount: number
+  isFeatured?: boolean // Backend field
+  isInWishlist?: boolean // Frontend field
+  featured?: boolean // Backend field
   createdAt: string
   updatedAt: string
 }
@@ -473,12 +477,15 @@ export interface Cart {
 
 // Filter types
 export interface ProductFilters {
+  page?: number
+  limit?: number
   search?: string
   category?: string
   minPrice?: number
   maxPrice?: number
   sortBy?: 'name' | 'price' | 'createdAt' | 'rating'
   sortOrder?: 'asc' | 'desc'
+  featured?: boolean
   inStock?: boolean
 }
 

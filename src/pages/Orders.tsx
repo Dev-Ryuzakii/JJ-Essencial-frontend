@@ -82,7 +82,7 @@ const Orders: React.FC = () => {
   const loadOrders = async () => {
     setIsLoading(true)
     try {
-      const response = await ordersApi.getOrders({
+      const response = await ordersApi.getAll({
         page: 1,
         limit: 50, // Get more orders for better UX
         sortBy: 'createdAt',
@@ -90,7 +90,7 @@ const Orders: React.FC = () => {
       })
       
       // Transform API response to match our interface
-      const transformedOrders: Order[] = response.items.map((apiOrder: ApiOrder) => ({
+      const transformedOrders: Order[] = response.data.map((apiOrder: ApiOrder) => ({
         id: apiOrder.id,
         orderNumber: `ORD-${apiOrder.id.slice(0, 8).toUpperCase()}`,
         status: apiOrder.status,

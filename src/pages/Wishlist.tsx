@@ -14,27 +14,8 @@ import { formatCurrency } from '../utils/formatters'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { useCart, useAuth } from '../hooks'
-import { wishlistApi } from '../services'
+import wishlistApi, { type WishlistItem } from '../services/wishlistApi'
 import toast from 'react-hot-toast'
-
-interface WishlistItem {
-  id: string
-  product: {
-    id: string
-    name: string
-    price: number
-    discountPrice?: number
-    image?: string
-    category?: {
-      id: string
-      name: string
-    }
-    stockQuantity: number
-    averageRating?: number
-    reviewCount?: number
-  }
-  addedAt: string
-}
 
 const Wishlist: React.FC = () => {
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
@@ -54,14 +35,8 @@ const Wishlist: React.FC = () => {
   const fetchWishlist = async () => {
     setLoading(true)
     try {
-      const response = await wishlistApi.getItems({
-        page: 1,
-        limit: 50 // Get all wishlist items
-      })
-      
-      if (response.success) {
-        setWishlistItems(response.data.items)
-      }
+      const wishlistItems = await wishlistApi.list()
+      setWishlistItems(wishlistItems)
     } catch (error) {
       console.error('Error fetching wishlist:', error)
       toast.error('Failed to load wishlist items')
@@ -74,12 +49,9 @@ const Wishlist: React.FC = () => {
     setRemovingItems(prev => new Set(prev).add(itemId))
     
     try {
-      const response = await wishlistApi.removeItem(itemId)
-      
-      if (response.success) {
-        setWishlistItems(prev => prev.filter(item => item.product.id !== itemId))
-        toast.success('Item removed from wishlist')
-      }
+      await wishlistApi.remove(itemId)
+      setWishlistItems(prev => prev.filter(item => item.product.id !== itemId))
+      toast.success('Item removed from wishlist')
     } catch (error) {
       console.error('Error removing item from wishlist:', error)
       toast.error('Failed to remove item from wishlist')
@@ -92,9 +64,31 @@ const Wishlist: React.FC = () => {
     }
   }
 
-  const handleAddToCart = async (product: WishlistItem['product']) => {
+  const handleAddToCart = (product: WishlistItem['product']) => {
     try {
-      addToCart(product, 1)
+      // Convert to Product type for cart
+      const cartProduct = {
+        ...product,
+        description: product.description || '',
+        price: product.price.toString(),
+        discountPrice: product.discountPrice?.toString(),
+        stock: product.stock || product.stockQuantity || 0,
+        category: product.category || { 
+          id: '', 
+          name: '', 
+          description: '', 
+          image: '', 
+          slug: '',
+          productCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        averageRating: product.averageRating || 0,
+        reviewCount: product.reviewCount || 0,
+        createdAt: product.createdAt || new Date().toISOString(),
+        updatedAt: product.updatedAt || new Date().toISOString(),
+      }
+      addToCart(cartProduct)
       toast.success('Added to cart!')
     } catch (error) {
       console.error('Error adding to cart:', error)
@@ -104,7 +98,7 @@ const Wishlist: React.FC = () => {
 
   const handleAddAllToCart = async () => {
     try {
-      const inStockItems = wishlistItems.filter(item => item.product.stockQuantity > 0)
+      const inStockItems = (wishlistItems || []).filter(item => (item.product.stock || item.product.stockQuantity || 0) > 0)
       
       if (inStockItems.length === 0) {
         toast.error('No items in stock to add to cart')
@@ -112,7 +106,7 @@ const Wishlist: React.FC = () => {
       }
 
       for (const item of inStockItems) {
-        addToCart(item.product, 1)
+        handleAddToCart(item.product)
       }
       
       toast.success(`Added ${inStockItems.length} items to cart!`)
@@ -122,12 +116,12 @@ const Wishlist: React.FC = () => {
     }
   }
 
-  const totalValue = wishlistItems.reduce((sum, item) => {
+  const totalValue = (wishlistItems || []).reduce((sum, item) => {
     const price = item.product.discountPrice || item.product.price
     return sum + price
   }, 0)
 
-  const inStockCount = wishlistItems.filter(item => item.product.stockQuantity > 0).length
+  const inStockCount = (wishlistItems || []).filter(item => (item.product.stock || item.product.stockQuantity || 0) > 0).length
 
   if (!isAuthenticated) {
     return (
@@ -174,12 +168,12 @@ const Wishlist: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Wishlist</h1>
             <p className="text-gray-600 mt-1">
-              {wishlistItems.length} item{wishlistItems.length !== 1 ? 's' : ''} saved
+              {(wishlistItems || []).length} item{(wishlistItems || []).length !== 1 ? 's' : ''} saved
             </p>
           </div>
         </div>
 
-        {wishlistItems.length > 0 && (
+        {(wishlistItems || []).length > 0 && (
           <div className="text-right">
             <p className="text-sm text-gray-600">Total estimated value</p>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalValue)}</p>
@@ -188,13 +182,13 @@ const Wishlist: React.FC = () => {
       </div>
 
       {/* Actions Bar */}
-      {wishlistItems.length > 0 && (
+      {(wishlistItems || []).length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600">Total Items</p>
-                <p className="text-lg font-semibold text-gray-900">{wishlistItems.length}</p>
+                <p className="text-lg font-semibold text-gray-900">{(wishlistItems || []).length}</p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">In Stock</p>
@@ -202,7 +196,7 @@ const Wishlist: React.FC = () => {
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Out of Stock</p>
-                <p className="text-lg font-semibold text-red-600">{wishlistItems.length - inStockCount}</p>
+                <p className="text-lg font-semibold text-red-600">{(wishlistItems || []).length - inStockCount}</p>
               </div>
             </div>
             
@@ -221,7 +215,7 @@ const Wishlist: React.FC = () => {
       )}
 
       {/* Wishlist Items */}
-      {wishlistItems.length === 0 ? (
+      {(wishlistItems || []).length === 0 ? (
         <div className="text-center py-16">
           <Heart className="w-24 h-24 text-gray-300 mx-auto mb-6" />
           <h3 className="text-2xl font-bold text-gray-900 mb-4">Your wishlist is empty</h3>
@@ -238,11 +232,11 @@ const Wishlist: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {wishlistItems.map((item) => {
+          {(wishlistItems || []).map((item) => {
             const product = item.product
             const finalPrice = product.discountPrice || product.price
             const hasDiscount = product.discountPrice && product.discountPrice < product.price
-            const isOutOfStock = product.stockQuantity === 0
+            const isOutOfStock = (product.stock || product.stockQuantity || 0) === 0
             const isRemoving = removingItems.has(product.id)
 
             return (
@@ -264,7 +258,7 @@ const Wishlist: React.FC = () => {
                 <div className="relative aspect-square bg-gray-100">
                   <Link to={`/products/${product.id}`}>
                     <img
-                      src={product.image || '/api/placeholder/300/300'}
+                      src={product.images?.[0] || '/api/placeholder/300/300'}
                       alt={product.name}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
@@ -282,7 +276,7 @@ const Wishlist: React.FC = () => {
                       </Badge>
                     )}
                     {isOutOfStock && (
-                      <Badge variant="default" size="sm">
+                      <Badge variant="gray" size="sm">
                         Out of Stock
                       </Badge>
                     )}
@@ -372,7 +366,7 @@ const Wishlist: React.FC = () => {
       )}
 
       {/* Continue Shopping */}
-      {wishlistItems.length > 0 && (
+      {(wishlistItems || []).length > 0 && (
         <div className="mt-12 text-center">
           <Link 
             to="/products"
@@ -385,7 +379,7 @@ const Wishlist: React.FC = () => {
       )}
 
       {/* Recommendations */}
-      {wishlistItems.length > 0 && (
+      {(wishlistItems || []).length > 0 && (
         <div className="mt-16">
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-8 text-center border border-purple-100">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">

@@ -4,6 +4,7 @@ import {
   Grid,
   List,
   Search,
+  Filter,
   ArrowRight,
   Package,
   ChefHat,
@@ -14,13 +15,20 @@ import {
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
-import { categoriesCache } from '../lib/categoriesCache'
-import { cn } from '../lib/utils'
+import { categoriesApi } from '../lib/api'
+import { formatCurrency, cn } from '../lib/utils'
 import toast from 'react-hot-toast'
 import type { Category } from '../types'
 
 interface CategoryWithStats extends Category {
   isFeatured?: boolean
+  imageUrl?: string
+  featuredProducts?: Array<{
+    id: string
+    name: string
+    price: number
+    image?: string
+  }>
 }
 
 const Categories: React.FC = () => {
@@ -42,27 +50,62 @@ const Categories: React.FC = () => {
   const loadCategories = async () => {
     setIsLoading(true)
     try {
-      // Add a small delay to prevent rate limiting
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 500))
+      console.log('Calling categoriesApi.getAll()...')
+      const response = await categoriesApi.getAll()
+      console.log('Categories API response:', response) // Debug log
+      console.log('Response type:', typeof response)
+      console.log('Response keys:', response ? Object.keys(response) : 'null/undefined')
       
-      const allCategories = await categoriesCache.getCategories()
-      
-      if (Array.isArray(allCategories)) {
-        // Transform categories and add enhanced stats for better UX
-        const categoriesWithStats: CategoryWithStats[] = allCategories.map((category: Category, index: number) => ({
+      // Check if response exists and has success property and data
+      if (response && response.success && Array.isArray(response.data)) {
+        console.log('Processing', response.data.length, 'categories')
+        // Transform categories and add mock stats for demo
+        const categoriesWithStats: CategoryWithStats[] = response.data.map((category: Category) => ({
           ...category,
-          isFeatured: index < 3 // Mark first 3 as featured
+          productCount: Math.floor(Math.random() * 50) + 10, // Mock product count
+          featuredProducts: [
+            {
+              id: '1',
+              name: 'Featured Product 1',
+              price: Math.floor(Math.random() * 50000) + 10000,
+              image: '/api/placeholder/200/200'
+            },
+            {
+              id: '2',
+              name: 'Featured Product 2',
+              price: Math.floor(Math.random() * 50000) + 10000,
+              image: '/api/placeholder/200/200'
+            }
+          ]
         }))
         setCategories(categoriesWithStats)
       } else {
-        console.error('Invalid categories data:', allCategories)
+        console.error('Invalid response format:', response)
         toast.error('Failed to load categories')
-        setCategories([])
+        
+        // Fallback: Show some dummy categories for testing
+        const dummyCategories: CategoryWithStats[] = [
+          {
+            id: '1',
+            name: 'Kitchen Appliances',
+            slug: 'kitchen-appliances',
+            description: 'Essential kitchen equipment',
+            productCount: 15,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isFeatured: true,
+            imageUrl: '/api/placeholder/400/300',
+            featuredProducts: [
+              { id: '1', name: 'Air Fryer', price: 45000, image: '/api/placeholder/200/200' },
+              { id: '2', name: 'Blender', price: 35000, image: '/api/placeholder/200/200' }
+            ]
+          }
+        ]
+        setCategories(dummyCategories)
       }
     } catch (error) {
       console.error('Failed to load categories:', error)
       toast.error('Failed to load categories')
-      setCategories([])
     } finally {
       setIsLoading(false)
     }
@@ -83,7 +126,7 @@ const Categories: React.FC = () => {
     filtered.sort((a, b) => {
       switch (selectedSort) {
         case 'products':
-          return (b.productCount || 0) - (a.productCount || 0)
+          return b.productCount - a.productCount
         case 'featured':
           return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)
         case 'name':
@@ -104,19 +147,32 @@ const Categories: React.FC = () => {
     return Package
   }
 
-  const getCategoryColor = (_categoryName: string, index: number) => {
-    const colors = [
-      'from-red-500 to-orange-500',
-      'from-blue-500 to-purple-500', 
-      'from-green-500 to-teal-500',
-      'from-purple-500 to-pink-500',
-      'from-yellow-500 to-orange-500',
-      'from-indigo-500 to-purple-500',
-      'from-pink-500 to-rose-500',
-      'from-cyan-500 to-blue-500'
-    ]
-    return colors[index % colors.length]
-  }
+  const popularCategories = [
+    {
+      name: 'Cookware',
+      icon: ChefHat,
+      description: 'Pots, pans, and cooking essentials',
+      color: 'from-red-500 to-orange-500'
+    },
+    {
+      name: 'Dining',
+      icon: Utensils,
+      description: 'Plates, bowls, and serving ware',
+      color: 'from-blue-500 to-purple-500'
+    },
+    {
+      name: 'Coffee & Tea',
+      icon: Coffee,
+      description: 'Mugs, kettles, and brewing tools',
+      color: 'from-green-500 to-teal-500'
+    },
+    {
+      name: 'Home Decor',
+      icon: Home,
+      description: 'Beautiful kitchen accessories',
+      color: 'from-purple-500 to-pink-500'
+    }
+  ]
 
   if (isLoading) {
     return (
@@ -158,41 +214,33 @@ const Categories: React.FC = () => {
         </div>
       </section>
 
-      {/* Real Categories with Popular Styling - Only show when not searching */}
-      {!searchQuery && (
-        <section className="py-16 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="max-w-6xl mx-auto">
-              <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Our Categories</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {filteredCategories.slice(0, 8).map((category, index) => {
-                  const IconComponent = getCategoryIcon(category.name)
-                  const colorClass = getCategoryColor(category.name, index)
-                  
-                  return (
-                    <Link
-                      key={category.id}
-                      to={`/products?category=${category.id}`}
-                      className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                    >
-                      <div className={`absolute inset-0 bg-gradient-to-br ${colorClass} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
-                      <div className="relative p-6 text-center">
-                        <div className={`w-16 h-16 bg-gradient-to-br ${colorClass} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                          <IconComponent className="w-8 h-8 text-white" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">{category.name}</h3>
-                        <p className="text-gray-600 text-sm mb-2">{category.description || 'Premium quality products'}</p>
-                        <p className="text-sm text-purple-600 font-medium">{category.productCount || 0} products</p>
-                        <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600 mx-auto mt-4 transition-colors" />
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
+      {/* Quick Categories */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Popular Categories</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {popularCategories.map((category, index) => (
+                <Link
+                  key={index}
+                  to={`/products?category=${category.name.toLowerCase()}`}
+                  className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
+                  <div className="relative p-6 text-center">
+                    <div className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                      <category.icon className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{category.name}</h3>
+                    <p className="text-gray-600 text-sm">{category.description}</p>
+                    <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600 mx-auto mt-4 transition-colors" />
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* All Categories */}
       <section className="py-16">
@@ -203,13 +251,7 @@ const Categories: React.FC = () => {
               <div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">All Categories</h2>
                 <p className="text-gray-600">
-                  {searchQuery ? (
-                    <>
-                      Showing {filteredCategories.length} result{filteredCategories.length !== 1 ? 's' : ''} for "{searchQuery}"
-                    </>
-                  ) : (
-                    <>Browse all {filteredCategories.length} categories</>
-                  )}
+                  Browse all {filteredCategories.length} categories
                 </p>
               </div>
 
@@ -222,17 +264,8 @@ const Categories: React.FC = () => {
                     placeholder="Search categories..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-full sm:w-64"
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-full sm:w-64"
                   />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      aria-label="Clear search"
-                    >
-                      ✕
-                    </button>
-                  )}
                 </div>
 
                 {/* Sort */}
@@ -284,19 +317,18 @@ const Categories: React.FC = () => {
             ) : (
               <div className={cn(
                 viewMode === 'grid'
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'
                   : 'space-y-6'
               )}>
-                {filteredCategories.map((category, index) => {
+                {filteredCategories.map((category) => {
                   const IconComponent = getCategoryIcon(category.name)
-                  const colorClass = getCategoryColor(category.name, index)
                   
                   if (viewMode === 'list') {
                     return (
                       <div key={category.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
-                            <div className={`w-16 h-16 bg-gradient-to-r ${colorClass} rounded-lg flex items-center justify-center`}>
+                            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
                               <IconComponent className="w-8 h-8 text-white" />
                             </div>
                             <div>
@@ -306,8 +338,8 @@ const Categories: React.FC = () => {
                                   <Badge variant="primary" size="sm">Featured</Badge>
                                 )}
                               </div>
-                              <p className="text-gray-600 mb-2">{category.description || 'Discover our premium collection'}</p>
-                              <p className="text-sm text-gray-500">{category.productCount || 0} products</p>
+                              <p className="text-gray-600 mb-2">{category.description}</p>
+                              <p className="text-sm text-gray-500">{category.productCount} products</p>
                             </div>
                           </div>
                           <Button asChild variant="outline">
@@ -321,29 +353,71 @@ const Categories: React.FC = () => {
                     )
                   }
 
-                  // Grid view - same styling as popular categories
                   return (
-                    <Link
-                      key={category.id}
-                      to={`/products?category=${category.id}`}
-                      className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                    >
-                      <div className={`absolute inset-0 bg-gradient-to-br ${colorClass} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
-                      <div className="relative p-6 text-center">
-                        <div className={`w-16 h-16 bg-gradient-to-br ${colorClass} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                          <IconComponent className="w-8 h-8 text-white" />
-                        </div>
-                        <div className="flex items-center justify-center space-x-2 mb-2">
-                          <h3 className="text-xl font-semibold text-gray-900">{category.name}</h3>
-                          {category.isFeatured && (
-                            <Badge variant="primary" size="sm">Featured</Badge>
-                          )}
-                        </div>
-                        <p className="text-gray-600 text-sm mb-2">{category.description || 'Discover our premium collection'}</p>
-                        <p className="text-sm text-purple-600 font-medium mb-4">{category.productCount || 0} products</p>
-                        <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600 mx-auto transition-colors" />
+                    <div key={category.id} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                      {/* Category Image */}
+                      <div className="relative h-48 bg-gradient-to-br from-purple-100 to-pink-100">
+                        {category.imageUrl ? (
+                          <img
+                            src={category.imageUrl}
+                            alt={category.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                              <IconComponent className="w-12 h-12 text-white" />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {category.isFeatured && (
+                          <div className="absolute top-4 right-4">
+                            <Badge variant="primary">Featured</Badge>
+                          </div>
+                        )}
                       </div>
-                    </Link>
+
+                      {/* Category Info */}
+                      <div className="p-6">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">{category.name}</h3>
+                        <p className="text-gray-600 mb-4 line-clamp-2">{category.description}</p>
+                        
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-sm text-gray-500">{category.productCount} products</span>
+                          <span className="text-sm text-purple-600 font-medium">View all →</span>
+                        </div>
+
+                        {/* Featured Products Preview */}
+                        {category.featuredProducts && category.featuredProducts.length > 0 && (
+                          <div className="border-t border-gray-200 pt-4">
+                            <p className="text-sm font-medium text-gray-700 mb-3">Featured Products</p>
+                            <div className="flex space-x-3">
+                              {category.featuredProducts.slice(0, 2).map((product) => (
+                                <div key={product.id} className="flex-1">
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-full h-16 object-cover rounded-lg mb-2"
+                                  />
+                                  <p className="text-xs text-gray-600 truncate">{product.name}</p>
+                                  <p className="text-xs font-medium text-gray-900">{formatCurrency(product.price)}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <Link
+                          to={`/products?category=${category.id}`}
+                          className="block w-full mt-4"
+                        >
+                          <Button variant="outline" className="w-full group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 transition-all">
+                            Browse Category
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
                   )
                 })}
               </div>

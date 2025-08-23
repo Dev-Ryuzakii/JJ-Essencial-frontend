@@ -5,9 +5,22 @@ export interface WishlistItem {
   product: {
     id: string;
     name: string;
+    description?: string;
     price: number;
+    discountPrice?: number;
+    stock?: number;
+    stockQuantity?: number;
     images: string[];
+    averageRating?: number;
+    reviewCount?: number;
+    category?: {
+      id: string;
+      name: string;
+    };
+    createdAt?: string;
+    updatedAt?: string;
   };
+  addedAt?: string;
 }
 
 const wishlistApi = {

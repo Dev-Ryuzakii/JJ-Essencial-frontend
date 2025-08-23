@@ -99,8 +99,47 @@ export default function ProductManagement() {
         setProducts([])
         setTotalPages(1)
       } else {
-        // Properly extract the products from the response
-        setProducts(response.data)
+        // Process products to handle image parsing and ensure proper data format
+        const processedProducts = response.data.map((product: any) => {
+          let images = []
+          
+          if (product.images && Array.isArray(product.images)) {
+            images = product.images.map((img: any) => {
+              if (typeof img === 'string') {
+                try {
+                  const parsed = JSON.parse(img)
+                  return {
+                    id: parsed.id || Math.random().toString(),
+                    url: parsed.url || img,
+                    isMain: parsed.isMain || false,
+                    sortOrder: parsed.sortOrder || 0
+                  }
+                } catch {
+                  return {
+                    id: Math.random().toString(),
+                    url: img,
+                    isMain: false,
+                    sortOrder: 0
+                  }
+                }
+              }
+              return {
+                id: img.id || Math.random().toString(),
+                url: img.url || img,
+                isMain: img.isMain || false,
+                sortOrder: img.sortOrder || 0
+              }
+            })
+          }
+          
+          return {
+            ...product,
+            images: images,
+            price: typeof product.price === 'string' ? product.price : product.price?.toString() || '0'
+          }
+        })
+        
+        setProducts(processedProducts)
         
         // Extract pagination info if available
         if (response.pagination) {
@@ -488,6 +527,11 @@ export default function ProductManagement() {
         errorMessage = 'Resource not found. The category or product may have been deleted.'
       } else if (err.response?.status === 409) {
         errorMessage = 'A product with this SKU already exists.'
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Server error. Please check: 1) SKU is unique, 2) Category exists, 3) All fields are valid.'
+        if (err.response?.data?.message) {
+          errorMessage += ` Server details: ${err.response.data.message}`
+        }
       } else if (err.message && typeof err.message === 'string') {
         errorMessage = err.message
       }
@@ -696,16 +740,16 @@ export default function ProductManagement() {
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0">
                         <img
-                          className="h-10 w-10 rounded-md object-cover"
+                          className="h-10 w-10 rounded-md object-cover bg-gray-100 border border-gray-200"
                           src={product.images && product.images.length > 0 
-                            ? (product.images.find(img => img.isMain)?.url || product.images[0].url) 
-                            : 'https://via.placeholder.com/40'}
+                            ? (product.images.find(img => img.isMain)?.url || product.images[0]?.url) 
+                            : '/api/placeholder/40/40'}
                           alt={product.name || 'Product image'}
                           onError={(e) => { 
                             // Fallback if image fails to load
                             const target = e.target as HTMLImageElement;
-                            target.src = 'https://via.placeholder.com/40';
-                            target.alt = 'Image not available';
+                            target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAyNkMxNy43OTA5IDI2IDE2IDI0LjIwOTEgMTYgMjJDMTYgMTkuNzkwOSAxNy43OTA5IDE4IDIwIDE4QzIyLjIwOTEgMTggMjQgMTkuNzkwOSAyNCAyMkMyNCAyNC4yMDkxIDIyLjIwOTEgMjYgMjAgMjZaIiBmaWxsPSIjOUM5Qzk3Ii8+CjxwYXRoIGQ9Ik0xMiAxNFYyOEMxMiAyOC41NTIzIDEyLjQ0NzcgMjkgMTMgMjlIMjdDMjcuNTUyMyAyOSAyOCAyOC41NTIzIDI4IDI4VjE0QzI4IDEzLjQ0NzcgMjcuNTUyMyAxMyAyNyAxM0gxM0MxMi40NDc3IDEzIDEyIDEzLjQ0NzcgMTIgMTRaTTI2IDE2SDE0VjI3SDI2VjE2WiIgZmlsbD0iIzlDOUM5NyIvPgo8L3N2Zz4K';
+                            target.alt = 'No image';
                           }}
                         />
                       </div>

@@ -85,70 +85,17 @@ const Products: React.FC = () => {
           }
         })
 
-        const response: any = await productsApi.getAll(cleanParams)
-        console.log('Products API response:', response) // Debug log
+        const response = await productsApi.getAll(cleanParams)
         
-        // Handle different response formats
-        let productsData = []
-        let paginationData = {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          itemsPerPage: params.limit
-        }
-        
-        if (response && response.success && response.data) {
-          // Standard API response format
-          productsData = response.data.items || response.data
-          paginationData = response.data.meta || paginationData
-        } else if (response && response.products) {
-          // Backend specific format
-          productsData = response.products
-          paginationData = {
-            currentPage: params.page,
-            totalPages: Math.ceil((response.total || 0) / params.limit),
-            totalItems: response.total || 0,
+        if (response.success) {
+          setProducts(response.data.items || response.data)
+          setPagination(response.data.meta || {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: Array.isArray(response.data) ? response.data.length : 0,
             itemsPerPage: params.limit
-          }
-        } else if (Array.isArray(response)) {
-          // Direct array response
-          productsData = response
+          })
         }
-        
-        // Parse images from JSON strings and ensure proper image URLs
-        const processedProducts = productsData.map((product: any) => {
-          let images = []
-          
-          if (product.images && Array.isArray(product.images)) {
-            images = product.images.map((img: any) => {
-              if (typeof img === 'string') {
-                try {
-                  const parsed = JSON.parse(img)
-                  return parsed.url || img
-                } catch {
-                  return img
-                }
-              }
-              return img.url || img
-            })
-          }
-          
-          return {
-            ...product,
-            images: images.length > 0 ? images : ['/api/placeholder/400/400'],
-            price: typeof product.price === 'string' ? product.price : product.price?.toString() || '0',
-            stock: product.stock || product.stockQuantity || 0,
-            stockQuantity: product.stock || product.stockQuantity || 0,
-            category: product.category || { id: '', name: 'Uncategorized', slug: 'uncategorized' },
-            averageRating: product.averageRating || 0,
-            reviewCount: product.reviewCount || 0,
-            isFeatured: product.featured || false,
-            isInWishlist: product.isInWishlist || false
-          }
-        })
-        
-        setProducts(processedProducts)
-        setPagination(paginationData)
       } catch (error: any) {
         console.error('Failed to load products:', error)
         setError('Failed to load products. Please try again.')

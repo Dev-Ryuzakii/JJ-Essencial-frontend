@@ -238,38 +238,76 @@ export interface ReplySupportChatDto {
   updateStatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 }
 
+// Admin Settings DTOs
+export interface AdminSettingsDto {
+  siteName: string;
+  siteDescription: string;
+  contactEmail: string;
+  currency: string;
+  timezone: string;
+  maintenanceMode: boolean;
+  allowRegistration: boolean;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  orderAutoConfirm: boolean;
+  lowStockThreshold: number;
+  taxRate: number;
+  shippingFee: number;
+  freeShippingThreshold: number;
+  defaultLanguage: string;
+  dateFormat: string;
+  timeFormat: string;
+}
+
+export interface UpdateAdminSettingsDto {
+  siteName?: string;
+  siteDescription?: string;
+  contactEmail?: string;
+  currency?: string;
+  timezone?: string;
+  maintenanceMode?: boolean;
+  allowRegistration?: boolean;
+  emailNotifications?: boolean;
+  smsNotifications?: boolean;
+  orderAutoConfirm?: boolean;
+  lowStockThreshold?: number;
+  taxRate?: number;
+  shippingFee?: number;
+  freeShippingThreshold?: number;
+  defaultLanguage?: string;
+  dateFormat?: string;
+  timeFormat?: string;
+}
+
 // Bank Account Management DTOs
 export interface BankAccountDto {
   id: string;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  sortCode: string | null;
-  swiftCode: string | null;
+  bank_name: string;
+  account_name: string;
+  account_number: string;
   currency: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateBankAccountDto {
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  sortCode?: string;
-  swiftCode?: string;
+  bank_name: string;
+  account_name: string;
+  account_number: string;
   currency?: string;
-  isActive?: boolean;
+  is_default?: boolean;
+  is_active?: boolean;
 }
 
 export interface UpdateBankAccountDto {
-  bankName?: string;
-  accountName?: string;
-  accountNumber?: string;
-  sortCode?: string;
-  swiftCode?: string;
+  bank_name?: string;
+  account_name?: string;
+  account_number?: string;
   currency?: string;
-  isActive?: boolean;
+  is_default?: boolean;
+  is_active?: boolean;
 }
 
 // Reports DTOs
@@ -479,6 +517,24 @@ const adminApi = {
 
   // System Settings
   settings: {
+    /**
+     * Get system settings
+     * GET /admin/settings
+     */
+    getSettings: async (): Promise<AdminSettingsDto> => {
+      const response = await get<AdminSettingsDto>('/admin/settings');
+      return response.data;
+    },
+
+    /**
+     * Update system settings
+     * PUT /admin/settings
+     */
+    updateSettings: async (data: UpdateAdminSettingsDto): Promise<AdminSettingsDto> => {
+      const response = await put<AdminSettingsDto>('/admin/settings', data);
+      return response.data;
+    },
+
     /**
      * Get bank accounts
      * GET /admin/settings/bank-accounts

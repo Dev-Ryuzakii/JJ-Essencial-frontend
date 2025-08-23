@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingCartIcon, HeartIcon, UserIcon, SearchIcon, MenuIcon, XIcon } from 'lucide-react'
 import { useAuth, useCart } from '../../hooks'
 import { useUIStore } from '../../store'
-import { categoriesApi } from '../../lib/api'
+import { categoriesCache } from '../../lib/categoriesCache'
 import { cn, formatCurrency } from '../../lib/utils'
 import type { Category } from '../../types'
 
@@ -23,18 +23,20 @@ const Navbar: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
 
-  // Fetch categories on mount
+  // Fetch categories on mount with delay to prevent rate limiting
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await categoriesApi.getAll()
-        if (response.success) {
-          setCategories(response.data.slice(0, 6)) // Show only first 6 categories
-        }
+        // Add a small delay to prevent concurrent requests
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 1000))
+        
+        const allCategories = await categoriesCache.getCategories()
+        setCategories(allCategories.slice(0, 6)) // Show only first 6 categories
       } catch (error) {
         console.error('Failed to fetch categories:', error)
       }
     }
+    
     fetchCategories()
   }, [])
 

@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon } from 'lucide-react'
-import { useProducts } from '../hooks'
-import { productsApi, categoriesApi } from '../lib/api'
+import { 
+  ArrowRightIcon, 
+  ChevronLeftIcon, 
+  ChevronRightIcon, 
+  PlayIcon,
+  Package,
+  ChefHat,
+  Coffee,
+  Utensils,
+  Home as HomeIcon
+} from 'lucide-react'
+import { productsApi } from '../lib/api'
+import { categoriesCache } from '../lib/categoriesCache'
 import ProductCard from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import type { Product, Category } from '../types'
@@ -92,32 +102,112 @@ const Home: React.FC = () => {
         setIsLoading(true)
         
         // Load featured products
-        const featuredResponse = await productsApi.getAll({
+        const featuredResponse: any = await productsApi.getAll({
           page: 1,
           limit: 8,
           featured: true
         })
         
-        if (featuredResponse.success) {
-          setFeaturedProducts(featuredResponse.data.products)
+        // Handle different response formats and process images
+        let featuredData = []
+        if (featuredResponse && featuredResponse.success && featuredResponse.data) {
+          featuredData = featuredResponse.data.items || featuredResponse.data
+        } else if (featuredResponse && featuredResponse.products) {
+          featuredData = featuredResponse.products
+        } else if (Array.isArray(featuredResponse)) {
+          featuredData = featuredResponse
         }
+        
+        // Process images
+        const processedFeatured = featuredData.map((product: any) => {
+          let images = []
+          if (product.images && Array.isArray(product.images)) {
+            images = product.images.map((img: any) => {
+              if (typeof img === 'string') {
+                try {
+                  const parsed = JSON.parse(img)
+                  return parsed.url || img
+                } catch {
+                  return img
+                }
+              }
+              return img.url || img
+            })
+          }
+          
+          return {
+            ...product,
+            images: images.length > 0 ? images : ['/api/placeholder/400/400'],
+            price: typeof product.price === 'string' ? product.price : product.price?.toString() || '0',
+            stock: product.stock || product.stockQuantity || 0,
+            category: product.category || { id: '', name: 'Uncategorized', slug: 'uncategorized' },
+            averageRating: product.averageRating || 0,
+            reviewCount: product.reviewCount || 0
+          }
+        })
+        
+        setFeaturedProducts(processedFeatured)
 
         // Load new arrivals
-        const newArrivalsResponse = await productsApi.getAll({
+        const newArrivalsResponse: any = await productsApi.getAll({
           page: 1,
           limit: 8,
           sortBy: 'createdAt',
           sortOrder: 'desc'
         })
         
-        if (newArrivalsResponse.success) {
-          setNewArrivals(newArrivalsResponse.data.products)
+        // Handle different response formats and process images
+        let newArrivalsData = []
+        if (newArrivalsResponse && newArrivalsResponse.success && newArrivalsResponse.data) {
+          newArrivalsData = newArrivalsResponse.data.items || newArrivalsResponse.data
+        } else if (newArrivalsResponse && newArrivalsResponse.products) {
+          newArrivalsData = newArrivalsResponse.products
+        } else if (Array.isArray(newArrivalsResponse)) {
+          newArrivalsData = newArrivalsResponse
         }
+        
+        // Process images for new arrivals
+        const processedNewArrivals = newArrivalsData.map((product: any) => {
+          let images = []
+          if (product.images && Array.isArray(product.images)) {
+            images = product.images.map((img: any) => {
+              if (typeof img === 'string') {
+                try {
+                  const parsed = JSON.parse(img)
+                  return parsed.url || img
+                } catch {
+                  return img
+                }
+              }
+              return img.url || img
+            })
+          }
+          
+          return {
+            ...product,
+            images: images.length > 0 ? images : ['/api/placeholder/400/400'],
+            price: typeof product.price === 'string' ? product.price : product.price?.toString() || '0',
+            stock: product.stock || product.stockQuantity || 0,
+            category: product.category || { id: '', name: 'Uncategorized', slug: 'uncategorized' },
+            averageRating: product.averageRating || 0,
+            reviewCount: product.reviewCount || 0
+          }
+        })
+        
+        setNewArrivals(processedNewArrivals)
 
-        // Load categories
-        const categoriesResponse = await categoriesApi.getAll()
-        if (categoriesResponse.success) {
-          setCategories(categoriesResponse.data.slice(0, 6))
+        // Load categories with their existing product counts
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 300)) // Small delay
+        const allCategories = await categoriesCache.getCategories()
+        
+        if (Array.isArray(allCategories)) {
+          // Take the first 6 categories for home page display
+          // Use the productCount that comes from the categories API
+          const categoriesWithCounts = allCategories.slice(0, 6).map(category => ({
+            ...category,
+            productCount: category.productCount || 0
+          }))
+          setCategories(categoriesWithCounts)
         }
 
       } catch (error) {
@@ -306,38 +396,56 @@ const Home: React.FC = () => {
                 Shop by Category
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Explore our carefully curated categories designed to meet all your lifestyle needs
+                Explore our carefully curated categories designed to meet all your kitchen and dining needs
               </p>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-              {categories.map((category) => (
-                <Link
-                  key={category.id}
-                  to={`/products?category=${category.id}`}
-                  className="group text-center"
-                >
-                  <div className="relative aspect-square rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 mb-4 overflow-hidden group-hover:shadow-2xl transition-all duration-300 transform group-hover:scale-105">
-                    {category.image ? (
-                      <img
-                        src={category.image}
-                        alt={category.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
-                        <span className="text-3xl font-bold text-white">
-                          {category.name.charAt(0).toUpperCase()}
-                        </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {categories.map((category, index) => {
+                // Smart icon mapping for categories
+                const getCategoryIcon = (name: string) => {
+                  const categoryName = name.toLowerCase()
+                  if (categoryName.includes('cook') || categoryName.includes('kitchen')) return ChefHat
+                  if (categoryName.includes('coffee') || categoryName.includes('tea')) return Coffee
+                  if (categoryName.includes('dining') || categoryName.includes('utensil')) return Utensils
+                  if (categoryName.includes('home') || categoryName.includes('decor')) return HomeIcon
+                  return Package
+                }
+
+                const getCategoryColor = (index: number) => {
+                  const colors = [
+                    'from-red-500 to-orange-500',
+                    'from-blue-500 to-purple-500', 
+                    'from-green-500 to-teal-500',
+                    'from-purple-500 to-pink-500',
+                    'from-yellow-500 to-orange-500',
+                    'from-indigo-500 to-purple-500'
+                  ]
+                  return colors[index % colors.length]
+                }
+
+                const IconComponent = getCategoryIcon(category.name)
+                const colorClass = getCategoryColor(index)
+
+                return (
+                  <Link
+                    key={category.id}
+                    to={`/products?category=${category.id}`}
+                    className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${colorClass} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
+                    <div className="relative p-6 text-center">
+                      <div className={`w-16 h-16 bg-gradient-to-br ${colorClass} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                        <IconComponent className="w-8 h-8 text-white" />
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-lg">
-                    {category.name}
-                  </h3>
-                </Link>
-              ))}
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{category.name}</h3>
+                      <p className="text-gray-600 text-sm mb-2">{category.description || 'Discover our premium collection'}</p>
+                      <p className="text-sm text-purple-600 font-medium">{category.productCount || 0} products</p>
+                      <ArrowRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 mx-auto mt-4 transition-colors" />
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
             
             <div className="text-center mt-12">
