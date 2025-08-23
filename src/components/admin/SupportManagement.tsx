@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Plus, 
   Filter, 
@@ -13,106 +13,112 @@ import {
   Eye,
   ArrowRight
 } from 'lucide-react'
+import adminSupportApi, { type AdminSupportTicket, type AdminSupportFilters } from '../../services/adminSupportApi'
 
+// Updated interface to match backend response
 interface SupportTicket {
   id: string
   subject: string
-  description: string
-  status: 'open' | 'in_progress' | 'resolved' | 'closed'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  category: 'order' | 'product' | 'shipping' | 'payment' | 'account' | 'technical' | 'other'
+  status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH'
+  category?: string
   customer: {
-    id: string
+    id?: string
     name: string
     email: string
     phone?: string
   }
-  assignedTo?: string
+  assignedTo?: string | null
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
   lastMessage?: {
     content: string
     from: 'customer' | 'admin'
     timestamp: string
-  }
+  } | null
+  messageCount?: number
 }
 
-// Mock data for demonstration
-const mockTickets: SupportTicket[] = [
-  {
-    id: '1',
-    subject: 'Order not received',
-    description: 'I ordered a product 2 weeks ago but haven\'t received it yet. Order #12345',
-    status: 'open',
-    priority: 'high',
-    category: 'shipping',
-    customer: {
-      id: 'c1',
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      phone: '+1 234 567 8900'
-    },
-    createdAt: '2025-08-20T10:30:00Z',
-    updatedAt: '2025-08-20T10:30:00Z',
-    lastMessage: {
-      content: 'I ordered a product 2 weeks ago but haven\'t received it yet.',
-      from: 'customer',
-      timestamp: '2025-08-20T10:30:00Z'
-    }
-  },
-  {
-    id: '2',
-    subject: 'Product defect',
-    description: 'The product I received is damaged. Need replacement.',
-    status: 'in_progress',
-    priority: 'medium',
-    category: 'product',
-    customer: {
-      id: 'c2',
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com'
-    },
-    assignedTo: 'Admin User',
-    createdAt: '2025-08-19T14:20:00Z',
-    updatedAt: '2025-08-21T09:15:00Z',
-    lastMessage: {
-      content: 'We are processing your replacement request.',
-      from: 'admin',
-      timestamp: '2025-08-21T09:15:00Z'
-    }
-  },
-  {
-    id: '3',
-    subject: 'Payment issue',
-    description: 'My payment was charged but order shows as pending.',
-    status: 'resolved',
-    priority: 'urgent',
-    category: 'payment',
-    customer: {
-      id: 'c3',
-      name: 'Mike Johnson',
-      email: 'mike.johnson@example.com',
-      phone: '+1 234 567 8901'
-    },
-    assignedTo: 'Admin User',
-    createdAt: '2025-08-18T16:45:00Z',
-    updatedAt: '2025-08-21T11:30:00Z',
-    lastMessage: {
-      content: 'Payment issue has been resolved. Your order is now processing.',
-      from: 'admin',
-      timestamp: '2025-08-21T11:30:00Z'
-    }
-  }
-]
 
 export default function SupportManagement() {
-  const [tickets] = useState<SupportTicket[]>(mockTickets)
-  const [loading, setLoading] = useState(false)
+  const [tickets, setTickets] = useState<SupportTicket[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>('')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [priorityFilter, setPriorityFilter] = useState<string>('')
   const [categoryFilter, setCategoryFilter] = useState<string>('')
   const [showFilters, setShowFilters] = useState(false)
+
+  // Fetch tickets from API
+  const fetchTickets = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      const filters: AdminSupportFilters = {
+        page: 1,
+        limit: 100
+      }
+      
+      if (searchTerm) filters.search = searchTerm
+      if (statusFilter) filters.status = statusFilter as any
+      if (priorityFilter) filters.priority = priorityFilter as any
+      
+      const response = await adminSupportApi.getTickets(filters)
+      
+      // Transform API response to match component interface
+      const transformedTickets: SupportTicket[] = (response.data || []).map((ticket: AdminSupportTicket) => ({
+        id: ticket.id,
+        subject: ticket.subject,
+        status: ticket.status,
+        priority: ticket.priority,
+        category: 'general', // Default category since API doesn't provide it
+        customer: {
+          id: ticket.user.id,
+          name: ticket.user.fullName,
+          email: ticket.user.email,
+          phone: ticket.user.phone || undefined
+        },
+        assignedTo: ticket.assignedTo,
+        createdAt: ticket.createdAt,
+        updatedAt: ticket.updatedAt,
+        lastMessage: ticket.messages && ticket.messages.length > 0 ? {
+          content: ticket.messages[ticket.messages.length - 1].content,
+          from: ticket.messages[ticket.messages.length - 1].isFromCustomer ? 'customer' : 'admin',
+          timestamp: ticket.messages[ticket.messages.length - 1].createdAt
+        } : null,
+        messageCount: ticket.messages?.length || 0
+      }))
+      
+      setTickets(transformedTickets)
+    } catch (err) {
+      console.error('Error fetching tickets:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch tickets'
+      setError(`${errorMessage}. Backend server may not be running or endpoint may not be available yet.`)
+      
+      // For development purposes, show a message about backend availability
+      if (errorMessage.includes('fetch') || errorMessage.includes('network') || errorMessage.includes('ECONNREFUSED')) {
+        setError('Unable to connect to backend server. Please ensure the backend is running on localhost:3000')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load tickets on component mount
+  useEffect(() => {
+    fetchTickets()
+  }, [])
+
+  // Reload tickets when filters change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchTickets()
+    }, 500) // Debounce search
+    
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm, statusFilter, priorityFilter])
 
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = !searchTerm || 
@@ -129,14 +135,12 @@ export default function SupportManagement() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'open':
+      case 'OPEN':
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-      case 'in_progress':
+      case 'IN_PROGRESS':
         return <Clock className="h-4 w-4 text-blue-500" />
-      case 'resolved':
+      case 'CLOSED':
         return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'closed':
-        return <XCircle className="h-4 w-4 text-gray-500" />
       default:
         return <MessageCircle className="h-4 w-4 text-gray-500" />
     }
@@ -144,14 +148,12 @@ export default function SupportManagement() {
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case 'open':
+      case 'OPEN':
         return 'bg-yellow-100 text-yellow-800'
-      case 'in_progress':
+      case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-800'
-      case 'resolved':
+      case 'CLOSED':
         return 'bg-green-100 text-green-800'
-      case 'closed':
-        return 'bg-gray-100 text-gray-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -159,13 +161,11 @@ export default function SupportManagement() {
 
   const getPriorityBadgeColor = (priority: string) => {
     switch (priority) {
-      case 'urgent':
+      case 'HIGH':
         return 'bg-red-100 text-red-800'
-      case 'high':
-        return 'bg-orange-100 text-orange-800'
-      case 'medium':
+      case 'MEDIUM':
         return 'bg-yellow-100 text-yellow-800'
-      case 'low':
+      case 'LOW':
         return 'bg-green-100 text-green-800'
       default:
         return 'bg-gray-100 text-gray-800'
@@ -184,10 +184,10 @@ export default function SupportManagement() {
 
   const getTicketStats = () => {
     const total = tickets.length
-    const open = tickets.filter(t => t.status === 'open').length
-    const inProgress = tickets.filter(t => t.status === 'in_progress').length
-    const resolved = tickets.filter(t => t.status === 'resolved').length
-    const urgent = tickets.filter(t => t.priority === 'urgent').length
+    const open = tickets.filter(t => t.status === 'OPEN').length
+    const inProgress = tickets.filter(t => t.status === 'IN_PROGRESS').length
+    const resolved = tickets.filter(t => t.status === 'CLOSED').length
+    const urgent = tickets.filter(t => t.priority === 'HIGH').length
 
     return { total, open, inProgress, resolved, urgent }
   }
@@ -301,13 +301,11 @@ export default function SupportManagement() {
           
           <button
             type="button"
-            onClick={() => {
-              setLoading(true)
-              setTimeout(() => setLoading(false), 1000) // Simulate loading
-            }}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            onClick={() => fetchTickets()}
+            disabled={loading}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
@@ -338,10 +336,10 @@ export default function SupportManagement() {
                 className="block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               >
                 <option value="">All Statuses</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
+                <option value="OPEN">Open</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="CLOSED">Closed</option>
               </select>
             </div>
             
@@ -356,10 +354,10 @@ export default function SupportManagement() {
                 className="block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               >
                 <option value="">All Priorities</option>
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
+                <option value="URGENT">Urgent</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
               </select>
             </div>
 
@@ -397,6 +395,40 @@ export default function SupportManagement() {
               >
                 Clear Filters
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <XCircle className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error loading support tickets</h3>
+              <div className="mt-2 text-sm text-red-700">{error}</div>
+              {error.includes('backend') && (
+                <div className="mt-3 text-sm text-red-600">
+                  <p>To fix this issue:</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Ensure the backend server is running on port 3000</li>
+                    <li>Check that the admin support endpoints are implemented</li>
+                    <li>Verify your admin authentication token is valid</li>
+                  </ul>
+                </div>
+              )}
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => fetchTickets()}
+                  className="text-sm font-medium text-red-800 hover:text-red-600"
+                >
+                  Try again
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -476,19 +508,19 @@ export default function SupportManagement() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(ticket.status)}`}>
-                        {ticket.status.replace('_', ' ')}
+                        {ticket.status.replace('_', ' ').toLowerCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(ticket.priority)}`}>
-                        {ticket.priority}
+                        {ticket.priority.toLowerCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {ticket.category}
+                      {ticket.category || 'General'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(ticket.updatedAt)}
+                      {formatDate(ticket.updatedAt || ticket.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-3 justify-end">

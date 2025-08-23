@@ -36,15 +36,42 @@ export default function OrderManagement() {
     sortOrder: 'DESC'
   })
 
-  useEffect(() => {
-    fetchOrders()
-  }, [pagination.page])
+  const [retryCount, setRetryCount] = useState(0)
+  const [isRetrying, setIsRetrying] = useState(false)
+
+  // Debounced fetch function to prevent rapid API calls
+  const [fetchTimeout, setFetchTimeout] = useState<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    // Reset to page 1 when filters change
-    setPagination(prev => ({ ...prev, page: 1 }))
-    fetchOrders()
-  }, [filters])
+    // Clear any existing timeout
+    if (fetchTimeout) {
+      clearTimeout(fetchTimeout)
+    }
+    
+    // Set a new timeout to debounce the API call
+    const timeout = setTimeout(() => {
+      fetchOrders()
+    }, 300) // 300ms debounce
+    
+    setFetchTimeout(timeout)
+    
+    // Cleanup function
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+    }
+  }, [pagination.page, filters, searchTerm])
+
+  // Retry function for handling rate limiting
+  const retryAfterDelay = (delay: number) => {
+    setIsRetrying(true)
+    setTimeout(() => {
+      setRetryCount(prev => prev + 1)
+      fetchOrders()
+      setIsRetrying(false)
+    }, delay)
+  }
 
   const fetchOrders = async () => {
     try {
@@ -74,12 +101,24 @@ export default function OrderManagement() {
       }))
       
       setError(null)
+      setRetryCount(0) // Reset retry count on success
     } catch (err: any) {
       let errorMessage = 'Failed to fetch orders. Please try again.'
       
       console.error('Error fetching orders:', err)
       
-      if (err.message && Array.isArray(err.message)) {
+      // Handle rate limiting (429 error)
+      if (err.statusCode === 429 || (err.message && err.message.includes('Too Many Requests'))) {
+        if (retryCount < 3) { // Max 3 retries
+          const delay = Math.pow(2, retryCount) * 1000 // Exponential backoff: 1s, 2s, 4s
+          errorMessage = `Rate limit exceeded. Retrying in ${delay/1000} seconds... (Attempt ${retryCount + 1}/3)`
+          setError(errorMessage)
+          retryAfterDelay(delay)
+          return // Don't set loading to false, keep trying
+        } else {
+          errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.'
+        }
+      } else if (err.message && Array.isArray(err.message)) {
         errorMessage = `Validation error: ${err.message.join(', ')}`
       } else if (typeof err.message === 'string') {
         errorMessage = err.message
@@ -90,17 +129,22 @@ export default function OrderManagement() {
       setError(errorMessage)
       setOrders([])
     } finally {
-      setLoading(false)
+      if (!isRetrying) {
+        setLoading(false)
+      }
     }
   }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    // Reset pagination and let the useEffect handle the fetch
     setPagination(prev => ({ ...prev, page: 1 }))
-    fetchOrders()
+    // The useEffect will trigger fetchOrders automatically
   }
 
   const handleFilterChange = (name: string, value: string) => {
+    // Reset to page 1 when filters change
+    setPagination(prev => ({ ...prev, page: 1 }))
     setFilters(prev => ({
       ...prev,
       [name]: value === '' ? undefined : value
@@ -153,6 +197,8 @@ export default function OrderManagement() {
   }
 
   const clearFilters = () => {
+    // Reset to page 1 when clearing filters
+    setPagination(prev => ({ ...prev, page: 1 }))
     setFilters({
       status: undefined,
       paymentStatus: undefined,
@@ -212,10 +258,14 @@ export default function OrderManagement() {
 
           {/* Refresh */}
           <button
-            onClick={fetchOrders}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2"
+            onClick={() => {
+              setRetryCount(0) // Reset retry count for manual refresh
+              fetchOrders()
+            }}
+            disabled={loading || isRetrying}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${(loading || isRetrying) ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
@@ -299,15 +349,39 @@ export default function OrderManagement() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+        <div className={`border rounded-md p-4 mb-6 ${
+          error.includes('Rate limit') || error.includes('Too Many Requests') || error.includes('Retrying')
+            ? 'bg-yellow-50 border-yellow-200' 
+            : 'bg-red-50 border-red-200'
+        }`}>
           <div className="flex">
-            <XCircle className="h-5 w-5 text-red-400" />
+            <XCircle className={`h-5 w-5 ${
+              error.includes('Rate limit') || error.includes('Too Many Requests') || error.includes('Retrying')
+                ? 'text-yellow-400' 
+                : 'text-red-400'
+            }`} />
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">
-                Error loading orders
+              <h3 className={`text-sm font-medium ${
+                error.includes('Rate limit') || error.includes('Too Many Requests') || error.includes('Retrying')
+                  ? 'text-yellow-800' 
+                  : 'text-red-800'
+              }`}>
+                {error.includes('Rate limit') || error.includes('Too Many Requests') || error.includes('Retrying')
+                  ? 'Rate Limit Notice'
+                  : 'Error loading orders'
+                }
               </h3>
-              <div className="mt-2 text-sm text-red-700">
+              <div className={`mt-2 text-sm ${
+                error.includes('Rate limit') || error.includes('Too Many Requests') || error.includes('Retrying')
+                  ? 'text-yellow-700' 
+                  : 'text-red-700'
+              }`}>
                 {error}
+                {(error.includes('Rate limit') || error.includes('Too Many Requests')) && (
+                  <div className="mt-2">
+                    <p className="text-xs">This helps prevent server overload. The system will automatically retry.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

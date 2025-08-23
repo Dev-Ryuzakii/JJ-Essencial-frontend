@@ -62,10 +62,10 @@ export default function ReviewManagement() {
         sortOrder: 'desc' as const
       }
       
-      const response = await adminApi.reviews.getAll(params)
-      setReviews(response.items)
-      setTotalPages(response.pagination.pages)
-      setTotalReviews(response.pagination.total)
+      const response = await adminApi.reviews.getReviews(params)
+      setReviews(response.data)
+      setTotalPages(response.meta.lastPage)
+      setTotalReviews(response.meta.total)
       
       if (response.summary) {
         setReviewSummary(response.summary)

@@ -111,27 +111,80 @@ const adminReviewsApi = {
    * GET /admin/reviews
    */
   getReviews: async (filters?: AdminReviewFilter): Promise<PaginatedResponse<AdminReview>> => {
-    const response = await get<PaginatedResponse<AdminReview>>('/admin/reviews', { params: filters });
+    const response = await get<any>('/admin/reviews', { params: filters });
     
-    if (response.success && response.data) {
-      return response.data;
+    // Handle the response structure similar to adminUsersApi
+    if (response.data && Array.isArray(response.data)) {
+      // Direct array - no pagination info
+      return {
+        data: response.data,
+        meta: {
+          total: response.data.length,
+          page: 1,
+          lastPage: 1,
+          hasNextPage: false
+        }
+      };
+    } else if (response.data && response.data.data) {
+      // Nested structure with pagination
+      const backendData = response.data;
+      return {
+        data: backendData.data,
+        meta: {
+          total: backendData.pagination?.total || backendData.data.length,
+          page: backendData.pagination?.page || 1,
+          lastPage: backendData.pagination?.pages || Math.ceil((backendData.pagination?.total || backendData.data.length) / (filters?.limit || 10)),
+          hasNextPage: backendData.pagination?.hasNext || false
+        }
+      };
     } else {
-      throw new Error(response.message || 'Failed to get reviews');
+      // Fallback - return the response as-is if it matches our expected structure
+      return response.data;
     }
   },
 
-  /**
+    /**
    * Get review details (Admin view)
    * GET /admin/reviews/:id
    */
   getReview: async (id: string): Promise<AdminReview> => {
     const response = await get<AdminReview>(`/admin/reviews/${id}`);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get review details');
-    }
+    return response.data;
+  },
+
+  /**
+   * Update review visibility
+   * PATCH /admin/reviews/:id/visibility
+   */
+  updateReviewVisibility: async (id: string, data: UpdateReviewVisibilityDto): Promise<AdminReview> => {
+    const response = await patch<AdminReview>(`/admin/reviews/${id}/visibility`, data);
+    return response.data;
+  },
+
+  /**
+   * Update review status (approve/reject/flag)
+   * PATCH /admin/reviews/:id/status
+   */
+  updateReviewStatus: async (id: string, data: UpdateReviewStatusDto): Promise<AdminReview> => {
+    const response = await patch<AdminReview>(`/admin/reviews/${id}/status`, data);
+    return response.data;
+  },
+
+  /**
+   * Add admin response to review
+   * POST /admin/reviews/:id/response
+   */
+  addAdminResponse: async (id: string, data: AdminResponseDto): Promise<AdminReview> => {
+    const response = await post<AdminReview>(`/admin/reviews/${id}/response`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete review (Admin only)
+   * DELETE /admin/reviews/:id
+   */
+  deleteReview: async (id: string, reason?: string): Promise<void> => {
+    await del(`/admin/reviews/${id}`, { params: { reason } });
   },
 
   /**

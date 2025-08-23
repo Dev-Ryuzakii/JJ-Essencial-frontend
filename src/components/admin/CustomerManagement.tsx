@@ -12,13 +12,13 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import adminApi, { type AdminUserDto, type AdminUserDetailDto } from '../../services/adminApi'
+import adminUsersApi, { type AdminUser } from '../../services/adminUsersApi'
 
 export default function CustomerManagement() {
-  const [customers, setCustomers] = useState<AdminUserDto[]>([])
+  const [customers, setCustomers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedCustomer, setSelectedCustomer] = useState<AdminUserDetailDto | null>(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<AdminUser | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   
@@ -53,16 +53,32 @@ export default function CustomerManagement() {
         page,
         limit: 10,
         search: searchTerm || undefined,
-        role: roleFilter || undefined,
+        role: (roleFilter as 'USER' | 'ADMIN' | 'SUPER_ADMIN') || undefined,
         isActive: statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined,
         sortBy,
         sortOrder
       }
       
-      const response = await adminApi.users.getAll(params)
-      setCustomers(response.items)
-      setTotalPages(response.pagination.pages)
-      setTotalCustomers(response.pagination.total)
+      const response = await adminUsersApi.getUsers(params)
+      console.log('CustomerManagement: Raw response:', response);
+      
+      // Handle direct array response (when API client strips wrapper)
+      if (Array.isArray(response)) {
+        setCustomers(response)
+        setTotalPages(1)
+        setTotalCustomers(response.length)
+      } 
+      // Handle paginated response structure
+      else if (response && response.data && Array.isArray(response.data)) {
+        setCustomers(response.data)
+        setTotalPages(response.meta?.lastPage || 1)
+        setTotalCustomers(response.meta?.total || response.data.length)
+      } 
+      // Handle unexpected structure
+      else {
+        console.error('Unexpected response structure:', response);
+        throw new Error('Invalid response structure from API')
+      }
     } catch (err) {
       setError('Failed to fetch customers. Please try again.')
       console.error('Error fetching customers:', err)
@@ -79,7 +95,7 @@ export default function CustomerManagement() {
 
   const handleViewCustomer = async (customerId: string) => {
     try {
-      const customerDetail = await adminApi.users.getById(customerId)
+      const customerDetail = await adminUsersApi.getUser(customerId)
       setSelectedCustomer(customerDetail)
       setShowDetailModal(true)
     } catch (err) {
@@ -88,14 +104,14 @@ export default function CustomerManagement() {
     }
   }
 
-  const handleEditCustomer = (customer: AdminUserDto) => {
+  const handleEditCustomer = (customer: AdminUser) => {
     setEditFormData({
       fullName: customer.fullName,
       role: customer.role,
       phone: customer.phone || '',
       isActive: customer.isActive
     })
-    setSelectedCustomer(customer as AdminUserDetailDto)
+    setSelectedCustomer(customer)
     setShowEditModal(true)
   }
 
@@ -104,7 +120,9 @@ export default function CustomerManagement() {
     if (!selectedCustomer) return
 
     try {
-      const updatedCustomer = await adminApi.users.update(selectedCustomer.id, editFormData)
+      const updatedCustomer = await adminUsersApi.updateUserStatus(selectedCustomer.id, {
+        isActive: editFormData.isActive
+      })
       setCustomers(customers.map(customer => 
         customer.id === selectedCustomer.id ? updatedCustomer : customer
       ))
@@ -120,7 +138,7 @@ export default function CustomerManagement() {
     if (!window.confirm('Are you sure you want to delete this customer?')) return
     
     try {
-      await adminApi.users.delete(customerId)
+      await adminUsersApi.deleteUser(customerId)
       setCustomers(customers.filter(customer => customer.id !== customerId))
     } catch (err) {
       console.error('Error deleting customer:', err)
@@ -129,14 +147,14 @@ export default function CustomerManagement() {
   }
 
   const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NG', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'NGN'
     }).format(parseFloat(amount))
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('en-NG', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -252,6 +270,9 @@ export default function CustomerManagement() {
                       Customer
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Username
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Role
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -286,16 +307,22 @@ export default function CustomerManagement() {
                             ) : (
                               <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
                                 <span className="text-indigo-700 font-medium">
-                                  {customer.fullName.charAt(0).toUpperCase()}
+                                  {customer.fullName?.charAt(0)?.toUpperCase() || '?'}
                                 </span>
                               </div>
                             )}
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{customer.fullName}</div>
-                            <div className="text-sm text-gray-500">{customer.email}</div>
+                            <div className="text-sm font-medium text-gray-900">{customer.fullName || 'Unknown'}</div>
+                            <div className="text-sm text-gray-500">{customer.email || 'No email'}</div>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{customer.username || 'No username'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {customer.username ? `@${customer.username}` : 'No username'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -303,14 +330,14 @@ export default function CustomerManagement() {
                             ? 'bg-purple-100 text-purple-800' 
                             : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {customer.role}
+                          {customer.role || 'USER'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {customer.orderCount}
+                        {customer.totalOrders || 0}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(customer.totalSpent)}
+                        {formatCurrency((customer.totalSpent || 0).toString())}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -439,19 +466,22 @@ export default function CustomerManagement() {
                       {selectedCustomer.avatar ? (
                         <img
                           src={selectedCustomer.avatar}
-                          alt={selectedCustomer.fullName}
+                          alt={selectedCustomer.fullName || 'Customer'}
                           className="h-16 w-16 rounded-full object-cover"
                         />
                       ) : (
                         <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center">
                           <span className="text-2xl text-indigo-700 font-medium">
-                            {selectedCustomer.fullName.charAt(0).toUpperCase()}
+                            {selectedCustomer.fullName?.charAt(0)?.toUpperCase() || '?'}
                           </span>
                         </div>
                       )}
                       <div>
-                        <h4 className="text-xl font-semibold text-gray-900">{selectedCustomer.fullName}</h4>
-                        <p className="text-gray-600">{selectedCustomer.email}</p>
+                        <h4 className="text-xl font-semibold text-gray-900">{selectedCustomer.fullName || 'Unknown Customer'}</h4>
+                        <p className="text-gray-600">{selectedCustomer.email || 'No email'}</p>
+                        {selectedCustomer.username && (
+                          <p className="text-sm text-gray-500">@{selectedCustomer.username}</p>
+                        )}
                       </div>
                     </div>
                     
@@ -485,73 +515,57 @@ export default function CustomerManagement() {
                     <h5 className="font-medium text-gray-900">Statistics</h5>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-blue-50 p-3 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{selectedCustomer.stats.orderCount}</div>
+                        <div className="text-2xl font-bold text-blue-600">{selectedCustomer.totalOrders || 0}</div>
                         <div className="text-sm text-blue-600">Total Orders</div>
                       </div>
                       <div className="bg-green-50 p-3 rounded-lg">
                         <div className="text-2xl font-bold text-green-600">
-                          {formatCurrency(selectedCustomer.stats.totalSpent)}
+                          {formatCurrency((selectedCustomer.totalSpent || 0).toString())}
                         </div>
                         <div className="text-sm text-green-600">Total Spent</div>
                       </div>
                       <div className="bg-purple-50 p-3 rounded-lg">
                         <div className="text-2xl font-bold text-purple-600">
-                          {formatCurrency(selectedCustomer.stats.averageOrderValue)}
+                          {(selectedCustomer.totalOrders || 0) > 0 ? formatCurrency(((selectedCustomer.totalSpent || 0) / (selectedCustomer.totalOrders || 1)).toString()) : '₦0.00'}
                         </div>
                         <div className="text-sm text-purple-600">Avg Order</div>
                       </div>
                       <div className="bg-orange-50 p-3 rounded-lg">
                         <div className="text-lg font-bold text-orange-600">
-                          {selectedCustomer.stats.lastOrderDate ? formatDate(selectedCustomer.stats.lastOrderDate) : 'Never'}
+                          {selectedCustomer.lastLoginAt ? formatDate(selectedCustomer.lastLoginAt) : 'Never'}
                         </div>
-                        <div className="text-sm text-orange-600">Last Order</div>
+                        <div className="text-sm text-orange-600">Last Login</div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Recent Orders */}
-                {selectedCustomer.orders && selectedCustomer.orders.length > 0 && (
-                  <div>
-                    <h5 className="font-medium text-gray-900 mb-3">Recent Orders</h5>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {selectedCustomer.orders.slice(0, 5).map((order) => (
-                            <tr key={order.id}>
-                              <td className="px-4 py-2 text-sm font-mono text-gray-900">
-                                {order.id.slice(0, 8)}...
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-900">
-                                {formatCurrency(order.totalAmount)}
-                              </td>
-                              <td className="px-4 py-2">
-                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                  order.status === 'PAID' ? 'bg-green-100 text-green-800' :
-                                  order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {order.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-600">
-                                {formatDate(order.createdAt)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                {/* Note: Detailed order history would require a separate API call */}
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-3">User Activity</h5>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Email Verified:</span>
+                        <span className={`ml-2 ${selectedCustomer.emailVerified ? 'text-green-600' : 'text-red-600'}`}>
+                          {selectedCustomer.emailVerified ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Account Created:</span>
+                        <span className="ml-2 text-gray-600">{formatDate(selectedCustomer.createdAt)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Last Updated:</span>
+                        <span className="ml-2 text-gray-600">{formatDate(selectedCustomer.updatedAt)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">User Role:</span>
+                        <span className="ml-2 text-gray-600">{selectedCustomer.role}</span>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
               
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end">

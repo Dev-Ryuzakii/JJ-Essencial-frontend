@@ -155,9 +155,9 @@ export default function Dashboard() {
   }
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NG', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'NGN',
       minimumFractionDigits: 2
     }).format(value)
   }
@@ -285,7 +285,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <StatsCard 
             title="Total Sales" 
-            value={stats.salesSummary?.totalSales || '$0.00'} 
+            value={stats.salesSummary?.totalSales || '₦0.00'} 
             previousValue={parseFloat(stats.salesSummary?.comparisonPeriod?.totalSales || '0')}
             icon={<DollarSign className="h-6 w-6 text-green-600" />}
             iconBgColor="bg-green-50"
@@ -328,7 +328,7 @@ export default function Dashboard() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Sales Overview</h3>
             <div className="text-sm text-gray-500">
-              Total: {stats?.salesSummary?.totalSales || '$0.00'}
+              Total: {stats?.salesSummary?.totalSales || '₦0.00'}
             </div>
           </div>
           <div className="h-80">
@@ -578,7 +578,7 @@ export default function Dashboard() {
                           <div className="text-sm text-gray-900">{formatNumber(product.totalSold || 0)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{product.revenue || '$0.00'}</div>
+                          <div className="text-sm text-gray-900">{product.revenue || '₦0.00'}</div>
                         </td>
                       </tr>
                     ))

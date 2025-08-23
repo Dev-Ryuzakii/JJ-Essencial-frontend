@@ -176,14 +176,14 @@ export default function PaymentManagement() {
   }
 
   const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NG', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'NGN'
     }).format(parseFloat(amount))
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('en-NG', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -240,7 +240,7 @@ export default function PaymentManagement() {
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex items-center">
             <div className="h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
-              <span className="text-indigo-600 font-bold">$</span>
+              <span className="text-indigo-600 font-bold">₦</span>
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Total Amount</p>
