@@ -29,6 +29,10 @@ export type { Address, AddAddressData } from './addressesApi';
 export { default as wishlistApi } from './wishlistApi';
 export type { WishlistItem } from './wishlistApi';
 
+// Bank Transfer API
+export { default as bankTransferApi } from './bankTransferApi';
+export type { BankAccount, BankTransferData, ReceiptData } from './bankTransferApi';
+
 // Dashboard API
 export { default as dashboardApi } from './dashboardApi';
 export type { 

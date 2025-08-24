@@ -45,13 +45,22 @@ apiClient.interceptors.request.use(
     const isAdminRequest = config.url?.includes('/admin');
     
     // Choose the appropriate token
-    const token = isAdminRequest 
-      ? localStorage.getItem('adminToken') 
-      : localStorage.getItem('token') || localStorage.getItem('adminToken');
+    let token;
+    
+    if (isAdminRequest) {
+      token = localStorage.getItem('adminToken');
+      console.log('Using admin token for admin request:', config.url);
+    } else {
+      // For non-admin requests, prefer the user token
+      token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      console.log('Using user token for request:', config.url);
+    }
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log(`API Request: Using ${isAdminRequest ? 'admin' : 'regular'} token for ${config.url}`);
+      console.log(`API Request: Using token for ${config.url}`);
+    } else {
+      console.warn(`API Request: No token found for ${config.url}`);
     }
     
     return config;

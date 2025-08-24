@@ -11,50 +11,52 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { formatCurrency } from '../utils/formatters'
+import { getImageUrl } from '../lib/utils' // Import the image URL utility
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
-import { useCart, useAuth } from '../hooks'
-import wishlistApi, { type WishlistItem } from '../services/wishlistApi'
+import { useCart, useAuth, useWishlist } from '../hooks'
+import type { WishlistItem } from '../services/wishlistApi'
 import toast from 'react-hot-toast'
+// Import debug hook
+import { useWishlistDebug } from '../utils/useWishlistDebug'
 
 const Wishlist: React.FC = () => {
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [removingItems, setRemovingItems] = useState<Set<string>>(new Set())
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
+  const { 
+    items: wishlistItems, 
+    isLoading: loading, 
+    fetchWishlist, 
+    removeFromWishlist 
+  } = useWishlist()
+  
+  // Use debug hook in development
+  const { debugRefetch } = useWishlistDebug()
 
   useEffect(() => {
     if (isAuthenticated) {
+      console.log('Wishlist component mounted, fetching wishlist...')
       fetchWishlist()
+      
+      // In development, add a debug button
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug refetch function available via window.debugWishlist')
+        // @ts-ignore - Adding to window for debugging
+        window.debugWishlist = debugRefetch
+      }
     } else {
-      setLoading(false)
+      console.log('Not fetching wishlist - user not authenticated')
     }
-  }, [isAuthenticated])
-
-  const fetchWishlist = async () => {
-    setLoading(true)
-    try {
-      const wishlistItems = await wishlistApi.list()
-      setWishlistItems(wishlistItems)
-    } catch (error) {
-      console.error('Error fetching wishlist:', error)
-      toast.error('Failed to load wishlist items')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [isAuthenticated, fetchWishlist]) // Remove debugRefetch from dependency array
 
   const handleRemoveItem = async (itemId: string) => {
     setRemovingItems(prev => new Set(prev).add(itemId))
     
     try {
-      await wishlistApi.remove(itemId)
-      setWishlistItems(prev => prev.filter(item => item.product.id !== itemId))
-      toast.success('Item removed from wishlist')
+      await removeFromWishlist(itemId)
     } catch (error) {
       console.error('Error removing item from wishlist:', error)
-      toast.error('Failed to remove item from wishlist')
     } finally {
       setRemovingItems(prev => {
         const updated = new Set(prev)
@@ -65,7 +67,14 @@ const Wishlist: React.FC = () => {
   }
 
   const handleAddToCart = (product: WishlistItem['product']) => {
+    if (!product) {
+      console.error('Cannot add undefined product to cart')
+      toast.error('Failed to add to cart: Invalid product')
+      return
+    }
+
     try {
+      console.log('Adding product to cart:', product)
       // Convert to Product type for cart
       const cartProduct = {
         ...product,
@@ -73,7 +82,16 @@ const Wishlist: React.FC = () => {
         price: product.price.toString(),
         discountPrice: product.discountPrice?.toString(),
         stock: product.stock || product.stockQuantity || 0,
-        category: product.category || { 
+        category: product.category ? {
+          id: product.category.id, 
+          name: product.category.name, 
+          description: '', 
+          image: '', 
+          slug: '',
+          productCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        } : {
           id: '', 
           name: '', 
           description: '', 
@@ -88,6 +106,8 @@ const Wishlist: React.FC = () => {
         createdAt: product.createdAt || new Date().toISOString(),
         updatedAt: product.updatedAt || new Date().toISOString(),
       }
+      
+      // @ts-ignore - Handle type mismatch for cart
       addToCart(cartProduct)
       toast.success('Added to cart!')
     } catch (error) {
@@ -98,7 +118,9 @@ const Wishlist: React.FC = () => {
 
   const handleAddAllToCart = async () => {
     try {
-      const inStockItems = (wishlistItems || []).filter(item => (item.product.stock || item.product.stockQuantity || 0) > 0)
+      const inStockItems = (wishlistItems || []).filter((item: WishlistItem) => 
+        (item.product.stock || item.product.stockQuantity || 0) > 0
+      )
       
       if (inStockItems.length === 0) {
         toast.error('No items in stock to add to cart')
@@ -116,12 +138,14 @@ const Wishlist: React.FC = () => {
     }
   }
 
-  const totalValue = (wishlistItems || []).reduce((sum, item) => {
+  const totalValue = (wishlistItems || []).reduce((sum: number, item: WishlistItem) => {
     const price = item.product.discountPrice || item.product.price
     return sum + price
   }, 0)
 
-  const inStockCount = (wishlistItems || []).filter(item => (item.product.stock || item.product.stockQuantity || 0) > 0).length
+  const inStockCount = (wishlistItems || []).filter((item: WishlistItem) => 
+    (item.product.stock || item.product.stockQuantity || 0) > 0
+  ).length
 
   if (!isAuthenticated) {
     return (
@@ -201,6 +225,19 @@ const Wishlist: React.FC = () => {
             </div>
             
             <div className="flex space-x-3">
+              {process.env.NODE_ENV === 'development' && (
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    console.log('Manual refresh triggered');
+                    fetchWishlist();
+                  }}
+                  size="sm"
+                >
+                  <Loader2 className="w-4 h-4 mr-2" />
+                  Debug Refresh
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 onClick={handleAddAllToCart}
@@ -232,7 +269,7 @@ const Wishlist: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {(wishlistItems || []).map((item) => {
+          {(wishlistItems || []).map((item: WishlistItem) => {
             const product = item.product
             const finalPrice = product.discountPrice || product.price
             const hasDiscount = product.discountPrice && product.discountPrice < product.price
@@ -258,12 +295,30 @@ const Wishlist: React.FC = () => {
                 <div className="relative aspect-square bg-gray-100">
                   <Link to={`/products/${product.id}`}>
                     <img
-                      src={product.images?.[0] || '/api/placeholder/300/300'}
+                      src={product.images && product.images.length > 0 
+                        ? getImageUrl(product.images[0]) 
+                        : '/placeholder-image.jpg'}
                       alt={product.name}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = '/api/placeholder/300/300'
+                        console.error(`Image failed to load: ${product.images?.[0]}`, e);
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder-image.jpg';
+                        
+                        // Try to parse as JSON if it's a JSON string
+                        if (typeof product.images?.[0] === 'string' && 
+                            product.images[0].startsWith('{') && 
+                            product.images[0].endsWith('}')) {
+                          try {
+                            const imgObj = JSON.parse(product.images[0]);
+                            if (imgObj.url) {
+                              console.log('Trying direct URL from JSON:', imgObj.url);
+                              target.src = imgObj.url;
+                            }
+                          } catch (error) {
+                            console.error('Failed to parse image JSON:', error);
+                          }
+                        }
                       }}
                     />
                   </Link>
@@ -355,7 +410,7 @@ const Wishlist: React.FC = () => {
                   {/* Added Date */}
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <p className="text-xs text-gray-500">
-                      Added {new Date(item.addedAt).toLocaleDateString()}
+                      Added {new Date(item.addedAt || '').toLocaleDateString()}
                     </p>
                   </div>
                 </div>

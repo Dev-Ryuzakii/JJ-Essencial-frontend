@@ -539,22 +539,32 @@ const Checkout: React.FC = () => {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Order Items</h3>
                 <div className="space-y-4">
-                  {items.map((item) => (
-                    <div key={item.product.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                      <img
-                        src={item.product.images?.[0]?.url || '/api/placeholder/60/60'}
-                        alt={item.product.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{item.product.name}</p>
-                        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                  {items.map((item) => {
+                    if (!item) {
+                      return null;
+                    }
+                    
+                    return (
+                      <div key={item.id || item.productId || 'unknown'} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <img
+                          src={typeof item.image === 'string' ? item.image : '/api/placeholder/60/60'}
+                          alt={item.name || 'Product'}
+                          className="w-12 h-12 object-cover rounded"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/api/placeholder/60/60';
+                          }}
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{item.name || 'Unknown Product'}</p>
+                          <p className="text-sm text-gray-500">Qty: {item.quantity || 1}</p>
+                        </div>
+                        <span className="font-medium text-gray-900">
+                          {formatCurrency(((parseFloat(item.discountPrice || item.price) || 0) * (item.quantity || 1)))}
+                        </span>
                       </div>
-                      <span className="font-medium text-gray-900">
-                        {formatCurrency((item.product.discountPrice || item.product.price) * item.quantity)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -606,19 +616,25 @@ const Checkout: React.FC = () => {
               
               {/* Items */}
               <div className="space-y-3 mb-4">
-                {items.map((item) => (
-                  <div key={item.product.id} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-2">
-                      <span className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs">
-                        {item.quantity}
+                {items.map((item) => {
+                  if (!item) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div key={item.id || item.productId || 'unknown'} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs">
+                          {item.quantity || 1}
+                        </span>
+                        <span className="text-gray-900 truncate">{item.name || 'Unknown Product'}</span>
+                      </div>
+                      <span className="font-medium text-gray-900">
+                        {formatCurrency(((parseFloat(item.discountPrice || item.price) || 0) * (item.quantity || 1)))}
                       </span>
-                      <span className="text-gray-900 truncate">{item.product.name}</span>
                     </div>
-                    <span className="font-medium text-gray-900">
-                      {formatCurrency((item.product.discountPrice || item.product.price) * item.quantity)}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <hr className="my-4" />
