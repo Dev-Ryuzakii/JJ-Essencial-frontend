@@ -14,8 +14,8 @@ const categoriesApi = {
    * GET /categories
    */
   list: async (): Promise<Category[]> => {
-    const response = await get<{ data: Category[] }>('/categories');
-    return response.data.data;
+    const response = await get<Category[]>('/categories');
+    return response.data;
   }
 };
 

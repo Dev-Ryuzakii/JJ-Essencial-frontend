@@ -33,8 +33,10 @@ import {
   Pie,
   Cell
 } from 'recharts'
-import dashboardApi, { DashboardStats, RevenueData, OrdersData, TopProduct } from '../../services/dashboardApi'
-import ordersApi, { OrderStatus } from '../../services/ordersApi'
+import { adminApi, type AdminDashboardStats } from '../../services'
+
+// Define OrderStatus type
+type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
 // Helper components
 const StatsCard = ({ title, value, previousValue, icon, iconBgColor, iconColor }: { 
@@ -78,7 +80,7 @@ const StatsCard = ({ title, value, previousValue, icon, iconBgColor, iconColor }
   )
 }
 
-// Status badges for orders
+// Order status badge component
 const OrderStatusBadge = ({ status }: { status: OrderStatus }) => {
   const statusConfig = {
     'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: <Clock className="h-4 w-4 mr-1" /> },
@@ -101,12 +103,7 @@ const OrderStatusBadge = ({ status }: { status: OrderStatus }) => {
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([])
-  const [ordersData, setOrdersData] = useState<OrdersData[]>([])
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
-  const [recentOrders, setRecentOrders] = useState<any[]>([])
-  const [lowStockProducts, setLowStockProducts] = useState<any[]>([])
+  const [stats, setStats] = useState<AdminDashboardStats | null>(null)
   const [timeframe, setTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('week')
 
   useEffect(() => {
@@ -118,46 +115,49 @@ export default function Dashboard() {
       setLoading(true)
       setError(null)
       
-      // Fetch stats
-      const dashboardStats = await dashboardApi.getStats()
+      // Fetch real dashboard data from backend
+      const dashboardStats = await adminApi.getDashboardStats({
+        period: timeframe,
+        startDate: getStartDate(timeframe),
+        endDate: new Date().toISOString()
+      })
       setStats(dashboardStats)
       
-      // Fetch revenue data
-      const revenueData = await dashboardApi.getRevenueData(timeframe)
-      setRevenueData(revenueData)
-      
-      // Fetch orders data
-      const ordersData = await dashboardApi.getOrdersData(timeframe)
-      setOrdersData(ordersData)
-      
-      // Fetch top products
-      const topProducts = await dashboardApi.getTopProducts(timeframe)
-      setTopProducts(topProducts)
-      
-      // Fetch recent orders (last 5)
-      const ordersResponse = await ordersApi.getOrders({ 
-        limit: 5, 
-        page: 1, 
-        sortBy: 'createdAt', 
-        sortOrder: 'desc' 
-      })
-      setRecentOrders(ordersResponse.items || [])
-      
-      // Get low stock products
-      const lowStock = await dashboardApi.getLowStockProducts()
-      setLowStockProducts(lowStock || [])
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
-      setError('Failed to fetch dashboard data. Please try again.')
+      if (err instanceof Error && err.message.includes('404')) {
+        setError('Dashboard endpoint not yet implemented. Please wait for backend development.')
+      } else {
+        setError('Failed to fetch dashboard data. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
+  const getStartDate = (period: string) => {
+    const now = new Date()
+    switch (period) {
+      case 'day':
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+      case 'week':
+        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
+        return weekStart.toISOString()
+      case 'month':
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
+        return monthStart.toISOString()
+      case 'year':
+        const yearStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+        return yearStart.toISOString()
+      default:
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString()
+    }
+  }
+
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NG', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'NGN',
       minimumFractionDigits: 2
     }).format(value)
   }
@@ -200,6 +200,17 @@ export default function Dashboard() {
           >
             Try Again
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <div className="p-6 flex justify-center items-center h-96">
+        <div className="text-center">
+          <p className="text-gray-500 mb-2">No dashboard data available yet.</p>
+          <p className="text-sm text-gray-400">Waiting for backend endpoints to be implemented.</p>
         </div>
       </div>
     )
@@ -270,12 +281,12 @@ export default function Dashboard() {
       </div>
       
       {/* Stats Cards */}
-      {stats && (
+      {stats && stats.salesSummary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <StatsCard 
-            title="Revenue" 
-            value={formatCurrency(stats.revenue.current)} 
-            previousValue={stats.revenue.previous}
+            title="Total Sales" 
+            value={stats.salesSummary?.totalSales || '₦0.00'} 
+            previousValue={parseFloat(stats.salesSummary?.comparisonPeriod?.totalSales || '0')}
             icon={<DollarSign className="h-6 w-6 text-green-600" />}
             iconBgColor="bg-green-50"
             iconColor="text-green-600"
@@ -283,27 +294,27 @@ export default function Dashboard() {
           
           <StatsCard 
             title="Orders" 
-            value={formatNumber(stats.orders.current)} 
-            previousValue={stats.orders.previous}
+            value={formatNumber(stats.salesSummary?.orderCount || 0)} 
+            previousValue={stats.salesSummary?.comparisonPeriod?.orderCount || 0}
             icon={<ShoppingBag className="h-6 w-6 text-blue-600" />}
             iconBgColor="bg-blue-50"
             iconColor="text-blue-600"
           />
           
           <StatsCard 
-            title="Customers" 
-            value={formatNumber(stats.customers.current)} 
-            previousValue={stats.customers.previous}
+            title="Total Users" 
+            value={formatNumber(stats.userStats?.totalUsers || 0)} 
+            previousValue={(stats.userStats?.totalUsers || 0) - (stats.userStats?.newUsers || 0)}
             icon={<Users className="h-6 w-6 text-indigo-600" />}
             iconBgColor="bg-indigo-50"
             iconColor="text-indigo-600"
           />
           
           <StatsCard 
-            title="Conversion Rate" 
-            value={`${stats.conversionRate.current.toFixed(2)}%`} 
-            previousValue={stats.conversionRate.previous}
-            icon={<TrendingUp className="h-6 w-6 text-purple-600" />}
+            title="Products" 
+            value={formatNumber(stats.productStats?.totalProducts || 0)} 
+            previousValue={stats.productStats?.totalProducts || 0}
+            icon={<Box className="h-6 w-6 text-purple-600" />}
             iconBgColor="bg-purple-50"
             iconColor="text-purple-600"
           />
@@ -312,18 +323,21 @@ export default function Dashboard() {
       
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Revenue Chart */}
+        {/* Sales Chart */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Revenue Overview</h3>
+            <h3 className="text-lg font-medium text-gray-900">Sales Overview</h3>
             <div className="text-sm text-gray-500">
-              Total: {stats && formatCurrency(stats.revenue.current)}
+              Total: {stats?.salesSummary?.totalSales || '₦0.00'}
             </div>
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={revenueData}
+                data={stats?.salesChart?.labels ? stats.salesChart.labels.map((label, index) => ({
+                  label,
+                  sales: stats.salesChart?.data?.[index] || 0
+                })) : []}
                 margin={{
                   top: 5,
                   right: 30,
@@ -345,61 +359,57 @@ export default function Dashboard() {
                   tickLine={{ stroke: '#e5e7eb' }}
                 />
                 <Tooltip 
-                  formatter={(value) => [`$${value}`, 'Revenue']}
+                  formatter={(value) => [`$${value}`, 'Sales']}
                   labelFormatter={(label) => `Period: ${label}`}
                   contentStyle={{ backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}
                 />
-                <Bar dataKey="revenue" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sales" fill="#4f46e5" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
         
-        {/* Orders Chart */}
+        {/* Order Status Chart */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Orders Trend</h3>
+            <h3 className="text-lg font-medium text-gray-900">Order Status Distribution</h3>
             <div className="text-sm text-gray-500">
-              Total: {stats && formatNumber(stats.orders.current)}
+              Total: {stats?.salesSummary?.orderCount ? formatNumber(stats.salesSummary.orderCount) : '0'}
             </div>
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={ordersData}
-                margin={{
-                  top: 5,
-                  right: 30,
-                  left: 20,
-                  bottom: 5,
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis 
-                  dataKey="label" 
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={{ stroke: '#e5e7eb' }}
-                  tickLine={{ stroke: '#e5e7eb' }}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={{ stroke: '#e5e7eb' }}
-                  tickLine={{ stroke: '#e5e7eb' }}
-                />
+              <PieChart>
+                <Pie
+                  data={stats?.orderStats ? [
+                    { name: 'Pending', value: stats.orderStats.pending || 0 },
+                    { name: 'Paid', value: stats.orderStats.paid || 0 },
+                    { name: 'Completed', value: stats.orderStats.completed || 0 },
+                    { name: 'Cancelled', value: stats.orderStats.cancelled || 0 }
+                  ] : []}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={90}
+                  paddingAngle={3}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {stats?.orderStats && [
+                    { name: 'Pending', value: stats.orderStats.pending || 0 },
+                    { name: 'Paid', value: stats.orderStats.paid || 0 },
+                    { name: 'Completed', value: stats.orderStats.completed || 0 },
+                    { name: 'Cancelled', value: stats.orderStats.cancelled || 0 }
+                  ].map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
                 <Tooltip 
                   formatter={(value) => [value, 'Orders']}
-                  labelFormatter={(label) => `Period: ${label}`}
                   contentStyle={{ backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="orders" 
-                  stroke="#0ea5e9" 
-                  strokeWidth={2}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 6, strokeWidth: 2 }}
-                />
-              </LineChart>
+              </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -437,25 +447,32 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {recentOrders.length > 0 ? (
-                    recentOrders.map((order) => (
+                  {stats?.recentOrders && stats.recentOrders.length > 0 ? (
+                    stats.recentOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           <Link to={`/admin/orders/${order.id}`} className="text-indigo-600 hover:text-indigo-900">
-                            #{order.orderNumber}
+                            #{order.id.slice(-8)}
                           </Link>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {order.customer.name}
+                          {order.user?.fullName || 'Unknown'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(order.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(order.totalAmount)}
+                          {order.totalAmount}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <OrderStatusBadge status={order.status} />
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium ${
+                            order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                            order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {order.status}
+                          </span>
                         </td>
                       </tr>
                     ))
@@ -472,58 +489,50 @@ export default function Dashboard() {
           </div>
         </div>
         
-        {/* Order Status Distribution */}
+        {/* Recent Reviews */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Order Status</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: 'Pending', value: stats?.orderStatusDistribution?.pending || 0 },
-                    { name: 'Processing', value: stats?.orderStatusDistribution?.processing || 0 },
-                    { name: 'Shipped', value: stats?.orderStatusDistribution?.shipped || 0 },
-                    { name: 'Delivered', value: stats?.orderStatusDistribution?.delivered || 0 },
-                    { name: 'Cancelled', value: stats?.orderStatusDistribution?.cancelled || 0 }
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={false}
-                >
-                  {[
-                    { name: 'Pending', value: stats?.orderStatusDistribution?.pending || 0 },
-                    { name: 'Processing', value: stats?.orderStatusDistribution?.processing || 0 },
-                    { name: 'Shipped', value: stats?.orderStatusDistribution?.shipped || 0 },
-                    { name: 'Delivered', value: stats?.orderStatusDistribution?.delivered || 0 },
-                    { name: 'Cancelled', value: stats?.orderStatusDistribution?.cancelled || 0 }
-                  ].map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {[
-              { name: 'Pending', color: COLORS[0], value: stats?.orderStatusDistribution?.pending || 0, icon: <Clock className="h-3 w-3" /> },
-              { name: 'Processing', color: COLORS[1], value: stats?.orderStatusDistribution?.processing || 0, icon: <RefreshCw className="h-3 w-3" /> },
-              { name: 'Shipped', color: COLORS[2], value: stats?.orderStatusDistribution?.shipped || 0, icon: <Truck className="h-3 w-3" /> },
-              { name: 'Delivered', color: COLORS[3], value: stats?.orderStatusDistribution?.delivered || 0, icon: <CheckCircle className="h-3 w-3" /> },
-              { name: 'Cancelled', color: COLORS[4], value: stats?.orderStatusDistribution?.cancelled || 0, icon: <XCircle className="h-3 w-3" /> }
-            ].map((item) => (
-              <div key={item.name} className="flex items-center">
-                <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
-                <div className="flex items-center">
-                  <span className="text-xs text-gray-600 mr-1">{item.name}:</span>
-                  <span className="text-xs font-medium text-gray-900">{item.value}</span>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Reviews</h3>
+          <div className="space-y-4">
+            {stats?.recentReviews && stats.recentReviews.length > 0 ? (
+              stats.recentReviews.map((review) => (
+                <div key={review.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {review.user?.fullName || 'Anonymous'}
+                      </p>
+                      <div className="flex items-center">
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <svg
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < (review.rating || 0) ? 'text-yellow-400' : 'text-gray-300'
+                            }`}
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {review.product?.name || 'Unknown Product'}
+                    </p>
+                    <p className="text-sm text-gray-700 mt-1 line-clamp-2">
+                      {review.title || review.comment || 'No review text'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatDate(review.createdAt)}
+                    </p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
+                <p>No recent reviews</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -547,60 +556,35 @@ export default function Dashboard() {
                       Product
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Orders
+                      Sold
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Revenue
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stock
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {topProducts && topProducts.length > 0 ? (
-                    topProducts.map((product) => (
+                  {stats?.productStats?.topSelling && stats.productStats.topSelling.length > 0 ? (
+                    stats.productStats.topSelling.map((product) => (
                       <tr key={product.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
-                              <img
-                                className="h-10 w-10 rounded-md object-cover"
-                                src={product.image || 'https://via.placeholder.com/40'}
-                                alt={product.name}
-                              />
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                <Link to={`/admin/products/${product.id}`} className="hover:text-indigo-600">
-                                  {product.name}
-                                </Link>
-                              </div>
-                              <div className="text-sm text-gray-500">{product.sku}</div>
-                            </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            <Link to={`/admin/products/${product.id}`} className="hover:text-indigo-600">
+                              {product.name}
+                            </Link>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{formatNumber(product.orders)}</div>
+                          <div className="text-sm text-gray-900">{formatNumber(product.totalSold || 0)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{formatCurrency(product.revenue)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className={`text-sm font-medium ${product.stock <= 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                            {formatNumber(product.stock)}
-                            {product.stock <= 10 && (
-                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Low
-                              </span>
-                            )}
-                          </div>
+                          <div className="text-sm text-gray-900">{product.revenue || '₦0.00'}</div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      <td colSpan={3} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                         No products data available
                       </td>
                     </tr>
@@ -614,47 +598,61 @@ export default function Dashboard() {
         {/* Low Stock Alerts */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Low Stock Alerts</h3>
+            <h3 className="text-lg font-medium text-gray-900">Stock Status</h3>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-800">
-              {lowStockProducts?.length || 0} items
+              {stats?.productStats?.lowStock || 0} low stock
             </span>
           </div>
           <div className="space-y-4">
-            {lowStockProducts && lowStockProducts.length > 0 ? (
-              lowStockProducts.map((product) => (
-                <div key={product.id} className="flex items-center justify-between p-3 bg-red-50 rounded-md">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <img
-                        className="h-10 w-10 rounded-md object-cover"
-                        src={product.image || 'https://via.placeholder.com/40'}
-                        alt={product.name}
-                      />
-                    </div>
-                    <div className="ml-3">
-                      <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                      <div className="text-xs text-gray-500">
-                        SKU: {product.sku} | Threshold: {product.lowStockThreshold}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="text-sm font-bold text-red-600 mr-4">
-                      {product.quantity} left
-                    </div>
-                    <Link 
-                      to={`/admin/products/${product.id}`} 
-                      className="inline-flex items-center p-1.5 border border-transparent rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Link>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-green-900">In Stock</p>
+                    <p className="text-lg font-bold text-green-600">
+                      {stats ? (stats.productStats?.totalProducts || 0) - (stats.productStats?.lowStock || 0) - (stats.productStats?.outOfStock || 0) : 0}
+                    </p>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
-                <Box className="h-12 w-12 text-gray-400 mb-2" />
-                <p>All products are well-stocked</p>
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <Clock className="h-5 w-5 text-yellow-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-900">Low Stock</p>
+                    <p className="text-lg font-bold text-yellow-600">{stats?.productStats?.lowStock || 0}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-red-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-red-900">Out of Stock</p>
+                    <p className="text-lg font-bold text-red-600">{stats?.productStats?.outOfStock || 0}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <Box className="h-5 w-5 text-blue-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Total</p>
+                    <p className="text-lg font-bold text-blue-600">{stats?.productStats?.totalProducts || 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {stats?.productStats && (stats.productStats.lowStock || 0) > 0 && (
+              <div className="mt-4">
+                <Link 
+                  to="/admin/products?filter=low-stock" 
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Low Stock Items
+                </Link>
               </div>
             )}
           </div>

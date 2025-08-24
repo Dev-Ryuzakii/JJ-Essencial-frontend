@@ -7,16 +7,24 @@ import {
   XIcon,
   ChevronDownIcon 
 } from 'lucide-react'
-import { useProducts } from '../hooks'
-import { categoriesApi } from '../lib/api'
+import { categoriesApi, productsApi } from '../lib/api'
 import ProductCard from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { cn } from '../lib/utils'
-import type { Category, ProductFilters } from '../types'
+import type { Category, Product, ProductFilters } from '../types'
 
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [categories, setCategories] = useState<Category[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 20
+  })
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   
@@ -33,14 +41,6 @@ const Products: React.FC = () => {
     featured: searchParams.get('featured') === 'true' || undefined,
     inStock: searchParams.get('inStock') === 'true' || undefined
   })
-
-  const {
-    products,
-    isLoading,
-    error,
-    pagination,
-    fetchProducts
-  } = useProducts()
 
   // Load categories
   useEffect(() => {
@@ -59,8 +59,107 @@ const Products: React.FC = () => {
 
   // Load products when filters change
   useEffect(() => {
-    fetchProducts(filters)
-  }, [filters, fetchProducts])
+    const loadProducts = async () => {
+      try {
+        setError(null)
+        setIsLoading(true)
+        
+        const params = {
+          page: filters.page || 1,
+          limit: filters.limit || 20,
+          search: filters.search || '',
+          category: filters.category || '',
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          sortBy: filters.sortBy || 'createdAt',
+          sortOrder: filters.sortOrder || 'desc',
+          featured: filters.featured,
+          inStock: filters.inStock
+        }
+
+        // Remove undefined values
+        const cleanParams: any = {}
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== '') {
+            cleanParams[key] = value
+          }
+        })
+
+        const response: any = await productsApi.getAll(cleanParams)
+        console.log('Products API response:', response) // Debug log
+        
+        // Handle different response formats
+        let productsData = []
+        let paginationData = {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          itemsPerPage: params.limit
+        }
+        
+        if (response && response.success && response.data) {
+          // Standard API response format
+          productsData = response.data.items || response.data
+          paginationData = response.data.meta || paginationData
+        } else if (response && response.products) {
+          // Backend specific format
+          productsData = response.products
+          paginationData = {
+            currentPage: params.page,
+            totalPages: Math.ceil((response.total || 0) / params.limit),
+            totalItems: response.total || 0,
+            itemsPerPage: params.limit
+          }
+        } else if (Array.isArray(response)) {
+          // Direct array response
+          productsData = response
+        }
+        
+        // Parse images from JSON strings and ensure proper image URLs
+        const processedProducts = productsData.map((product: any) => {
+          let images = []
+          
+          if (product.images && Array.isArray(product.images)) {
+            images = product.images.map((img: any) => {
+              if (typeof img === 'string') {
+                try {
+                  const parsed = JSON.parse(img)
+                  return parsed.url || img
+                } catch {
+                  return img
+                }
+              }
+              return img.url || img
+            })
+          }
+          
+          return {
+            ...product,
+            images: images.length > 0 ? images : ['/api/placeholder/400/400'],
+            price: typeof product.price === 'string' ? product.price : product.price?.toString() || '0',
+            stock: product.stock || product.stockQuantity || 0,
+            stockQuantity: product.stock || product.stockQuantity || 0,
+            category: product.category || { id: '', name: 'Uncategorized', slug: 'uncategorized' },
+            averageRating: product.averageRating || 0,
+            reviewCount: product.reviewCount || 0,
+            isFeatured: product.featured || false,
+            isInWishlist: product.isInWishlist || false
+          }
+        })
+        
+        setProducts(processedProducts)
+        setPagination(paginationData)
+      } catch (error: any) {
+        console.error('Failed to load products:', error)
+        setError('Failed to load products. Please try again.')
+        setProducts([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadProducts()
+  }, [filters])
 
   // Update URL when filters change
   useEffect(() => {
@@ -116,7 +215,7 @@ const Products: React.FC = () => {
             Something went wrong
           </h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          <Button onClick={() => fetchProducts(filters)}>
+          <Button onClick={() => window.location.reload()}>
             Try Again
           </Button>
         </div>

@@ -238,38 +238,76 @@ export interface ReplySupportChatDto {
   updateStatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 }
 
+// Admin Settings DTOs
+export interface AdminSettingsDto {
+  siteName: string;
+  siteDescription: string;
+  contactEmail: string;
+  currency: string;
+  timezone: string;
+  maintenanceMode: boolean;
+  allowRegistration: boolean;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  orderAutoConfirm: boolean;
+  lowStockThreshold: number;
+  taxRate: number;
+  shippingFee: number;
+  freeShippingThreshold: number;
+  defaultLanguage: string;
+  dateFormat: string;
+  timeFormat: string;
+}
+
+export interface UpdateAdminSettingsDto {
+  siteName?: string;
+  siteDescription?: string;
+  contactEmail?: string;
+  currency?: string;
+  timezone?: string;
+  maintenanceMode?: boolean;
+  allowRegistration?: boolean;
+  emailNotifications?: boolean;
+  smsNotifications?: boolean;
+  orderAutoConfirm?: boolean;
+  lowStockThreshold?: number;
+  taxRate?: number;
+  shippingFee?: number;
+  freeShippingThreshold?: number;
+  defaultLanguage?: string;
+  dateFormat?: string;
+  timeFormat?: string;
+}
+
 // Bank Account Management DTOs
 export interface BankAccountDto {
   id: string;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  sortCode: string | null;
-  swiftCode: string | null;
+  bank_name: string;
+  account_name: string;
+  account_number: string;
   currency: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateBankAccountDto {
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  sortCode?: string;
-  swiftCode?: string;
+  bank_name: string;
+  account_name: string;
+  account_number: string;
   currency?: string;
-  isActive?: boolean;
+  is_default?: boolean;
+  is_active?: boolean;
 }
 
 export interface UpdateBankAccountDto {
-  bankName?: string;
-  accountName?: string;
-  accountNumber?: string;
-  sortCode?: string;
-  swiftCode?: string;
+  bank_name?: string;
+  account_name?: string;
+  account_number?: string;
   currency?: string;
-  isActive?: boolean;
+  is_default?: boolean;
+  is_active?: boolean;
 }
 
 // Reports DTOs
@@ -363,10 +401,20 @@ const adminApi = {
   analytics: adminAnalyticsApi,
   /**
    * Get admin dashboard statistics
-   * GET /api/v1/admin/dashboard
+   * GET /admin/dashboard/stats
    */
-  getDashboardStats: async (params?: { period?: string; startDate?: string; endDate?: string }): Promise<AdminDashboardStats> => {
-    const response = await get<ApiResponse<AdminDashboardStats>>('/admin/dashboard', { params });
+  // Dashboard Statistics
+  getDashboardStats: async (dateRange?: {
+    period?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<AdminDashboardStats> => {
+    const params: any = {};
+    if (dateRange?.period) params.period = dateRange.period;
+    if (dateRange?.startDate) params.startDate = dateRange.startDate;
+    if (dateRange?.endDate) params.endDate = dateRange.endDate;
+    
+    const response = await get<AdminDashboardStats>('/admin/dashboard/stats', { params });
     return response.data;
   },
 
@@ -374,7 +422,7 @@ const adminApi = {
   payments: {
     /**
      * Get all payments (paginated)
-     * GET /api/v1/admin/payments
+     * GET /admin/payments
      */
     getAll: async (params?: {
       page?: number;
@@ -387,34 +435,34 @@ const adminApi = {
       startDate?: string;
       endDate?: string;
     }): Promise<PaginatedResponse<AdminPaymentDto>> => {
-      const response = await get<ApiResponse<PaginatedResponse<AdminPaymentDto>>>('/admin/payments', { params });
+      const response = await get<PaginatedResponse<AdminPaymentDto>>('/payments/history', { params });
       return response.data;
     },
 
     /**
      * Get payment by ID
-     * GET /api/v1/admin/payments/:id
+     * GET /admin/payments/:id
      */
     getById: async (id: string): Promise<AdminPaymentDetailDto> => {
-      const response = await get<ApiResponse<AdminPaymentDetailDto>>(`/admin/payments/${id}`);
+      const response = await get<AdminPaymentDetailDto>(`/payments/${id}`);
       return response.data;
     },
 
     /**
      * Update payment status
-     * PATCH /api/v1/admin/payments/:id/status
+     * PATCH /admin/payments/:id/status
      */
     updateStatus: async (id: string, data: UpdatePaymentStatusDto): Promise<AdminPaymentDto> => {
-      const response = await patch<ApiResponse<AdminPaymentDto>>(`/admin/payments/${id}/status`, data);
+      const response = await patch<AdminPaymentDto>(`/payments/${id}/status`, data);
       return response.data;
     },
 
     /**
      * Verify payment receipt
-     * PATCH /api/v1/admin/payments/receipts/:id/verify
+     * PATCH /admin/payments/receipts/:id/verify
      */
     verifyReceipt: async (id: string, data: VerifyReceiptDto): Promise<any> => {
-      const response = await patch<ApiResponse<any>>(`/admin/payments/receipts/${id}/verify`, data);
+      const response = await patch<any>(`/payments/receipt/${id}/verify`, data);
       return response.data;
     }
   },
@@ -423,7 +471,7 @@ const adminApi = {
   support: {
     /**
      * Get all support chats (paginated)
-     * GET /api/v1/admin/support
+     * GET /admin/support
      */
     getAll: async (params?: {
       page?: number;
@@ -435,70 +483,88 @@ const adminApi = {
       priority?: string;
       assignedTo?: string;
     }): Promise<PaginatedResponse<AdminSupportChatDto>> => {
-      const response = await get<ApiResponse<PaginatedResponse<AdminSupportChatDto>>>('/admin/support', { params });
+      const response = await get<PaginatedResponse<AdminSupportChatDto>>('/customer-support/admin/chats', { params });
       return response.data;
     },
 
     /**
      * Get chat by ID
-     * GET /api/v1/admin/support/:id
+     * GET /admin/support/:id
      */
     getById: async (id: string): Promise<AdminSupportChatDetailDto> => {
-      const response = await get<ApiResponse<AdminSupportChatDetailDto>>(`/admin/support/${id}`);
+      const response = await get<AdminSupportChatDetailDto>(`/customer-support/admin/chat/${id}`);
       return response.data;
     },
 
     /**
      * Update chat status
-     * PATCH /api/v1/admin/support/:id/status
+     * PATCH /admin/support/:id/status
      */
     updateStatus: async (id: string, data: UpdateChatStatusDto): Promise<AdminSupportChatDto> => {
-      const response = await patch<ApiResponse<AdminSupportChatDto>>(`/admin/support/${id}/status`, data);
+      const response = await patch<AdminSupportChatDto>(`/customer-support/admin/chat/${id}/status`, data);
       return response.data;
     },
 
     /**
      * Reply to support chat
-     * POST /api/v1/admin/support/:id/reply
+     * POST /admin/support/:id/reply
      */
     reply: async (id: string, data: ReplySupportChatDto): Promise<AdminSupportChatDto> => {
-      const response = await post<ApiResponse<AdminSupportChatDto>>(`/admin/support/${id}/reply`, data);
-      return response.data.data;
+      const response = await post<AdminSupportChatDto>(`/customer-support/admin/chat/${id}/reply`, data);
+      return response.data;
     }
   },
 
   // System Settings
   settings: {
     /**
+     * Get system settings
+     * GET /admin/settings
+     */
+    getSettings: async (): Promise<AdminSettingsDto> => {
+      const response = await get<AdminSettingsDto>('/admin/settings');
+      return response.data;
+    },
+
+    /**
+     * Update system settings
+     * PUT /admin/settings
+     */
+    updateSettings: async (data: UpdateAdminSettingsDto): Promise<AdminSettingsDto> => {
+      const response = await put<AdminSettingsDto>('/admin/settings', data);
+      return response.data;
+    },
+
+    /**
      * Get bank accounts
-     * GET /api/v1/admin/settings/bank-accounts
+     * GET /admin/settings/bank-accounts
      */
     getBankAccounts: async (): Promise<BankAccountDto[]> => {
-      const response = await get<ApiResponse<BankAccountDto[]>>('/admin/settings/bank-accounts');
+      const response = await get<BankAccountDto[]>('/admin/settings/bank-accounts');
       return response.data;
     },
 
     /**
      * Create bank account
-     * POST /api/v1/admin/settings/bank-accounts
+     * POST /admin/settings/bank-accounts
      */
     createBankAccount: async (data: CreateBankAccountDto): Promise<BankAccountDto> => {
-      const response = await post<ApiResponse<BankAccountDto>>('/admin/settings/bank-accounts', data);
-      return response.data.data;
+      const response = await post<BankAccountDto>('/admin/settings/bank-accounts', data);
+      return response.data;
     },
 
     /**
      * Update bank account
-     * PUT /api/v1/admin/settings/bank-accounts/:id
+     * PUT /admin/settings/bank-accounts/:id
      */
     updateBankAccount: async (id: string, data: UpdateBankAccountDto): Promise<BankAccountDto> => {
-      const response = await put<ApiResponse<BankAccountDto>>(`/admin/settings/bank-accounts/${id}`, data);
+      const response = await put<BankAccountDto>(`/admin/settings/bank-accounts/${id}`, data);
       return response.data;
     },
 
     /**
      * Delete bank account
-     * DELETE /api/v1/admin/settings/bank-accounts/:id
+     * DELETE /admin/settings/bank-accounts/:id
      */
     deleteBankAccount: async (id: string): Promise<void> => {
       await del<ApiResponse<null>>(`/admin/settings/bank-accounts/${id}`);
@@ -509,7 +575,7 @@ const adminApi = {
   reports: {
     /**
      * Generate sales report
-     * GET /api/v1/admin/reports/sales
+     * GET /admin/reports/sales
      */
     getSalesReport: async (params?: {
       period?: string;
@@ -517,20 +583,20 @@ const adminApi = {
       endDate?: string;
       format?: 'json' | 'csv' | 'pdf';
     }): Promise<SalesReportDto> => {
-      const response = await get<ApiResponse<SalesReportDto>>('/admin/reports/sales', { params });
+      const response = await get<SalesReportDto>('/admin/analytics/sales', { params });
       return response.data;
     },
 
     /**
      * Generate inventory report
-     * GET /api/v1/admin/reports/inventory
+     * GET /admin/reports/inventory
      */
     getInventoryReport: async (params?: {
       filterBy?: 'all' | 'low_stock' | 'out_of_stock' | 'high_stock';
       categoryId?: string;
       format?: 'json' | 'csv' | 'pdf';
     }): Promise<InventoryReportDto> => {
-      const response = await get<ApiResponse<InventoryReportDto>>('/admin/reports/inventory', { params });
+      const response = await get<InventoryReportDto>('/admin/analytics/inventory', { params });
       return response.data;
     }
   },
@@ -539,7 +605,7 @@ const adminApi = {
   auth: {
     /**
      * Sync users
-     * GET /api/v1/auth/admin/sync-users
+     * GET /auth/admin/sync-users
      */
     syncUsers: async (fix?: boolean): Promise<{
       totalSupabaseUsers: number;
@@ -547,12 +613,12 @@ const adminApi = {
       onlyInSupabase: string[];
       onlyInDb: string[];
     }> => {
-      const response = await get<ApiResponse<{
+      const response = await get<{
         totalSupabaseUsers: number;
         totalDbUsers: number;
         onlyInSupabase: string[];
         onlyInDb: string[];
-      }>>('/auth/admin/sync-users', { params: { fix } });
+      }>('/auth/admin/sync-users', { params: { fix } });
       return response.data;
     }
   }

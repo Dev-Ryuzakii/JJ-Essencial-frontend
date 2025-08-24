@@ -117,10 +117,15 @@ export const useAuth = () => {
   /**
    * Handle user logout
    */
-  const handleLogout = () => {
-    authApi.logout();
-    logoutStore();
-    toast.success('Logged out successfully');
+  const handleLogout = async () => {
+    try {
+      await authApi.signout();
+      logoutStore();
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    }
   }
 
   /**
@@ -130,7 +135,7 @@ export const useAuth = () => {
   const handleResetPassword = async (email: string) => {
     try {
       setLoading(true)
-      await authApi.resetPassword({ email })
+      await authApi.resetPassword(email)
       
       toast.success('If your email is registered, you will receive password reset instructions')
       return { success: true }

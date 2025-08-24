@@ -11,78 +11,52 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { formatCurrency } from '../utils/formatters'
+import { getImageUrl } from '../lib/utils' // Import the image URL utility
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
-import { useCart, useAuth } from '../hooks'
-import { wishlistApi } from '../services'
+import { useCart, useAuth, useWishlist } from '../hooks'
+import type { WishlistItem } from '../services/wishlistApi'
 import toast from 'react-hot-toast'
-
-interface WishlistItem {
-  id: string
-  product: {
-    id: string
-    name: string
-    price: number
-    discountPrice?: number
-    image?: string
-    category?: {
-      id: string
-      name: string
-    }
-    stockQuantity: number
-    averageRating?: number
-    reviewCount?: number
-  }
-  addedAt: string
-}
+// Import debug hook
+import { useWishlistDebug } from '../utils/useWishlistDebug'
 
 const Wishlist: React.FC = () => {
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [removingItems, setRemovingItems] = useState<Set<string>>(new Set())
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
+  const { 
+    items: wishlistItems, 
+    isLoading: loading, 
+    fetchWishlist, 
+    removeFromWishlist 
+  } = useWishlist()
+  
+  // Use debug hook in development
+  const { debugRefetch } = useWishlistDebug()
 
   useEffect(() => {
     if (isAuthenticated) {
+      console.log('Wishlist component mounted, fetching wishlist...')
       fetchWishlist()
-    } else {
-      setLoading(false)
-    }
-  }, [isAuthenticated])
-
-  const fetchWishlist = async () => {
-    setLoading(true)
-    try {
-      const response = await wishlistApi.getItems({
-        page: 1,
-        limit: 50 // Get all wishlist items
-      })
       
-      if (response.success) {
-        setWishlistItems(response.data.items)
+      // In development, add a debug button
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Debug refetch function available via window.debugWishlist')
+        // @ts-ignore - Adding to window for debugging
+        window.debugWishlist = debugRefetch
       }
-    } catch (error) {
-      console.error('Error fetching wishlist:', error)
-      toast.error('Failed to load wishlist items')
-    } finally {
-      setLoading(false)
+    } else {
+      console.log('Not fetching wishlist - user not authenticated')
     }
-  }
+  }, [isAuthenticated, fetchWishlist]) // Remove debugRefetch from dependency array
 
   const handleRemoveItem = async (itemId: string) => {
     setRemovingItems(prev => new Set(prev).add(itemId))
     
     try {
-      const response = await wishlistApi.removeItem(itemId)
-      
-      if (response.success) {
-        setWishlistItems(prev => prev.filter(item => item.product.id !== itemId))
-        toast.success('Item removed from wishlist')
-      }
+      await removeFromWishlist(itemId)
     } catch (error) {
       console.error('Error removing item from wishlist:', error)
-      toast.error('Failed to remove item from wishlist')
     } finally {
       setRemovingItems(prev => {
         const updated = new Set(prev)
@@ -92,9 +66,49 @@ const Wishlist: React.FC = () => {
     }
   }
 
-  const handleAddToCart = async (product: WishlistItem['product']) => {
+  const handleAddToCart = (product: WishlistItem['product']) => {
+    if (!product) {
+      console.error('Cannot add undefined product to cart')
+      toast.error('Failed to add to cart: Invalid product')
+      return
+    }
+
     try {
-      addToCart(product, 1)
+      console.log('Adding product to cart:', product)
+      // Convert to Product type for cart
+      const cartProduct = {
+        ...product,
+        description: product.description || '',
+        price: product.price.toString(),
+        discountPrice: product.discountPrice?.toString(),
+        stock: product.stock || product.stockQuantity || 0,
+        category: product.category ? {
+          id: product.category.id, 
+          name: product.category.name, 
+          description: '', 
+          image: '', 
+          slug: '',
+          productCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        } : {
+          id: '', 
+          name: '', 
+          description: '', 
+          image: '', 
+          slug: '',
+          productCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        averageRating: product.averageRating || 0,
+        reviewCount: product.reviewCount || 0,
+        createdAt: product.createdAt || new Date().toISOString(),
+        updatedAt: product.updatedAt || new Date().toISOString(),
+      }
+      
+      // @ts-ignore - Handle type mismatch for cart
+      addToCart(cartProduct)
       toast.success('Added to cart!')
     } catch (error) {
       console.error('Error adding to cart:', error)
@@ -104,7 +118,9 @@ const Wishlist: React.FC = () => {
 
   const handleAddAllToCart = async () => {
     try {
-      const inStockItems = wishlistItems.filter(item => item.product.stockQuantity > 0)
+      const inStockItems = (wishlistItems || []).filter((item: WishlistItem) => 
+        (item.product.stock || item.product.stockQuantity || 0) > 0
+      )
       
       if (inStockItems.length === 0) {
         toast.error('No items in stock to add to cart')
@@ -112,7 +128,7 @@ const Wishlist: React.FC = () => {
       }
 
       for (const item of inStockItems) {
-        addToCart(item.product, 1)
+        handleAddToCart(item.product)
       }
       
       toast.success(`Added ${inStockItems.length} items to cart!`)
@@ -122,12 +138,14 @@ const Wishlist: React.FC = () => {
     }
   }
 
-  const totalValue = wishlistItems.reduce((sum, item) => {
+  const totalValue = (wishlistItems || []).reduce((sum: number, item: WishlistItem) => {
     const price = item.product.discountPrice || item.product.price
     return sum + price
   }, 0)
 
-  const inStockCount = wishlistItems.filter(item => item.product.stockQuantity > 0).length
+  const inStockCount = (wishlistItems || []).filter((item: WishlistItem) => 
+    (item.product.stock || item.product.stockQuantity || 0) > 0
+  ).length
 
   if (!isAuthenticated) {
     return (
@@ -174,12 +192,12 @@ const Wishlist: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Wishlist</h1>
             <p className="text-gray-600 mt-1">
-              {wishlistItems.length} item{wishlistItems.length !== 1 ? 's' : ''} saved
+              {(wishlistItems || []).length} item{(wishlistItems || []).length !== 1 ? 's' : ''} saved
             </p>
           </div>
         </div>
 
-        {wishlistItems.length > 0 && (
+        {(wishlistItems || []).length > 0 && (
           <div className="text-right">
             <p className="text-sm text-gray-600">Total estimated value</p>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalValue)}</p>
@@ -188,13 +206,13 @@ const Wishlist: React.FC = () => {
       </div>
 
       {/* Actions Bar */}
-      {wishlistItems.length > 0 && (
+      {(wishlistItems || []).length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600">Total Items</p>
-                <p className="text-lg font-semibold text-gray-900">{wishlistItems.length}</p>
+                <p className="text-lg font-semibold text-gray-900">{(wishlistItems || []).length}</p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">In Stock</p>
@@ -202,11 +220,24 @@ const Wishlist: React.FC = () => {
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Out of Stock</p>
-                <p className="text-lg font-semibold text-red-600">{wishlistItems.length - inStockCount}</p>
+                <p className="text-lg font-semibold text-red-600">{(wishlistItems || []).length - inStockCount}</p>
               </div>
             </div>
             
             <div className="flex space-x-3">
+              {process.env.NODE_ENV === 'development' && (
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    console.log('Manual refresh triggered');
+                    fetchWishlist();
+                  }}
+                  size="sm"
+                >
+                  <Loader2 className="w-4 h-4 mr-2" />
+                  Debug Refresh
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 onClick={handleAddAllToCart}
@@ -221,7 +252,7 @@ const Wishlist: React.FC = () => {
       )}
 
       {/* Wishlist Items */}
-      {wishlistItems.length === 0 ? (
+      {(wishlistItems || []).length === 0 ? (
         <div className="text-center py-16">
           <Heart className="w-24 h-24 text-gray-300 mx-auto mb-6" />
           <h3 className="text-2xl font-bold text-gray-900 mb-4">Your wishlist is empty</h3>
@@ -238,11 +269,11 @@ const Wishlist: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {wishlistItems.map((item) => {
+          {(wishlistItems || []).map((item: WishlistItem) => {
             const product = item.product
             const finalPrice = product.discountPrice || product.price
             const hasDiscount = product.discountPrice && product.discountPrice < product.price
-            const isOutOfStock = product.stockQuantity === 0
+            const isOutOfStock = (product.stock || product.stockQuantity || 0) === 0
             const isRemoving = removingItems.has(product.id)
 
             return (
@@ -264,12 +295,30 @@ const Wishlist: React.FC = () => {
                 <div className="relative aspect-square bg-gray-100">
                   <Link to={`/products/${product.id}`}>
                     <img
-                      src={product.image || '/api/placeholder/300/300'}
+                      src={product.images && product.images.length > 0 
+                        ? getImageUrl(product.images[0]) 
+                        : '/placeholder-image.jpg'}
                       alt={product.name}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = '/api/placeholder/300/300'
+                        console.error(`Image failed to load: ${product.images?.[0]}`, e);
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder-image.jpg';
+                        
+                        // Try to parse as JSON if it's a JSON string
+                        if (typeof product.images?.[0] === 'string' && 
+                            product.images[0].startsWith('{') && 
+                            product.images[0].endsWith('}')) {
+                          try {
+                            const imgObj = JSON.parse(product.images[0]);
+                            if (imgObj.url) {
+                              console.log('Trying direct URL from JSON:', imgObj.url);
+                              target.src = imgObj.url;
+                            }
+                          } catch (error) {
+                            console.error('Failed to parse image JSON:', error);
+                          }
+                        }
                       }}
                     />
                   </Link>
@@ -282,7 +331,7 @@ const Wishlist: React.FC = () => {
                       </Badge>
                     )}
                     {isOutOfStock && (
-                      <Badge variant="default" size="sm">
+                      <Badge variant="gray" size="sm">
                         Out of Stock
                       </Badge>
                     )}
@@ -361,7 +410,7 @@ const Wishlist: React.FC = () => {
                   {/* Added Date */}
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <p className="text-xs text-gray-500">
-                      Added {new Date(item.addedAt).toLocaleDateString()}
+                      Added {new Date(item.addedAt || '').toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -372,7 +421,7 @@ const Wishlist: React.FC = () => {
       )}
 
       {/* Continue Shopping */}
-      {wishlistItems.length > 0 && (
+      {(wishlistItems || []).length > 0 && (
         <div className="mt-12 text-center">
           <Link 
             to="/products"
@@ -385,7 +434,7 @@ const Wishlist: React.FC = () => {
       )}
 
       {/* Recommendations */}
-      {wishlistItems.length > 0 && (
+      {(wishlistItems || []).length > 0 && (
         <div className="mt-16">
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-8 text-center border border-purple-100">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">

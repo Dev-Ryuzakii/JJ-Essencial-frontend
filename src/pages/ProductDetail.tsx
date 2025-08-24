@@ -63,14 +63,38 @@ const ProductDetail: React.FC = () => {
       // Load product details
       const productResponse = await productsApi.getById(productId)
       if (productResponse.success) {
-        setProduct(productResponse.data)
-        setIsInWishlist(productResponse.data.isInWishlist || false)
+        // Process images similar to Products page
+        let processedProduct = { ...productResponse.data }
+        
+        if (processedProduct.images && Array.isArray(processedProduct.images)) {
+          processedProduct.images = processedProduct.images.map((img: any) => {
+            if (typeof img === 'string') {
+              try {
+                const parsed = JSON.parse(img)
+                return parsed.url || img
+              } catch {
+                return img
+              }
+            }
+            return img.url || img
+          })
+        } else {
+          processedProduct.images = ['/api/placeholder/600/600']
+        }
+        
+        setProduct(processedProduct)
+        setIsInWishlist(processedProduct.isInWishlist || false)
       }
 
-      // Load reviews
-      const reviewsResponse = await reviewsApi.getByProduct(productId)
-      if (reviewsResponse.success) {
-        setReviews(reviewsResponse.data)
+      // Load reviews (separate try-catch to not break product loading)
+      try {
+        const reviewsResponse = await reviewsApi.getByProduct(productId)
+        if (reviewsResponse.success) {
+          setReviews(reviewsResponse.data)
+        }
+      } catch (reviewError) {
+        console.warn('Failed to load reviews:', reviewError)
+        // Continue without reviews - this is not critical
       }
 
       // Load related products
@@ -191,12 +215,18 @@ const ProductDetail: React.FC = () => {
     )
   }
 
-  const finalPrice = product.discountPrice || product.price
-  const hasDiscount = product.discountPrice && product.discountPrice < product.price
+  const finalPrice = (typeof product.discountPrice === 'number' && product.discountPrice > 0) ? product.discountPrice : (product.price || 0)
+  const productPrice = product.price || 0
+  const hasDiscount = (typeof product.discountPrice === 'number' && product.discountPrice > 0) && product.discountPrice < productPrice
   const discountPercentage = hasDiscount 
-    ? Math.round(((product.price - product.discountPrice!) / product.price) * 100)
+    ? Math.round(((productPrice - product.discountPrice!) / productPrice) * 100)
     : 0
-  const isOutOfStock = product.stockQuantity === 0
+  
+  // Ensure stockQuantity is a valid number
+  const stockQuantity = typeof product.stockQuantity === 'number' && !isNaN(product.stockQuantity) 
+    ? product.stockQuantity 
+    : (product.stockQuantity === undefined ? 999 : 0) // Default to 999 if undefined, 0 if explicitly set to invalid value
+  const isOutOfStock = stockQuantity === 0
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -228,7 +258,11 @@ const ProductDetail: React.FC = () => {
             {product.images.length > 0 ? (
               <>
                 <img
-                  src={product.images[currentImageIndex]?.url || '/api/placeholder/600/600'}
+                  src={
+                    typeof product.images[currentImageIndex] === 'string' 
+                      ? product.images[currentImageIndex]
+                      : (product.images[currentImageIndex] as any)?.url || '/api/placeholder/600/600'
+                  }
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
@@ -263,7 +297,7 @@ const ProductDetail: React.FC = () => {
                     </Badge>
                   )}
                   {isOutOfStock && (
-                    <Badge variant="default" size="sm">
+                    <Badge variant="gray" size="sm">
                       Out of Stock
                     </Badge>
                   )}
@@ -291,7 +325,11 @@ const ProductDetail: React.FC = () => {
                   )}
                 >
                   <img
-                    src={image.url}
+                    src={
+                      typeof image === 'string' 
+                        ? image 
+                        : (image as any)?.url || '/api/placeholder/80/80'
+                    }
                     alt={`${product.name} ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
@@ -350,7 +388,7 @@ const ProductDetail: React.FC = () => {
             </div>
             {hasDiscount && (
               <p className="text-sm text-green-600">
-                You save {formatCurrency(product.price - finalPrice)} ({discountPercentage}% off)
+                You save {formatCurrency(productPrice - finalPrice)} ({discountPercentage}% off)
               </p>
             )}
           </div>
@@ -358,15 +396,15 @@ const ProductDetail: React.FC = () => {
           {/* Stock Status */}
           <div>
             {isOutOfStock ? (
-              <Badge variant="error" size="lg">
+              <Badge variant="error" size="md">
                 Out of Stock
               </Badge>
-            ) : product.stockQuantity <= 5 ? (
-              <Badge variant="warning" size="lg">
-                Only {product.stockQuantity} left in stock
+            ) : stockQuantity <= 5 ? (
+              <Badge variant="warning" size="md">
+                Only {stockQuantity} left in stock
               </Badge>
             ) : (
-              <Badge variant="success" size="lg">
+              <Badge variant="success" size="md">
                 In Stock
               </Badge>
             )}
@@ -404,9 +442,9 @@ const ProductDetail: React.FC = () => {
                 </button>
                 <span className="px-4 py-2 font-medium">{quantity}</span>
                 <button
-                  onClick={() => setQuantity(Math.min(product.stockQuantity, quantity + 1))}
+                  onClick={() => setQuantity(Math.min(stockQuantity, quantity + 1))}
                   className="p-2 hover:bg-gray-100 transition-colors"
-                  disabled={quantity >= product.stockQuantity}
+                  disabled={quantity >= stockQuantity}
                 >
                   <Plus className="w-4 h-4" />
                 </button>

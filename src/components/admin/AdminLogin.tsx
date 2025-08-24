@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Lock, Mail, AlertCircle, Loader2, EyeOff, Eye } from 'lucide-react'
+import { Lock, Mail, AlertCircle, Loader2, EyeOff, Eye, Shield } from 'lucide-react'
 import useAdminAuth from '../../hooks/useAdminAuth'
 import toast from 'react-hot-toast'
 
 export const AdminLogin = () => {
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState('jadesola0518@gmail.com') // Pre-fill admin email
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
-  const { login, isAuthenticated } = useAdminAuth()
+  const { login, isAuthenticated, isLoading: authLoading } = useAdminAuth()
 
   useEffect(() => {
     // If already authenticated, redirect to dashboard
     if (isAuthenticated) {
+      console.log('Admin already authenticated, redirecting to dashboard')
       navigate('/admin/dashboard')
     }
   }, [isAuthenticated, navigate])
@@ -39,23 +40,38 @@ export const AdminLogin = () => {
     }
 
     try {
+      console.log('AdminLogin: Starting admin login process - BACKEND ONLY');
+      console.log('AdminLogin: Using useAdminAuth hook with token validation - NO SUPABASE');
       console.log('Attempting admin login with:', { email, password: '***' });
+      
+      // Validate admin email (optional security check)
+      if (email !== 'jadesola0518@gmail.com') {
+        setError('Invalid admin email address')
+        setLoading(false)
+        return
+      }
+      
       const success = await login(email, password)
       
       if (success) {
-        // Toast message is shown by the hook
+        console.log('AdminLogin: Login successful, admin token validated, navigating to dashboard');
+        toast.success('Welcome, Admin! 🔐')
+        // Navigate to dashboard on successful login
         navigate('/admin/dashboard')
       } else {
+        console.log('AdminLogin: Login failed - invalid credentials or token validation failed');
         // Error is already handled in the hook with toast
-        setError('Invalid email or password')
+        setError('Invalid credentials or admin access denied')
       }
     } catch (err: any) {
-      console.error('Login error:', err)
-      let errorMsg = 'An error occurred during login. Please try again.';
+      console.error('AdminLogin: Login error:', err)
+      let errorMsg = 'Admin login failed. Please check your credentials.';
       
-      // Handle standard API error format
-      if (err.success === false) {
-        errorMsg = err.message || errorMsg;
+      // Handle different error formats
+      if (err.message) {
+        errorMsg = err.message;
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
       }
       
       setError(errorMsg)

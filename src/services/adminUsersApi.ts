@@ -5,6 +5,7 @@ import type { PaginatedResponse } from './apiClient';
 export interface AdminUser {
   id: string;
   email: string;
+  username?: string; // Added username field
   fullName: string;
   phone?: string;
   avatar?: string;
@@ -64,89 +65,98 @@ export interface UserAnalytics {
 const adminUsersApi = {
   /**
    * Get all users (Admin only)
-   * GET /api/v1/admin/users
+   * GET /admin/users
    */
   getUsers: async (filters?: AdminUserFilter): Promise<PaginatedResponse<AdminUser>> => {
-    const response = await get<PaginatedResponse<AdminUser>>('/admin/users', { params: filters });
+    const response = await get<any>('/admin/users', { params: filters });
     
-    if (response.success && response.data) {
-      return response.data;
+    console.log('AdminUsersApi: Raw response:', response);
+    
+    // The response from the backend has this structure:
+    // { success: true, data: AdminUser[], pagination: {...} }
+    // But the apiClient returns { data: { success: true, data: AdminUser[], pagination: {...} } }
+    
+    if (response.data && Array.isArray(response.data)) {
+      // Direct array - no pagination info
+      return {
+        data: response.data,
+        meta: {
+          total: response.data.length,
+          page: 1,
+          lastPage: 1,
+          hasNextPage: false
+        }
+      };
+    } else if (response.data && response.data.data) {
+      // Nested structure with pagination
+      const backendData = response.data;
+      return {
+        data: backendData.data,
+        meta: {
+          total: backendData.pagination?.total || backendData.data.length,
+          page: backendData.pagination?.page || 1,
+          lastPage: backendData.pagination?.pages || Math.ceil((backendData.pagination?.total || backendData.data.length) / (filters?.limit || 10)),
+          hasNextPage: backendData.pagination?.hasNext || false
+        }
+      };
     } else {
-      throw new Error(response.message || 'Failed to get users');
+      // Fallback - return the response as-is if it matches our expected structure
+      return response.data;
     }
   },
 
   /**
    * Get user details (Admin only)
-   * GET /api/v1/admin/users/:id
+   * GET /admin/users/:id
    */
   getUser: async (id: string): Promise<AdminUser> => {
     const response = await get<AdminUser>(`/admin/users/${id}`);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get user details');
-    }
+    return response.data;
   },
 
   /**
    * Update user status (Admin only)
-   * PATCH /api/v1/admin/users/:id/status
+   * PATCH /admin/users/:id/status
    */
   updateUserStatus: async (id: string, data: UpdateUserStatusDto): Promise<AdminUser> => {
     const response = await patch<AdminUser>(`/admin/users/${id}/status`, data);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to update user status');
-    }
+    return response.data;
   },
 
   /**
    * Delete user (Admin only)
-   * DELETE /api/v1/admin/users/:id
+   * DELETE /admin/users/:id
    */
   deleteUser: async (id: string): Promise<void> => {
-    const response = await del(`/admin/users/${id}`);
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to delete user');
-    }
+    await del(`/admin/users/${id}`);
   },
 
   /**
    * Get user analytics (Admin only)
-   * GET /api/v1/admin/users/analytics
+   * GET /admin/users/analytics
    */
   getUserAnalytics: async (period?: '7days' | '30days' | '90days' | '1year'): Promise<UserAnalytics> => {
     const response = await get<UserAnalytics>('/admin/users/analytics', { 
       params: { period } 
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get user analytics');
-    }
+    return response.data;
   },
 
   /**
    * Export users data (Admin only)
-   * GET /api/v1/admin/users/export
+   * GET /admin/users/export
    */
   exportUsers: (format: 'csv' | 'excel' = 'csv', filters?: AdminUserFilter): string => {
     const queryParams = new URLSearchParams({
       format,
       ...(filters as Record<string, string>)
     }).toString();
-    return `/api/v1/admin/users/export?${queryParams}`;
+    return `/admin/users/export?${queryParams}`;
   },
 
   /**
    * Send email to user (Admin only)
-   * POST /api/v1/admin/users/:id/send-email
+   * POST /admin/users/:id/send-email
    */
   sendEmailToUser: async (id: string, data: {
     subject: string;
@@ -154,17 +164,12 @@ const adminUsersApi = {
     template?: string;
   }): Promise<{ success: boolean; message: string }> => {
     const response = await post<{ success: boolean; message: string }>(`/admin/users/${id}/send-email`, data);
-    
-    if (response.success) {
-      return response.data || { success: true, message: 'Email sent successfully' };
-    } else {
-      throw new Error(response.message || 'Failed to send email');
-    }
+    return response.data;
   },
 
   /**
    * Bulk update users (Admin only)
-   * PATCH /api/v1/admin/users/bulk
+   * PATCH /admin/users/bulk
    */
   bulkUpdateUsers: async (userIds: string[], data: {
     isActive?: boolean;
@@ -175,17 +180,12 @@ const adminUsersApi = {
       userIds,
       ...data
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to bulk update users');
-    }
+    return response.data;
   },
 
   /**
    * Get user activity logs (Admin only)
-   * GET /api/v1/admin/users/:id/activity
+   * GET /admin/users/:id/activity
    */
   getUserActivity: async (id: string, params?: {
     page?: number;
@@ -208,28 +208,18 @@ const adminUsersApi = {
       userAgent?: string;
       createdAt: string;
     }>>(`/admin/users/${id}/activity`, { params });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get user activity');
-    }
+    return response.data;
   },
 
   /**
    * Search users (Admin only)
-   * GET /api/v1/admin/users/search
+   * GET /admin/users/search
    */
   searchUsers: async (query: string, limit?: number): Promise<AdminUser[]> => {
     const response = await get<AdminUser[]>('/admin/users/search', { 
       params: { q: query, limit } 
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to search users');
-    }
+    return response.data;
   }
 };
 

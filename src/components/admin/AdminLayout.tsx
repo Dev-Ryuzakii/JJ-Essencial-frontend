@@ -348,7 +348,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                           <p className="text-sm font-medium text-gray-900">New order received</p>
                           <span className="text-xs text-gray-500">10m ago</span>
                         </div>
-                        <p className="text-sm text-gray-500 truncate">Order #12345 has been placed for $149.99</p>
+                        <p className="text-sm text-gray-500 truncate">Order #12345 has been placed for ₦149,999</p>
                       </div>
                       <div className="px-4 py-3 hover:bg-gray-50">
                         <div className="flex justify-between">

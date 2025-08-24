@@ -72,44 +72,33 @@ const Dashboard: React.FC = () => {
 
       try {
         // Fetch user stats from dashboard API
-        const statsResponse = await dashboardApi.getUserStats()
-        if (statsResponse.success) {
-          setStats(statsResponse.data)
-        }
+        const statsResponse = await dashboardApi.getStats()
+        setStats(statsResponse)
 
         // Fetch recent orders
-        const ordersResponse = await ordersApi.getOrders({
+        const ordersResponse = await ordersApi.list({
           page: 1,
-          limit: 3,
-          sortBy: 'createdAt',
-          sortOrder: 'desc'
+          limit: 3
         })
-        if (ordersResponse.success) {
-          const orders: OrderSummary[] = ordersResponse.data.items.map((order: any) => ({
-            id: order.id,
-            orderNumber: `ORD-${order.id.slice(0, 8).toUpperCase()}`,
-            date: order.createdAt,
-            status: order.status,
-            total: order.totalAmount,
-            items: order.items.length
-          }))
-          setRecentOrders(orders)
-        }
+        const orders: OrderSummary[] = ordersResponse.data.map((order: any) => ({
+          id: order.id,
+          orderNumber: `ORD-${order.id.slice(0, 8).toUpperCase()}`,
+          date: order.createdAt,
+          status: order.status,
+          total: order.totalAmount,
+          items: order.items.length
+        }))
+        setRecentOrders(orders)
 
         // Fetch wishlist items
-        const wishlistResponse = await wishlistApi.getItems({
-          page: 1,
-          limit: 4
-        })
-        if (wishlistResponse.success) {
-          const items: WishlistItem[] = wishlistResponse.data.items.map((item: any) => ({
-            id: item.product.id,
-            name: item.product.name,
-            price: item.product.discountPrice || item.product.price,
-            image: item.product.image || '/api/placeholder/150/150'
-          }))
-          setWishlistItems(items)
-        }
+        const wishlistItems = await wishlistApi.list()
+        const items: WishlistItem[] = wishlistItems.slice(0, 4).map((item: any) => ({
+          id: item.product.id,
+          name: item.product.name,
+          price: item.product.discountPrice || item.product.price,
+          image: item.product.images?.[0] || '/api/placeholder/150/150'
+        }))
+        setWishlistItems(items)
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error)

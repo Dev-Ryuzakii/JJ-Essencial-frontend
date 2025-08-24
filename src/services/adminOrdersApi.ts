@@ -111,7 +111,7 @@ export interface AdminOrderFilter {
   minAmount?: number;
   maxAmount?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 export interface UpdateOrderStatusDto {
@@ -169,7 +169,7 @@ export interface OrderAnalytics {
 const adminOrdersApi = {
   /**
    * Get all orders (Admin view with extended data)
-   * GET /api/v1/admin/orders
+   * GET /admin/orders
    */
   getOrders: async (filters?: AdminOrderFilter): Promise<PaginatedResponse<AdminOrder>> => {
     const response = await get<PaginatedResponse<AdminOrder>>('/admin/orders', { params: filters });
@@ -183,7 +183,7 @@ const adminOrdersApi = {
 
   /**
    * Get order details (Admin view)
-   * GET /api/v1/admin/orders/:id
+   * GET /admin/orders/:id
    */
   getOrder: async (id: string): Promise<AdminOrder> => {
     const response = await get<AdminOrder>(`/admin/orders/${id}`);
@@ -197,7 +197,7 @@ const adminOrdersApi = {
 
   /**
    * Update order status
-   * PATCH /api/v1/admin/orders/:id/status
+   * PATCH /admin/orders/:id/status
    */
   updateOrderStatus: async (id: string, data: UpdateOrderStatusDto): Promise<AdminOrder> => {
     const response = await patch<AdminOrder>(`/admin/orders/${id}/status`, data);
@@ -211,7 +211,7 @@ const adminOrdersApi = {
 
   /**
    * Update payment status
-   * PATCH /api/v1/admin/orders/:id/payment-status
+   * PATCH /admin/orders/:id/payment-status
    */
   updatePaymentStatus: async (id: string, data: UpdatePaymentStatusDto): Promise<AdminOrder> => {
     const response = await patch<AdminOrder>(`/admin/orders/${id}/payment-status`, data);
@@ -225,7 +225,7 @@ const adminOrdersApi = {
 
   /**
    * Add admin note to order
-   * POST /api/v1/admin/orders/:id/notes
+   * POST /admin/orders/:id/notes
    */
   addAdminNote: async (id: string, note: string, isInternal: boolean = true): Promise<{
     id: string;
@@ -251,7 +251,7 @@ const adminOrdersApi = {
 
   /**
    * Process refund
-   * POST /api/v1/admin/orders/:id/refund
+   * POST /admin/orders/:id/refund
    */
   processRefund: async (id: string, data: {
     amount: number;
@@ -280,7 +280,7 @@ const adminOrdersApi = {
 
   /**
    * Cancel order
-   * PATCH /api/v1/admin/orders/:id/cancel
+   * PATCH /admin/orders/:id/cancel
    */
   cancelOrder: async (id: string, reason: string, notifyCustomer: boolean = true): Promise<AdminOrder> => {
     const response = await patch<AdminOrder>(`/admin/orders/${id}/cancel`, {
@@ -297,7 +297,7 @@ const adminOrdersApi = {
 
   /**
    * Bulk update orders
-   * PATCH /api/v1/admin/orders/bulk
+   * PATCH /admin/orders/bulk
    */
   bulkUpdateOrders: async (orderIds: string[], data: {
     status?: OrderStatus;
@@ -319,7 +319,7 @@ const adminOrdersApi = {
 
   /**
    * Get order analytics
-   * GET /api/v1/admin/orders/analytics
+   * GET /admin/orders/analytics
    */
   getOrderAnalytics: async (period?: '7days' | '30days' | '90days' | '1year'): Promise<OrderAnalytics> => {
     const response = await get<OrderAnalytics>('/admin/orders/analytics', { 
@@ -335,7 +335,7 @@ const adminOrdersApi = {
 
   /**
    * Get recent orders
-   * GET /api/v1/admin/orders/recent
+   * GET /admin/orders/recent
    */
   getRecentOrders: async (limit: number = 10): Promise<AdminOrder[]> => {
     const response = await get<AdminOrder[]>('/admin/orders/recent', { 
@@ -351,7 +351,7 @@ const adminOrdersApi = {
 
   /**
    * Get orders by status
-   * GET /api/v1/admin/orders/by-status/:status
+   * GET /admin/orders/by-status/:status
    */
   getOrdersByStatus: async (status: OrderStatus, limit?: number): Promise<AdminOrder[]> => {
     const response = await get<AdminOrder[]>(`/admin/orders/by-status/${status}`, { 
@@ -367,19 +367,19 @@ const adminOrdersApi = {
 
   /**
    * Export orders
-   * GET /api/v1/admin/orders/export
+   * GET /admin/orders/export
    */
   exportOrders: (format: 'csv' | 'excel' | 'pdf' = 'csv', filters?: AdminOrderFilter): string => {
     const queryParams = new URLSearchParams({
       format,
       ...(filters as Record<string, string>)
     }).toString();
-    return `/api/v1/admin/orders/export?${queryParams}`;
+    return `/admin/orders/export?${queryParams}`;
   },
 
   /**
    * Generate order invoice
-   * GET /api/v1/admin/orders/:id/invoice
+   * GET /admin/orders/:id/invoice
    */
   generateInvoice: async (id: string): Promise<{
     invoiceUrl: string;
@@ -399,7 +399,7 @@ const adminOrdersApi = {
 
   /**
    * Send order email to customer
-   * POST /api/v1/admin/orders/:id/send-email
+   * POST /admin/orders/:id/send-email
    */
   sendOrderEmail: async (id: string, emailType: 'confirmation' | 'shipped' | 'delivered' | 'cancelled'): Promise<{
     success: boolean;
@@ -419,7 +419,7 @@ const adminOrdersApi = {
 
   /**
    * Get order timeline/history
-   * GET /api/v1/admin/orders/:id/timeline
+   * GET /admin/orders/:id/timeline
    */
   getOrderTimeline: async (id: string): Promise<OrderStatusHistory[]> => {
     const response = await get<OrderStatusHistory[]>(`/admin/orders/${id}/timeline`);

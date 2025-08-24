@@ -148,7 +148,7 @@ export interface FinancialReport {
 const adminAnalyticsApi = {
   /**
    * Get dashboard analytics overview
-   * GET /api/v1/admin/analytics/dashboard
+   * GET /admin/analytics/dashboard
    */
   getDashboardAnalytics: async (period: '7days' | '30days' | '90days' | '1year' = '30days'): Promise<AdminAnalytics> => {
     const response = await get<AdminAnalytics>('/admin/analytics/dashboard', { 
@@ -164,7 +164,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get sales analytics
-   * GET /api/v1/admin/analytics/sales
+   * GET /admin/analytics/sales
    */
   getSalesAnalytics: async (params: {
     startDate?: string;
@@ -183,7 +183,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get product performance analytics
-   * GET /api/v1/admin/analytics/products
+   * GET /admin/analytics/products
    */
   getProductAnalytics: async (params: {
     limit?: number;
@@ -202,7 +202,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get category performance analytics
-   * GET /api/v1/admin/analytics/categories
+   * GET /admin/analytics/categories
    */
   getCategoryAnalytics: async (params: {
     limit?: number;
@@ -220,7 +220,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get customer insights
-   * GET /api/v1/admin/analytics/customers
+   * GET /admin/analytics/customers
    */
   getCustomerInsights: async (period: '30days' | '90days' | '1year' = '30days'): Promise<CustomerInsight> => {
     const response = await get<CustomerInsight>('/admin/analytics/customers', { 
@@ -236,7 +236,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get inventory alerts
-   * GET /api/v1/admin/analytics/inventory/alerts
+   * GET /admin/analytics/inventory/alerts
    */
   getInventoryAlerts: async (type?: 'low_stock' | 'out_of_stock' | 'overstock'): Promise<InventoryAlert[]> => {
     const response = await get<InventoryAlert[]>('/admin/analytics/inventory/alerts', { 
@@ -252,7 +252,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get financial report
-   * GET /api/v1/admin/analytics/financial
+   * GET /admin/analytics/financial
    */
   getFinancialReport: async (params: {
     startDate: string;
@@ -270,7 +270,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get revenue trends
-   * GET /api/v1/admin/analytics/revenue/trends
+   * GET /admin/analytics/revenue/trends
    */
   getRevenueTrends: async (params: {
     period: '7days' | '30days' | '90days' | '1year';
@@ -298,7 +298,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get order analytics
-   * GET /api/v1/admin/analytics/orders
+   * GET /admin/analytics/orders
    */
   getOrderAnalytics: async (params: {
     period?: string;
@@ -328,7 +328,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get user activity analytics
-   * GET /api/v1/admin/analytics/users/activity
+   * GET /admin/analytics/users/activity
    */
   getUserActivityAnalytics: async (params: {
     period?: string;
@@ -345,7 +345,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get conversion analytics
-   * GET /api/v1/admin/analytics/conversion
+   * GET /admin/analytics/conversion
    */
   getConversionAnalytics: async (period: '7days' | '30days' | '90days' = '30days'): Promise<{
     visitorToLead: number;
@@ -387,7 +387,7 @@ const adminAnalyticsApi = {
 
   /**
    * Export analytics report
-   * GET /api/v1/admin/analytics/export
+   * GET /admin/analytics/export
    */
   exportReport: (params: {
     type: 'sales' | 'products' | 'customers' | 'financial' | 'complete';
@@ -400,12 +400,12 @@ const adminAnalyticsApi = {
       ...params,
       includeCharts: params.includeCharts?.toString() || 'false'
     }).toString();
-    return `/api/v1/admin/analytics/export?${queryParams}`;
+    return `/admin/analytics/export?${queryParams}`;
   },
 
   /**
    * Generate custom report
-   * POST /api/v1/admin/analytics/reports/custom
+   * POST /admin/analytics/reports/custom
    */
   generateCustomReport: async (config: {
     name: string;
@@ -438,7 +438,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get real-time statistics
-   * GET /api/v1/admin/analytics/realtime
+   * GET /admin/analytics/realtime
    */
   getRealTimeStats: async (): Promise<{
     activeUsers: number;
@@ -474,7 +474,7 @@ const adminAnalyticsApi = {
 
   /**
    * Get forecast data
-   * GET /api/v1/admin/analytics/forecast
+   * GET /admin/analytics/forecast
    */
   getForecastData: async (params: {
     metric: 'revenue' | 'orders' | 'customers';

@@ -35,11 +35,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [isImageLoading, setIsImageLoading] = useState(true)
   const [imageError, setImageError] = useState(false)
 
-  const isOutOfStock = product.stockQuantity === 0
-  const isLowStock = product.stockQuantity > 0 && product.stockQuantity <= 5
-  const hasDiscount = product.discountPrice && product.discountPrice < product.price
+  const isOutOfStock = (product.stock || product.stockQuantity || 0) === 0
+  const isLowStock = (product.stock || product.stockQuantity || 0) > 0 && (product.stock || product.stockQuantity || 0) <= 5
+  const hasDiscount = product.discountPrice && parseFloat(product.discountPrice) < parseFloat(product.price)
   const discountPercentage = hasDiscount 
-    ? Math.round(((product.price - product.discountPrice!) / product.price) * 100)
+    ? Math.round(((parseFloat(product.price) - parseFloat(product.discountPrice!)) / parseFloat(product.price)) * 100)
     : 0
 
   const finalPrice = product.discountPrice || product.price
@@ -53,7 +53,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       return
     }
 
-    addToCart(product, 1)
+    addToCart(product)
     toast.success('Added to cart!')
   }
 
@@ -127,7 +127,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <Link to={`/products/${product.id}`}>
             {!imageError ? (
               <img
-                src={product.images[0]?.url || '/api/placeholder/150/150'}
+                src={
+                  product.images?.[0]?.url || 
+                  product.images?.[0] || 
+                  '/api/placeholder/150/150'
+                }
                 alt={product.name}
                 className="w-full h-full object-cover rounded-l-lg"
                 onLoad={() => setIsImageLoading(false)}
@@ -211,13 +215,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <div className="relative aspect-square overflow-hidden rounded-t-lg">
         <Link to={`/products/${product.id}`}>
           {!imageError ? (
-            <img
-              src={product.images[0]?.url || '/api/placeholder/300/300'}
+                        <img
+              src={
+                product.images?.[0]?.url || 
+                product.images?.[0] || 
+                '/api/placeholder/300/300'
+              }
               alt={product.name}
-              className={cn(
-                'w-full h-full object-cover transition-transform duration-300 group-hover:scale-105',
-                isImageLoading && 'opacity-0'
-              )}
+              className="w-full h-full object-cover rounded-lg"
               onLoad={() => setIsImageLoading(false)}
               onError={() => setImageError(true)}
             />
@@ -245,7 +250,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               Out of Stock
             </span>
           )}
-          {product.isFeatured && (
+          {(product.isFeatured || product.featured) && (
             <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded flex items-center space-x-1">
               <BadgeCheckIcon className="w-3 h-3" />
               <span>Featured</span>
@@ -348,7 +353,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           
           {isLowStock && !isOutOfStock && (
             <span className="text-xs text-orange-600 font-medium">
-              Only {product.stockQuantity} left
+              Only {product.stock || product.stockQuantity || 0} left
             </span>
           )}
         </div>

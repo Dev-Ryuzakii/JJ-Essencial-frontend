@@ -16,6 +16,7 @@ import { useCart, useAuth } from '../hooks'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { formatCurrency } from '../lib/utils'
+import { RecommendedProducts } from '../components/product'
 import toast from 'react-hot-toast'
 
 interface Coupon {
@@ -363,29 +364,7 @@ const Cart: React.FC = () => {
             </div>
 
             {/* Recommended Products */}
-            <div className="mt-8 bg-white rounded-lg shadow-sm">
-              <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">You might also like</h3>
-                <div className="space-y-4">
-                  {[1, 2, 3].map((item) => (
-                    <div key={item} className="flex items-center space-x-3">
-                      <img
-                        className="w-12 h-12 rounded-md object-cover"
-                        src="/api/placeholder/60/60"
-                        alt="Recommended product"
-                      />
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-gray-900">Product Name</h4>
-                        <p className="text-sm text-gray-600">₦25,000</p>
-                      </div>
-                      <Button size="sm" variant="outline">
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <RecommendedProducts />
           </div>
         </div>
       </div>

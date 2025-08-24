@@ -1,5 +1,4 @@
 import { get, post, put, patch, del } from './apiClient';
-import type { PaginatedResponse } from './apiClient';
 
 // Admin category interfaces
 export interface AdminCategory {
@@ -7,21 +6,21 @@ export interface AdminCategory {
   name: string;
   slug: string;
   description?: string;
-  image?: string;
-  parentId?: string;
+  image_url?: string; // Backend uses snake_case
+  parent_id?: string; // Backend uses snake_case
   parent?: AdminCategory;
   children?: AdminCategory[];
-  level: number;
-  sortOrder: number;
-  isActive: boolean;
-  productCount: number;
-  totalRevenue: string;
-  seoTitle?: string;
-  seoDescription?: string;
-  seoKeywords?: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  level?: number;
+  sort_order: number; // Backend uses snake_case
+  is_active: boolean; // Backend uses snake_case
+  product_count?: number; // Backend uses snake_case
+  total_revenue?: string; // Backend uses snake_case
+  seo_title?: string; // Backend uses snake_case
+  seo_description?: string; // Backend uses snake_case
+  seo_keywords?: string; // Backend uses snake_case
+  created_by?: string; // Backend uses snake_case
+  created_at: string; // Backend uses snake_case
+  updated_at: string; // Backend uses snake_case
 }
 
 export interface CreateCategoryDto {
@@ -45,7 +44,7 @@ export interface AdminCategoryFilter {
   isActive?: boolean;
   level?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: 'ASC' | 'DESC';  // Backend expects uppercase
   includeInactive?: boolean;
 }
 
@@ -69,224 +68,170 @@ export interface CategoryAnalytics {
 const adminCategoriesApi = {
   /**
    * Get all categories (Admin view with extended data)
-   * GET /api/v1/categories
+   * GET /admin/categories
    */
-  getCategories: async (filters?: AdminCategoryFilter): Promise<PaginatedResponse<AdminCategory>> => {
-    const params = {
-      ...filters,
-      includeInactive: true // Include inactive categories for admin view
-    };
-    const response = await get<PaginatedResponse<AdminCategory>>('/categories', { params });
+  getCategories: async (filters?: AdminCategoryFilter): Promise<AdminCategory[]> => {
+    const params: any = {};
     
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get categories');
+    // Only add parameters that we know work - test minimal first
+    if (filters?.search && filters.search.trim()) {
+      params.search = filters.search.trim();
     }
+    
+    // Test without other parameters first
+    // if (filters?.includeInactive !== undefined) params.includeInactive = filters.includeInactive.toString();
+    // if (filters?.sortBy) params.sortBy = filters.sortBy;
+    // if (filters?.sortOrder) params.sortOrder = filters.sortOrder.toUpperCase();
+    
+    const response = await get<AdminCategory[]>('/admin/categories', { params });
+    return response.data;
   },
 
   /**
    * Get category tree (Admin view)
-   * GET /api/v1/categories/tree
+   * GET /admin/categories/tree
    */
   getCategoryTree: async (includeInactive?: boolean): Promise<AdminCategory[]> => {
-    const response = await get<AdminCategory[]>('/categories/tree', { 
+    const response = await get<AdminCategory[]>('/admin/categories/tree', { 
       params: { includeInactive } 
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get category tree');
-    }
+    return response.data;
   },
 
   /**
    * Get category details (Admin view)
-   * GET /api/v1/categories/:id
+   * GET /admin/categories/:id
    */
   getCategory: async (id: string): Promise<AdminCategory> => {
-    const response = await get<AdminCategory>(`/categories/${id}`);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get category details');
-    }
+    const response = await get<AdminCategory>(`/admin/categories/${id}`);
+    return response.data;
   },
 
   /**
-   * Create category with image
-   * POST /api/v1/categories/with-image
+   * Create category with or without image
+   * POST /admin/categories
    */
-  createCategoryWithImage: async (data: CreateCategoryDto, image?: File): Promise<AdminCategory> => {
-    const formData = new FormData();
-    
-    // Add required fields
-    formData.append('name', data.name);
-    
-    // Add optional fields only if they have values
-    if (data.description) formData.append('description', data.description);
-    if (data.parentId) formData.append('parentId', data.parentId);
-    if (data.sortOrder !== undefined) formData.append('sortOrder', data.sortOrder.toString());
-    if (data.isActive !== undefined) formData.append('isActive', data.isActive.toString());
-    if (data.seoTitle) formData.append('seoTitle', data.seoTitle);
-    if (data.seoDescription) formData.append('seoDescription', data.seoDescription);
-    if (data.seoKeywords) formData.append('seoKeywords', data.seoKeywords);
-    
-    // Add image if provided
+  createCategory: async (data: CreateCategoryDto, image?: File): Promise<AdminCategory> => {
     if (image) {
+      // Use FormData when image is provided
+      const formData = new FormData();
+      
+      // Add required fields
+      formData.append('name', data.name);
+      
+      // Add optional fields only if they have values
+      if (data.description) formData.append('description', data.description);
+      if (data.parentId) formData.append('parentId', data.parentId);
+      if (data.sortOrder !== undefined) formData.append('sortOrder', data.sortOrder.toString());
+      if (data.isActive !== undefined) formData.append('isActive', data.isActive.toString());
+      if (data.seoTitle) formData.append('seoTitle', data.seoTitle);
+      if (data.seoDescription) formData.append('seoDescription', data.seoDescription);
+      if (data.seoKeywords) formData.append('seoKeywords', data.seoKeywords);
+      
+      // Add image
       formData.append('image', image);
-    }
 
-    const response = await post<AdminCategory>('/categories/with-image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    
-    if (response.success && response.data) {
+      const response = await post<AdminCategory>('/admin/categories', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       return response.data;
     } else {
-      throw new Error(response.message || 'Failed to create category');
+      // Use JSON when no image
+      const response = await post<AdminCategory>('/admin/categories', data);
+      return response.data;
     }
   },
 
   /**
-   * Create category without image (JSON only)
-   * POST /api/v1/categories
+   * Update category with or without image
+   * PUT /admin/categories/:id
    */
-  createCategory: async (data: CreateCategoryDto): Promise<AdminCategory> => {
-    const response = await post<AdminCategory>('/categories', data);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to create category');
-    }
-  },
-
-  /**
-   * Update category with image
-   * PUT /api/v1/categories/:id/with-image
-   */
-  updateCategoryWithImage: async (id: string, data: UpdateCategoryDto, image?: File): Promise<AdminCategory> => {
-    const formData = new FormData();
-    
-    // Add fields that are being updated
-    if (data.name) formData.append('name', data.name);
-    if (data.description) formData.append('description', data.description);
-    if (data.parentId) formData.append('parentId', data.parentId);
-    if (data.sortOrder !== undefined) formData.append('sortOrder', data.sortOrder.toString());
-    if (data.isActive !== undefined) formData.append('isActive', data.isActive.toString());
-    if (data.seoTitle) formData.append('seoTitle', data.seoTitle);
-    if (data.seoDescription) formData.append('seoDescription', data.seoDescription);
-    if (data.seoKeywords) formData.append('seoKeywords', data.seoKeywords);
-    
-    // Add image if provided
+  updateCategory: async (id: string, data: UpdateCategoryDto, image?: File): Promise<AdminCategory> => {
     if (image) {
+      // Use FormData when image is provided
+      const formData = new FormData();
+      
+      // Add fields that are being updated
+      if (data.name) formData.append('name', data.name);
+      if (data.description) formData.append('description', data.description);
+      if (data.parentId) formData.append('parentId', data.parentId);
+      if (data.sortOrder !== undefined) formData.append('sortOrder', data.sortOrder.toString());
+      if (data.isActive !== undefined) formData.append('isActive', data.isActive.toString());
+      if (data.seoTitle) formData.append('seoTitle', data.seoTitle);
+      if (data.seoDescription) formData.append('seoDescription', data.seoDescription);
+      if (data.seoKeywords) formData.append('seoKeywords', data.seoKeywords);
+      
+      // Add image
       formData.append('image', image);
-    }
 
-    const response = await put<AdminCategory>(`/categories/${id}/with-image`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    
-    if (response.success && response.data) {
+      const response = await put<AdminCategory>(`/admin/categories/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       return response.data;
     } else {
-      throw new Error(response.message || 'Failed to update category');
-    }
-  },
-
-  /**
-   * Update category without image
-   * PUT /api/v1/categories/:id
-   */
-  updateCategory: async (id: string, data: UpdateCategoryDto): Promise<AdminCategory> => {
-    const response = await put<AdminCategory>(`/categories/${id}`, data);
-    
-    if (response.success && response.data) {
+      // Use JSON when no image
+      const response = await put<AdminCategory>(`/admin/categories/${id}`, data);
       return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to update category');
     }
   },
 
   /**
    * Delete category
-   * DELETE /api/v1/categories/:id
+   * DELETE /admin/categories/:id
    */
   deleteCategory: async (id: string, moveProductsTo?: string): Promise<void> => {
-    const response = await del(`/categories/${id}`, {
+    await del(`/admin/categories/${id}`, {
       params: { moveProductsTo }
     });
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to delete category');
-    }
   },
 
   /**
    * Bulk update categories
-   * PATCH /api/v1/categories/bulk
+   * PATCH /admin/categories/bulk
    */
   bulkUpdateCategories: async (categoryIds: string[], data: {
     isActive?: boolean;
     parentId?: string;
     sortOrder?: number;
   }): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/categories/bulk', {
+    const response = await patch<{ updated: number }>('/admin/categories/bulk', {
       categoryIds,
       ...data
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to bulk update categories');
-    }
+    return response.data;
   },
 
   /**
    * Reorder categories
-   * PATCH /api/v1/categories/reorder
+   * PATCH /admin/categories/reorder
    */
   reorderCategories: async (categoryOrders: {
     id: string;
     sortOrder: number;
     parentId?: string;
   }[]): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/categories/reorder', {
+    const response = await patch<{ updated: number }>('/admin/categories/reorder', {
       categoryOrders
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to reorder categories');
-    }
+    return response.data;
   },
 
   /**
    * Get category analytics
-   * GET /api/v1/categories/analytics
+   * GET /admin/categories/analytics
    */
   getCategoryAnalytics: async (): Promise<CategoryAnalytics> => {
-    const response = await get<CategoryAnalytics>('/categories/analytics');
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get category analytics');
-    }
+    const response = await get<CategoryAnalytics>('/admin/categories/analytics');
+    return response.data;
   },
 
   /**
    * Get categories with product count
-   * GET /api/v1/categories/with-product-count
+   * GET /admin/categories/with-product-count
    */
   getCategoriesWithProductCount: async (): Promise<{
     id: string;
@@ -299,34 +244,24 @@ const adminCategoriesApi = {
       name: string;
       productCount: number;
       revenue: string;
-    }[]>('/categories/with-product-count');
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get categories with product count');
-    }
+    }[]>('/admin/categories/with-product-count');
+    return response.data;
   },
 
   /**
    * Search categories
-   * GET /api/v1/categories/search
+   * GET /admin/categories/search
    */
   searchCategories: async (query: string, limit?: number): Promise<AdminCategory[]> => {
-    const response = await get<AdminCategory[]>('/categories/search', { 
+    const response = await get<AdminCategory[]>('/admin/categories/search', { 
       params: { q: query, limit } 
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to search categories');
-    }
+    return response.data;
   },
 
   /**
    * Validate category structure
-   * GET /api/v1/categories/validate-structure
+   * GET /admin/categories/validate-structure
    */
   validateCategoryStructure: async (): Promise<{
     isValid: boolean;
@@ -343,26 +278,21 @@ const adminCategoriesApi = {
         categoryId: string;
         description: string;
       }[];
-    }>('/categories/validate-structure');
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to validate category structure');
-    }
+    }>('/admin/categories/validate-structure');
+    return response.data;
   },
 
   /**
    * Export categories
-   * GET /api/v1/categories/export
+   * GET /admin/categories/export
    */
   exportCategories: (format: 'csv' | 'excel' = 'csv'): string => {
-    return `/api/v1/categories/export?format=${format}`;
+    return `/admin/categories/export?format=${format}`;
   },
 
   /**
    * Import categories from CSV/Excel
-   * POST /api/v1/categories/import
+   * POST /admin/categories/import
    */
   importCategories: async (file: File): Promise<{
     success: number;
@@ -376,17 +306,12 @@ const adminCategoriesApi = {
       success: number;
       failed: number;
       errors: string[];
-    }>('/categories/import', formData, {
+    }>('/admin/categories/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to import categories');
-    }
+    return response.data;
   }
 };
 

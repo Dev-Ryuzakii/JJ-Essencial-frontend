@@ -1,14 +1,16 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'your-supabase-url';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// API Response structure as per documentation
+// API Response structure
 export type ApiResponse<T> = {
   data: T;
+};
+
+// API Error response structure
+export type ApiError = {
+  statusCode: number;
+  message: string;
+  error: string;
 };
 
 // Paginated response structure
@@ -22,15 +24,6 @@ export type PaginatedResponse<T> = {
   };
 };
 
-// API Error response structure
-export type ApiError = {
-  success: false;
-  message: string;
-  error: string;
-  statusCode: number;
-  timestamp: string;
-};
-
 // Base API URL from the documentation
 const API_BASE_URL = import.meta.env.PROD
   ? 'https://api.jjessential.com/api/v1'
@@ -42,61 +35,69 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Adding CORS support
-  withCredentials: false, // Set to true if your backend requires credentials
-  timeout: 15000, // Increased timeout for better reliability
+  timeout: 10000,
 });
 
-// Request interceptor for adding auth token
+// Request interceptor - Smart token selection
 apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('adminToken') || localStorage.getItem('userToken');
+  (config: any) => {
+    // Only use admin token for actual admin endpoints
+    const isAdminRequest = config.url?.includes('/admin');
+    
+    // Choose the appropriate token
+    let token;
+    
+    if (isAdminRequest) {
+      token = localStorage.getItem('adminToken');
+      console.log('Using admin token for admin request:', config.url);
+    } else {
+      // For non-admin requests, prefer the user token
+      token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      console.log('Using user token for request:', config.url);
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log(`API Request: Using token for ${config.url}`);
+    } else {
+      console.warn(`API Request: No token found for ${config.url}`);
     }
+    
     return config;
   },
-  (error) => Promise.reject(error)
+  (error: any) => {
+    return Promise.reject(error);
+  }
 );
 
 // Response interceptor for handling errors
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response.data,
   (error: AxiosError<ApiError>) => {
-    console.error('API Error:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-    
     // Handle auth errors (401)
     if (error.response?.status === 401) {
       // Check if this is an admin route
-      if (window.location.pathname.startsWith('/admin')) {
+      const isAdminRoute = error.config?.url?.startsWith('/admin') || error.config?.url?.startsWith('/auth/admin');
+      
+      if (isAdminRoute) {
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminUser');
-        // Redirect to admin login if not already there
-        if (window.location.pathname !== '/admin/login') {
+        if (!window.location.pathname.startsWith('/admin/login')) {
           window.location.href = '/admin/login';
         }
       } else {
-        // Handle regular user auth error
-        localStorage.removeItem('userToken');
+        localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // Redirect to login if not already there
-        if (window.location.pathname !== '/login') {
+        if (!window.location.pathname.startsWith('/login')) {
           window.location.href = '/login';
         }
       }
     }
     
     return Promise.reject(error.response?.data || {
-      success: false,
-      message: error.message,
-      error: 'Unknown error',
       statusCode: error.response?.status || 500,
-      timestamp: new Date().toISOString()
+      message: error.message,
+      error: 'Unknown error'
     });
   }
 );

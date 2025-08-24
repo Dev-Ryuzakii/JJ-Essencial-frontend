@@ -1,63 +1,53 @@
-import { get, post, put, patch, del } from './apiClient';
-import type { PaginatedResponse } from './apiClient';
+import { get, post, put, del } from './apiClient';
+// Remove the PaginatedResponse import as we're not using it anymore
 
 // Admin product interfaces extending base product types
 export interface AdminProduct {
   id: string;
   name: string;
+  slug: string;
   description: string;
-  price: string;
-  discountPrice?: string;
-  sku: string;
+  price: string; // Decimal as string, format with toFixed(2)
+  salePrice: string | null; // Decimal as string when on sale
   stock: number;
-  lowStockThreshold: number;
+  sku: string;
+  images: ProductImage[];
   categoryId: string;
   category: {
     id: string;
     name: string;
     slug: string;
   };
-  images: string[];
-  specifications?: Record<string, any>;
-  tags: string[];
+  featured: boolean;
   isActive: boolean;
-  isFeatured: boolean;
-  isDigital: boolean;
-  weight?: number;
-  dimensions?: {
-    length: number;
-    width: number;
-    height: number;
-  };
-  rating: number;
-  reviewCount: number;
-  totalSold: number;
-  revenue: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  attributes: ProductAttribute[];
+}
+
+export interface ProductImage {
+  id: string;
+  url: string;
+  isMain: boolean;
+  sortOrder: number;
+}
+
+export interface ProductAttribute {
+  id: string;
+  name: string;
+  value: string;
 }
 
 export interface CreateProductDto {
   name: string;
   description: string;
   price: number;
-  discountPrice?: number;
-  sku: string;
   stock: number;
-  lowStockThreshold?: number;
+  sku: string;
   categoryId: string;
-  specifications?: Record<string, any>;
-  tags?: string[];
+  lowStockThreshold?: number;
   isActive?: boolean;
-  isFeatured?: boolean;
-  isDigital?: boolean;
-  weight?: number;
-  dimensions?: {
-    length: number;
-    width: number;
-    height: number;
-  };
+  // Note: Images are uploaded separately
 }
 
 export interface UpdateProductDto extends Partial<CreateProductDto> {}
@@ -67,331 +57,124 @@ export interface AdminProductFilter {
   limit?: number;
   search?: string;
   categoryId?: string;
-  isActive?: boolean;
-  isFeatured?: boolean;
-  isDigital?: boolean;
-  lowStock?: boolean;
-  minPrice?: number;
-  maxPrice?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  startDate?: string;
-  endDate?: string;
+  sortOrder?: 'ASC' | 'DESC';
 }
 
-export interface ProductAnalytics {
-  totalProducts: number;
-  activeProducts: number;
-  featuredProducts: number;
-  lowStockProducts: number;
-  outOfStockProducts: number;
-  totalRevenue: string;
-  averagePrice: string;
-  topSellingProducts: {
-    id: string;
-    name: string;
-    sku: string;
-    totalSold: number;
-    revenue: string;
-  }[];
-  recentlyAddedProducts: AdminProduct[];
-  categoryBreakdown: {
-    categoryId: string;
-    categoryName: string;
-    productCount: number;
-    revenue: string;
-  }[];
+// API Response structure for admin products
+export interface AdminProductsResponse {
+  success: boolean;
+  message: string;
+  data: AdminProduct[];
+  timestamp: string;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+    hasNext: boolean;
+  };
 }
 
 const adminProductsApi = {
   /**
    * Get all products (Admin view with extended data)
-   * GET /api/v1/admin/products
+   * GET /admin/products
    */
-  getProducts: async (filters?: AdminProductFilter): Promise<PaginatedResponse<AdminProduct>> => {
-    const response = await get<PaginatedResponse<AdminProduct>>('/admin/products', { params: filters });
+  getProducts: async (filters?: AdminProductFilter): Promise<AdminProductsResponse> => {
+    const params: any = {};
     
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get products');
+    // Add supported parameters with minimal approach like categories
+    if (filters?.search && filters.search.trim()) {
+      params.search = filters.search.trim();
     }
+    if (filters?.page) params.page = filters.page;
+    if (filters?.limit) params.limit = filters.limit;
+    if (filters?.sortBy) params.sortBy = filters.sortBy;
+    if (filters?.sortOrder) params.sortOrder = filters.sortOrder;
+    
+    console.log('Calling API with params:', params);
+    const response = await get<any>('/admin/products', { params });
+    console.log('Raw API response:', response);
+    return response as AdminProductsResponse;
   },
 
   /**
    * Get product details (Admin view)
-   * GET /api/v1/admin/products/:id
+   * GET /admin/products/:id
    */
   getProduct: async (id: string): Promise<AdminProduct> => {
     const response = await get<AdminProduct>(`/admin/products/${id}`);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get product details');
-    }
+    return response.data;
   },
 
   /**
-   * Create product with images
-   * POST /api/v1/admin/products/with-images
+   * Create product 
+   * POST /admin/products
    */
-  createProductWithImages: async (data: CreateProductDto, images?: File[]): Promise<AdminProduct> => {
-    const formData = new FormData();
-    
-    // Add product data
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (typeof value === 'object') {
-          formData.append(key, JSON.stringify(value));
-        } else {
-          formData.append(key, value.toString());
-        }
-      }
-    });
-    
-    // Add images if provided
-    if (images && images.length > 0) {
-      images.forEach(image => {
-        formData.append('images', image);
-      });
-    }
-
-    const response = await post<AdminProduct>('/admin/products/with-images', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to create product');
-    }
+  createProduct: async (data: CreateProductDto): Promise<AdminProduct> => {
+    const response = await post<AdminProduct>('/admin/products', data);
+    return response.data;
   },
 
   /**
-   * Update product with images
-   * PUT /api/v1/admin/products/:id/with-images
-   */
-  updateProductWithImages: async (id: string, data: UpdateProductDto, images?: File[]): Promise<AdminProduct> => {
-    const formData = new FormData();
-    
-    // Add product data
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (typeof value === 'object') {
-          formData.append(key, JSON.stringify(value));
-        } else {
-          formData.append(key, value.toString());
-        }
-      }
-    });
-    
-    // Add images if provided
-    if (images && images.length > 0) {
-      images.forEach(image => {
-        formData.append('images', image);
-      });
-    }
-
-    const response = await put<AdminProduct>(`/admin/products/${id}/with-images`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to update product');
-    }
-  },
-
-  /**
-   * Update product without images
-   * PUT /api/v1/admin/products/:id
+   * Update product
+   * PUT /admin/products/:id
    */
   updateProduct: async (id: string, data: UpdateProductDto): Promise<AdminProduct> => {
     const response = await put<AdminProduct>(`/admin/products/${id}`, data);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to update product');
-    }
+    return response.data;
   },
 
   /**
    * Delete product
-   * DELETE /api/v1/admin/products/:id
+   * DELETE /admin/products/:id
    */
   deleteProduct: async (id: string): Promise<void> => {
-    const response = await del(`/admin/products/${id}`);
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to delete product');
-    }
+    await del(`/admin/products/${id}`);
   },
 
   /**
-   * Bulk update products
-   * PATCH /api/v1/admin/products/bulk
+   * Upload product images
+   * POST /admin/products/:productId/images?isMain=true
    */
-  bulkUpdateProducts: async (productIds: string[], data: {
-    isActive?: boolean;
-    isFeatured?: boolean;
-    categoryId?: string;
-    discountPrice?: number;
-  }): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/admin/products/bulk', {
-      productIds,
-      ...data
-    });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to bulk update products');
-    }
-  },
-
-  /**
-   * Bulk delete products
-   * DELETE /api/v1/admin/products/bulk
-   */
-  bulkDeleteProducts: async (productIds: string[]): Promise<{ deleted: number }> => {
-    const response = await del<{ deleted: number }>('/admin/products/bulk', {
-      data: { productIds }
-    });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to bulk delete products');
-    }
-  },
-
-  /**
-   * Get product analytics
-   * GET /api/v1/admin/products/analytics
-   */
-  getProductAnalytics: async (period?: '7days' | '30days' | '90days' | '1year'): Promise<ProductAnalytics> => {
-    const response = await get<ProductAnalytics>('/admin/products/analytics', { 
-      params: { period } 
-    });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get product analytics');
-    }
-  },
-
-  /**
-   * Get low stock products
-   * GET /api/v1/admin/products/low-stock
-   */
-  getLowStockProducts: async (threshold?: number): Promise<AdminProduct[]> => {
-    const response = await get<AdminProduct[]>('/admin/products/low-stock', { 
-      params: { threshold } 
-    });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get low stock products');
-    }
-  },
-
-  /**
-   * Get out of stock products
-   * GET /api/v1/admin/products/out-of-stock
-   */
-  getOutOfStockProducts: async (): Promise<AdminProduct[]> => {
-    const response = await get<AdminProduct[]>('/admin/products/out-of-stock');
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to get out of stock products');
-    }
-  },
-
-  /**
-   * Update product stock
-   * PATCH /api/v1/admin/products/:id/stock
-   */
-  updateProductStock: async (id: string, data: {
-    stock: number;
-    lowStockThreshold?: number;
-    reason?: string;
-  }): Promise<AdminProduct> => {
-    const response = await patch<AdminProduct>(`/admin/products/${id}/stock`, data);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to update product stock');
-    }
-  },
-
-  /**
-   * Duplicate product
-   * POST /api/v1/admin/products/:id/duplicate
-   */
-  duplicateProduct: async (id: string, data?: {
-    name?: string;
-    sku?: string;
-  }): Promise<AdminProduct> => {
-    const response = await post<AdminProduct>(`/admin/products/${id}/duplicate`, data);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to duplicate product');
-    }
-  },
-
-  /**
-   * Export products
-   * GET /api/v1/admin/products/export
-   */
-  exportProducts: (format: 'csv' | 'excel' = 'csv', filters?: AdminProductFilter): string => {
-    const queryParams = new URLSearchParams({
-      format,
-      ...(filters as Record<string, string>)
-    }).toString();
-    return `/api/v1/admin/products/export?${queryParams}`;
-  },
-
-  /**
-   * Import products from CSV/Excel
-   * POST /api/v1/admin/products/import
-   */
-  importProducts: async (file: File): Promise<{
-    success: number;
-    failed: number;
-    errors: string[];
-  }> => {
+  uploadProductImages: async (
+    productId: string, 
+    files: File[], 
+    isMain: boolean = false
+  ): Promise<ProductImage[]> => {
     const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await post<{
-      success: number;
-      failed: number;
-      errors: string[];
-    }>('/admin/products/import', formData, {
+    
+    // Add all image files with the field name "images"
+    for (let i = 0; i < files.length; i++) {
+      formData.append('images', files[i]);
+    }
+    
+    // Build the URL with query parameter
+    const url = `/admin/products/${productId}/images${isMain ? '?isMain=true' : ''}`;
+    
+    const response = await post<ProductImage[]>(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to import products');
-    }
+    return response.data;
+  },
+
+  /**
+   * Set main product image
+   * PUT /admin/products/:productId/images/:imageId/main
+   */
+  setMainImage: async (productId: string, imageId: string): Promise<void> => {
+    await put(`/admin/products/${productId}/images/${imageId}/main`, {});
+  },
+
+  /**
+   * Delete product image
+   * DELETE /admin/products/:productId/images/:imageId
+   */
+  deleteProductImage: async (productId: string, imageId: string): Promise<void> => {
+    await del(`/admin/products/${productId}/images/${imageId}`);
   }
 };
 

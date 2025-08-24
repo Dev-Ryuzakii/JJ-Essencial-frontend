@@ -1,8 +1,8 @@
-import { supabase } from './apiClient'
+// UPDATED VERSION - CACHE BREAKER 2025-08-22
+import { post, get, patch } from './apiClient';
 
-/**
- * Updated DTOs matching Supabase auth structure
- */
+// Make sure we're using the correct apiClient and not importing anything from Supabase
+console.log('authApi.ts: Loaded - using backend API client only, NO SUPABASE');
 
 // User profile response structure
 export interface UserProfile {
@@ -38,212 +38,198 @@ export interface ProfileUpdateData {
   fullName: string;
 }
 
+// Admin-specific auth functions - Uses dedicated admin endpoints with /api/v1
+export const adminAuthApi = {
+  /**
+   * Admin signin using dedicated admin signin endpoint
+   */
+  signin: async (data: SignInData): Promise<AuthResponse> => {
+    console.log('Admin signin: Using /api/v1/auth/admin/signin endpoint');
+    
+    try {
+      // Use the dedicated admin signin endpoint
+      const response = await post<AuthResponse>('/auth/admin/signin', data);
+      console.log('Admin signin: Backend response received:', { success: true });
+      
+      const { access_token, user } = response.data;
+
+      // Check if user has admin role
+      if (user.role !== 'ADMIN') {
+        throw new Error('Access denied. Admin privileges required.');
+      }
+
+      // Store admin authentication data
+      localStorage.setItem('adminToken', access_token);
+      localStorage.setItem('adminUser', JSON.stringify(user));
+
+      return response.data;
+    } catch (error) {
+      console.error('Admin signin: Backend error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Admin signout - clear local storage
+   */
+  signout: async (): Promise<void> => {
+    console.log('Admin signout: Clearing local storage');
+    
+    // Clear admin storage
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    console.log('Admin signout: Local storage cleared');
+  },
+
+  /**
+   * Validate admin token - LOCAL STORAGE CHECK ONLY, NO API CALLS
+   * Version: 2024-FIXED - No server calls
+   */
+  validateToken: async (): Promise<boolean> => {
+    console.log('Admin validate: Using backend API endpoint');
+    console.log('Admin validate: LOCAL STORAGE CHECK ONLY - NO API CALLS - VERSION 2024-FIXED');
+    
+    try {
+      const adminToken = localStorage.getItem('adminToken');
+      const adminUserData = localStorage.getItem('adminUser');
+      
+      console.log('Admin validate: Checking storage...', { 
+        hasToken: !!adminToken, 
+        hasUserData: !!adminUserData 
+      });
+      
+      if (!adminToken || !adminUserData) {
+        console.log('Admin validate: Missing token or user data');
+        console.log('Admin validate: Token validation failed');
+        return false;
+      }
+      
+      const user = JSON.parse(adminUserData);
+      const isAdmin = user.role === 'ADMIN';
+      console.log('Admin validate: User role check - isAdmin:', isAdmin);
+      
+      if (!isAdmin) {
+        console.log('Admin validate: Token validation failed');
+        return false;
+      }
+      
+      console.log('Admin validate: Token validation successful');
+      return true;
+    } catch (error) {
+      console.log('Admin validate: Storage error:', error);
+      console.log('Admin validate: Token validation failed');
+      return false;
+    }
+  },
+
+  /**
+   * Change admin password using admin change password endpoint
+   */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+    console.log('Admin change password: Using /api/v1/auth/admin/change-password endpoint');
+    
+    const response = await post<{ message: string }>('/auth/admin/change-password', {
+      currentPassword,
+      newPassword
+    });
+    return response.data;
+  }
+};
+
 const authApi = {
   /**
-   * Sign up new user
-   * @param data User registration data
-   * @param isAdmin Optional flag to create an admin user
+   * Sign up new user (regular user endpoint)
    */
-  signup: async (data: SignUpData, isAdmin: boolean = false): Promise<AuthResponse> => {
-    const { data: authData, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          full_name: data.fullName,
-          role: isAdmin ? 'ADMIN' : 'USER'
-        }
-      }
-    });
+  signup: async (data: SignUpData): Promise<AuthResponse> => {
+    const response = await post<AuthResponse>('/auth/signup', data);
+    const { access_token, user } = response.data;
 
-    if (error) throw error;
+    // Store authentication data
+    localStorage.setItem('token', access_token);
+    localStorage.setItem('user', JSON.stringify(user));
 
-    const userData = {
-      id: authData.user?.id || '',
-      email: authData.user?.email || '',
-      fullName: authData.user?.user_metadata?.full_name || '',
-      role: isAdmin ? 'ADMIN' : 'USER',
-      createdAt: authData.user?.created_at || '',
-      updatedAt: authData.user?.updated_at || ''
-    };
-
-    const token = authData.session?.access_token || '';
-
-    // Store in the appropriate storage based on role
-    if (isAdmin) {
-      localStorage.setItem('adminToken', token);
-      localStorage.setItem('adminUser', JSON.stringify(userData));
-    } else {
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
+    // If user is admin, also store in admin-specific storage
+    if (user.role === 'ADMIN') {
+      localStorage.setItem('adminToken', access_token);
+      localStorage.setItem('adminUser', JSON.stringify(user));
     }
 
-    return {
-      access_token: token,
-      user: userData
-    };
+    return response.data;
   },
 
   /**
    * Sign out user
    */
   signout: async (): Promise<void> => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
   },
 
   /**
    * Get current user profile
    */
   getProfile: async (): Promise<UserProfile> => {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error) throw error;
-    if (!user) throw new Error('No user found');
-
-    return {
-      id: user.id,
-      email: user.email || '',
-      fullName: user.user_metadata?.full_name || '',
-      role: user.role || 'user',
-      createdAt: user.created_at || '',
-      updatedAt: user.updated_at || ''
-    };
+    const response = await get<UserProfile>('/users/profile');
+    return response.data;
   },
 
   /**
    * Update user profile
    */
   updateProfile: async (data: ProfileUpdateData): Promise<UserProfile> => {
-    const { data: userData, error } = await supabase.auth.updateUser({
-      data: { full_name: data.fullName }
-    });
-
-    if (error) throw error;
-    if (!userData.user) throw new Error('No user found');
-
-    return {
-      id: userData.user.id,
-      email: userData.user.email || '',
-      fullName: userData.user.user_metadata?.full_name || '',
-      role: userData.user.role || 'user',
-      createdAt: userData.user.created_at || '',
-      updatedAt: userData.user.updated_at || ''
-    };
+    const response = await patch<UserProfile>('/users/profile', data);
+    return response.data;
   },
 
   /**
    * Reset password
    */
   resetPassword: async (email: string): Promise<{ message: string }> => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) throw error;
-    return { message: 'Password reset email sent' };
+    const response = await post<{ message: string }>('/auth/reset-password', { email });
+    return response.data;
   },
 
   /**
    * Check if user is logged in
    */
   isAuthenticated: async (): Promise<boolean> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session !== null;
+    try {
+      await authApi.getProfile();
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   /**
    * Get current user data
    */
   getUser: async (): Promise<UserProfile | null> => {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error || !user) return null;
-
-    return {
-      id: user.id,
-      email: user.email || '',
-      fullName: user.user_metadata?.full_name || '',
-      role: user.role || 'user',
-      createdAt: user.created_at || '',
-      updatedAt: user.updated_at || ''
-    };
-  },
-
-  /**
-   * Sign up new admin user
-   */
-  signupAdmin: async (data: SignUpData): Promise<AuthResponse> => {
-    const { data: authData, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          full_name: data.fullName,
-          role: 'ADMIN'
-        }
-      }
-    });
-
-    if (error) throw error;
-
-    const userData = {
-      id: authData.user?.id || '',
-      email: authData.user?.email || '',
-      fullName: authData.user?.user_metadata?.full_name || '',
-      role: 'ADMIN',
-      createdAt: authData.user?.created_at || '',
-      updatedAt: authData.user?.updated_at || ''
-    };
-
-    // Store admin data immediately
-    if (authData.session) {
-      localStorage.setItem('adminToken', authData.session.access_token);
-      localStorage.setItem('adminUser', JSON.stringify(userData));
+    try {
+      return await authApi.getProfile();
+    } catch {
+      return null;
     }
-
-    return {
-      access_token: authData.session?.access_token || '',
-      user: userData
-    };
   },
 
   /**
-   * Sign in user (works for both admin and regular users)
+   * Sign in user (regular user endpoint)
    */
   signin: async (data: SignInData): Promise<AuthResponse> => {
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    });
+    const response = await post<AuthResponse>('/auth/signin', data);
+    const { access_token, user } = response.data;
 
-    if (error) throw error;
+    // Store authentication data
+    localStorage.setItem('token', access_token);
+    localStorage.setItem('user', JSON.stringify(user));
 
-    const isAdmin = authData.user?.user_metadata?.role === 'ADMIN';
-    const token = authData.session?.access_token || '';
-    const userData = {
-      id: authData.user?.id || '',
-      email: authData.user?.email || '',
-      fullName: authData.user?.user_metadata?.full_name || '',
-      role: isAdmin ? 'ADMIN' : 'USER',
-      createdAt: authData.user?.created_at || '',
-      updatedAt: authData.user?.updated_at || ''
-    };
-
-    // Store in the appropriate storage based on role
-    if (isAdmin) {
-      localStorage.setItem('adminToken', token);
-      localStorage.setItem('adminUser', JSON.stringify(userData));
-    } else {
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
+    // If user is admin, also store in admin-specific storage
+    if (user.role === 'ADMIN') {
+      localStorage.setItem('adminToken', access_token);
+      localStorage.setItem('adminUser', JSON.stringify(user));
     }
 
-    return {
-      access_token: token,
-      user: userData
-    };
+    return response.data;
   }
 }
 
