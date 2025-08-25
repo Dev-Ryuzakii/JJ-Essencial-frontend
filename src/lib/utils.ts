@@ -70,27 +70,7 @@ export function validatePhone(phone: string): boolean {
 
 export function getImageUrl(url: string): string {
   if (!url) return '/placeholder-image.jpg'
-  
-  // Check if the URL is a JSON string containing image information
-  if (url.startsWith('{') && url.endsWith('}')) {
-    try {
-      // Parse the JSON string
-      const imageObject = JSON.parse(url)
-      
-      // Check if it has a direct URL property
-      if (imageObject.url && typeof imageObject.url === 'string') {
-        console.log('Extracted URL from JSON object:', imageObject.url)
-        return imageObject.url
-      }
-    } catch (error) {
-      console.error('Failed to parse image JSON:', error)
-    }
-  }
-  
-  // Handle regular URLs
   if (url.startsWith('http')) return url
-  
-  // Handle relative paths
   return `${import.meta.env.VITE_API_URL}/uploads/${url}`
 }
 
