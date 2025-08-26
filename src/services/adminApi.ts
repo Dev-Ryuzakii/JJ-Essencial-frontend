@@ -23,8 +23,8 @@ export * from './adminAnalyticsApi';
 // Response structure as per API documentation
 export interface ApiResponse<T> {
   success: boolean;
-  message: string;
-  data: T;
+  message?: string;
+  data?: T;
   timestamp: string;
 }
 

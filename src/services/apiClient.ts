@@ -4,7 +4,10 @@ import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 // API Response structure
 export type ApiResponse<T> = {
   data: T;
-};
+  success: boolean;
+  message?: string;
+  status: number;
+}
 
 // API Error response structure
 export type ApiError = {

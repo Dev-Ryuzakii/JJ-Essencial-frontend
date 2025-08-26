@@ -1,9 +1,7 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import Layout from './components/layout/Layout'
-// Import the debug utility for token inspection
-import { checkTokenStatus } from './utils/debugToken'
 
 // Pages
 import Home from './pages/Home'
@@ -18,8 +16,6 @@ import Profile from './pages/Profile'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
 import Wishlist from './pages/Wishlist'
-import WishlistTest from './pages/WishlistTest'
-import ImageTest from './pages/ImageTest'
 import Categories from './pages/Categories'
 import Search from './pages/Search'
 import About from './pages/About'
@@ -39,15 +35,6 @@ const TradeRoutes = import.meta.env.VITE_ENABLE_TRADES === 'true'
 const AdminRoutes = React.lazy(() => import('./routes/AdminRoutes'))
 
 function App() {
-  // Debug token status on component mount
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      // Check token status in development mode only
-      const tokenStatus = checkTokenStatus();
-      console.log('Current token status:', tokenStatus);
-    }
-  }, []);
-
   return (
     <div className="App">
       {/* Toast Notifications */}
@@ -172,14 +159,6 @@ function App() {
           
           {/* Admin login should not be redirected */}
           <Route path="/admin-login-test" element={<Layout><AdminLoginTest /></Layout>} />
-          
-          {/* Development testing routes */}
-          {process.env.NODE_ENV === 'development' && (
-            <>
-              <Route path="/wishlist-test" element={<Layout><WishlistTest /></Layout>} />
-              <Route path="/image-test/:imageUrl" element={<Layout><ImageTest /></Layout>} />
-            </>
-          )}
 
           {/* Catch-all Route */}
           <Route path="/404" element={<Layout><NotFound /></Layout>} />
