@@ -1,5 +1,39 @@
 @import "tailwindcss";
 
+/* Mobile touch improvements */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection for content */
+p, span, div[contenteditable], input, textarea {
+  -webkit-user-select: text;
+  -khtml-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Touch manipulation for interactive elements */
+button, a, [role="button"], [onclick] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Improve button and link interactions on mobile */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    min-height: 44px; /* Apple's recommended minimum touch target size */
+    min-width: 44px;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

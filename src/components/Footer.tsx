@@ -40,7 +40,7 @@ export const Footer: React.FC = () => {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">JJ</span>
               </div>
-              <span className="font-bold text-xl">Essencial</span>
+              <span className="font-bold text-xl">Essential</span>
             </div>
             <p className="text-gray-400 text-sm">
               Your one-stop destination for quality products and exceptional service. 
@@ -49,7 +49,7 @@ export const Footer: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-sm text-gray-400">
                 <Mail className="w-4 h-4" />
-                <span>support@jjessencial.com</span>
+                <span>support@jjEssential.com</span>
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-400">
                 <Phone className="w-4 h-4" />
@@ -117,7 +117,7 @@ export const Footer: React.FC = () => {
         {/* Bottom Section */}
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © {new Date().getFullYear()} JJ Essencial. All rights reserved.
+            © {new Date().getFullYear()} JJ Essential. All rights reserved.
           </p>
           
           {/* Social Links */}

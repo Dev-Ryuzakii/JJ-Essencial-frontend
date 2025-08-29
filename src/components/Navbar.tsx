@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { 
   Search, 
   User, 
@@ -17,6 +17,7 @@ import { useUIStore } from '../store'
 import { Button, Badge } from './ui'
 
 export const Navbar: React.FC = () => {
+  const navigate = useNavigate()
   const { isAuthenticated, user, logout } = useAuth()
   const { getCartCount } = useCart()
   const { 
@@ -28,6 +29,21 @@ export const Navbar: React.FC = () => {
   } = useUIStore()
 
   const cartCount = getCartCount()
+
+  const handleMobileNavigation = (href: string) => {
+    closeMobileMenu()
+    // Small delay to allow menu animation to start
+    setTimeout(() => {
+      navigate(href)
+    }, 50)
+  }
+
+  const handleMobileLogout = () => {
+    closeMobileMenu()
+    setTimeout(() => {
+      logout()
+    }, 50)
+  }
 
   const navigationItems = [
     { name: 'Home', href: '/', icon: Home },
@@ -57,7 +73,7 @@ export const Navbar: React.FC = () => {
                   <span className="text-white font-bold text-lg">JJ</span>
                 </div>
                 <span className="font-bold text-xl text-gray-900">
-                  Essencial
+                  Essential
                 </span>
               </Link>
             </div>
@@ -163,8 +179,17 @@ export const Navbar: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={toggleMobileMenu}
-                className="lg:hidden p-2"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleMobileMenu();
+                }}
+                className="lg:hidden p-3 min-w-[44px] min-h-[44px] touch-manipulation active:scale-95 transition-transform flex items-center justify-center"
+                style={{ 
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation'
+                }}
+                aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
               >
                 {isMobileMenuOpen ? (
                   <X className="w-5 h-5" />
@@ -177,33 +202,91 @@ export const Navbar: React.FC = () => {
         </div>
       </nav>
 
+      {/* Mobile Menu Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-25 z-40"
+          onClick={closeMobileMenu}
+          style={{ 
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation'
+          }}
+        />
+      )}
+
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden bg-white border-b border-gray-200">
+        <div className="lg:hidden bg-white border-b border-gray-200 shadow-lg relative z-50">
           <div className="px-4 pt-2 pb-3 space-y-1">
             {navigationItems.map((item) => (
-              <Link
+              <button
                 key={item.name}
-                to={item.href}
-                onClick={closeMobileMenu}
-                className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                onClick={() => handleMobileNavigation(item.href)}
+                className="block w-full text-left px-4 py-3 min-h-[44px] text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md touch-manipulation active:bg-gray-200 transition-colors"
+                style={{ 
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation'
+                }}
               >
                 {item.name}
-              </Link>
+              </button>
             ))}
             
-            {!isAuthenticated && (
-              <div className="pt-4 space-y-2">
-                <Link to="/login" onClick={closeMobileMenu}>
-                  <Button variant="outline" className="w-full">
-                    Login
-                  </Button>
-                </Link>
-                <Link to="/register" onClick={closeMobileMenu}>
-                  <Button variant="primary" className="w-full">
-                    Sign Up
-                  </Button>
-                </Link>
+            {isAuthenticated ? (
+              <div className="pt-4 space-y-2 border-t border-gray-200">
+                <div className="px-3 py-2 text-sm text-gray-500 font-medium">
+                  {user?.fullName}
+                </div>
+                {userMenuItems.map((item) => (
+                  <button
+                    key={item.name}
+                    onClick={() => handleMobileNavigation(item.href)}
+                    className="flex items-center space-x-2 px-4 py-3 min-h-[44px] text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md touch-manipulation active:bg-gray-200 w-full text-left transition-colors"
+                    style={{ 
+                      WebkitTapHighlightColor: 'transparent',
+                      touchAction: 'manipulation'
+                    }}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={handleMobileLogout}
+                  className="flex items-center space-x-2 px-4 py-3 min-h-[44px] text-base font-medium text-red-600 hover:bg-gray-50 rounded-md w-full text-left touch-manipulation active:bg-gray-200 transition-colors"
+                  style={{ 
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : (
+              <div className="pt-4 space-y-2 border-t border-gray-200">
+                <Button 
+                  onClick={() => handleMobileNavigation('/login')}
+                  variant="outline" 
+                  className="w-full min-h-[44px] touch-manipulation active:scale-95 transition-transform"
+                  style={{ 
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  Login
+                </Button>
+                <Button 
+                  onClick={() => handleMobileNavigation('/register')}
+                  variant="primary" 
+                  className="w-full min-h-[44px] touch-manipulation active:scale-95 transition-transform"
+                  style={{ 
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  Sign Up
+                </Button>
               </div>
             )}
           </div>

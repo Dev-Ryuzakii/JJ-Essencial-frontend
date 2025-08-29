@@ -135,7 +135,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="fixed inset-y-0 left-0 flex flex-col z-40 w-72 max-w-xs bg-white">
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
             <div className="flex items-center">
-              <img src="/logo.svg" alt="JJ Essencial" className="h-8 w-auto" />
+              <img src="/logo.svg" alt="JJ Essential" className="h-8 w-auto" />
               <span className="ml-2 text-xl font-semibold text-gray-800">Admin</span>
             </div>
             <button
@@ -217,7 +217,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
         <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
           <div className="flex items-center h-16 flex-shrink-0 px-6 border-b border-gray-200 bg-white">
-            <img src="/logo.svg" alt="JJ Essencial" className="h-8 w-auto" />
+            <img src="/logo.svg" alt="JJ Essential" className="h-8 w-auto" />
             <span className="ml-2 text-xl font-semibold text-gray-800">Admin</span>
           </div>
           <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
