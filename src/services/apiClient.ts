@@ -27,10 +27,8 @@ export type PaginatedResponse<T> = {
   };
 };
 
-// Base API URL from the documentation
-const API_BASE_URL = import.meta.env.PROD
-  ? 'https://api.jjessential.com/api/v1'
-  : 'http://localhost:3000/api/v1';
+// Base API URL - Use environment variable or production fallback
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1';
 
 // Create axios instance with default config
 const apiClient = axios.create({

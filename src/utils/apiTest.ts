@@ -6,7 +6,8 @@ import axios from 'axios';
 export const testApiConnection = async () => {
   try {
     // Test connection to the base API URL
-    const response = await axios.get('http://localhost:3000/api/v1', {
+    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1';
+    const response = await axios.get(API_URL, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -45,8 +46,9 @@ export const testApiConnection = async () => {
 export const testSignupEndpoint = async () => {
   try {
     // Test the signup endpoint with minimal data
+    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1';
     const response = await axios.post(
-      'http://localhost:3000/api/v1/auth/signup',
+      `${API_URL}/auth/signup`,
       {
         email: 'test@example.com',
         password: 'password123',

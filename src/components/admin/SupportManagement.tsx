@@ -99,7 +99,7 @@ export default function SupportManagement() {
       
       // For development purposes, show a message about backend availability
       if (errorMessage.includes('fetch') || errorMessage.includes('network') || errorMessage.includes('ECONNREFUSED')) {
-        setError('Unable to connect to backend server. Please ensure the backend is running on localhost:3000')
+        setError('Unable to connect to backend server. Please check your connection and try again.')
       }
     } finally {
       setLoading(false)
