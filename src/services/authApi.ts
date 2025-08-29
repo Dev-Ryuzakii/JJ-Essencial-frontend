@@ -141,20 +141,35 @@ const authApi = {
    * Sign up new user (regular user endpoint)
    */
   signup: async (data: SignUpData): Promise<AuthResponse> => {
-    const response = await post<AuthResponse>('/auth/signup', data);
-    const { access_token, user } = response.data;
+    console.log('authApi.signup: Making request to /auth/signup endpoint');
+    try {
+      const response = await post<AuthResponse>('/auth/signup', data);
+      console.log('authApi.signup: Server response:', response);
+      
+      const { access_token, user } = response.data;
 
-    // Store authentication data
-    localStorage.setItem('token', access_token);
-    localStorage.setItem('user', JSON.stringify(user));
+      // Store authentication data
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
 
-    // If user is admin, also store in admin-specific storage
-    if (user.role === 'ADMIN') {
-      localStorage.setItem('adminToken', access_token);
-      localStorage.setItem('adminUser', JSON.stringify(user));
+      // If user is admin, also store in admin-specific storage
+      if (user.role === 'ADMIN') {
+        localStorage.setItem('adminToken', access_token);
+        localStorage.setItem('adminUser', JSON.stringify(user));
+      }
+
+      return response.data;
+    } catch (error: any) {
+      // Check if the error is a 409 conflict (email already exists)
+      if (error.statusCode === 409 || error.status === 409) {
+        console.error('Registration failed: Email already exists', error);
+        throw new Error('This email is already registered. Please use a different email or try to login.');
+      }
+      
+      // Handle any other errors
+      console.error('Registration error in authApi.signup:', error);
+      throw error;
     }
-
-    return response.data;
   },
 
   /**

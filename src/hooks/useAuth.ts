@@ -73,17 +73,37 @@ export const useAuth = () => {
       
       console.log('handleRegister: Sending data to authApi.signUp:', signupData);
       
+      // Enhanced logging for debugging
+      console.log('Registration attempt - API URL check:', {
+        envApiUrl: import.meta.env.VITE_API_URL || 'Not set',
+        usingProxy: true,
+        endpoint: '/api/v1/auth/signup'
+      });
+      
       // First, test the API connection
       try {
         const { testApiConnection } = await import('../utils/apiTest');
-        await testApiConnection();
+        const testResult = await testApiConnection();
+        console.log('API connection test completed:', testResult);
       } catch (testError) {
         console.error('API connection test failed:', testError);
         // Continue anyway, as the test might fail but the actual request might succeed
       }
 
-      // Use the signup endpoint from services/authApi
-      const authData = await authApi.signup(signupData);
+      // Use the signup endpoint from services/authApi - with additional error handling
+      let authData;
+      try {
+        console.log('Calling authApi.signup...');
+        authData = await authApi.signup(signupData);
+        console.log('authApi.signup successful:', authData);
+      } catch (signupError: any) {
+        console.error('Signup API call failed:', {
+          error: signupError,
+          response: signupError.response?.data,
+          status: signupError.response?.status
+        });
+        throw signupError; // Re-throw to be handled by outer catch
+      }
 
       // Store user data and token in state - using adapter to ensure type safety
       login(adaptUser(authData.user), authData.access_token);
