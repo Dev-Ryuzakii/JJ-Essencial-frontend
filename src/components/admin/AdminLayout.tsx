@@ -1,4 +1,5 @@
-import { useState, useEffect, ReactNode } from 'react'
+import { useState, useEffect } from 'react'
+import type { ReactNode } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   LayoutDashboard, 

@@ -15,15 +15,13 @@ import {
   XCircle,
   Truck,
   AlertTriangle,
-  Calendar,
   Download,
   FileText,
   ShoppingBag,
-  CreditCard,
-  ShieldAlert,
   Mail
 } from 'lucide-react'
-import ordersApi, { Order, OrderStatus, OrderFilter } from '../../services/ordersApi'
+import adminOrdersApi from '../../services/adminOrdersApi'
+import type { AdminOrder, OrderStatus, AdminOrderFilter } from '../../services/adminOrdersApi'
 
 // Status badge component for order status
 const OrderStatusBadge = ({ status }: { status: OrderStatus }) => {
@@ -65,7 +63,7 @@ const PaymentStatusBadge = ({ status }: { status: 'PENDING' | 'PAID' | 'FAILED' 
 
 export default function Orders() {
   const [loading, setLoading] = useState(true)
-  const [orders, setOrders] = useState<Order[]>([])
+  const [orders, setOrders] = useState<AdminOrder[]>([])
   const [totalOrders, setTotalOrders] = useState(0)
   const [selectedOrders, setSelectedOrders] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -116,7 +114,7 @@ export default function Orders() {
         page: currentPage
       }
       
-      const response = await ordersApi.getOrders(updatedFilters)
+      const response = await adminOrdersApi.getOrders(updatedFilters)
       setOrders(response.data)
       setTotalOrders(response.total)
       setTotalPages(Math.ceil(response.total / filters.limit!))
@@ -155,7 +153,7 @@ export default function Orders() {
   const handleBulkStatusUpdate = async (status: OrderStatus) => {
     if (window.confirm(`Are you sure you want to mark ${selectedOrders.length} orders as ${status}?`)) {
       try {
-        await ordersApi.bulkUpdateOrderStatus(selectedOrders, status)
+        await adminOrdersApi.bulkUpdateOrders(selectedOrders, { status })
         setSelectedOrders([])
         fetchOrders()
       } catch (err) {
@@ -527,7 +525,7 @@ export default function Orders() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="text-sm font-medium text-gray-900">{order.customer.name}</div>
+                            <div className="text-sm font-medium text-gray-900">{order.customer.fullName}</div>
                             <div className="text-xs text-gray-500 ml-1">({order.customer.email})</div>
                           </div>
                         </td>
@@ -562,7 +560,7 @@ export default function Orders() {
                             <button
                               onClick={() => {
                                 if (window.confirm(`Are you sure you want to delete order #${order.orderNumber}?`)) {
-                                  ordersApi.deleteOrder(order.id)
+                                  adminOrdersApi.cancelOrder(order.id, 'Deleted by admin')
                                     .then(() => fetchOrders())
                                     .catch(err => {
                                       console.error('Error deleting order:', err)

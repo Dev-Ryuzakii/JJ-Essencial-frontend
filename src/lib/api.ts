@@ -2,8 +2,8 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import toast from 'react-hot-toast'
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+// API Configuration - Use environment variable or production fallback
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
 
 class ApiClient {
   private client: AxiosInstance

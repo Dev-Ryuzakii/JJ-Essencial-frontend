@@ -188,62 +188,6 @@ const adminReviewsApi = {
   },
 
   /**
-   * Update review visibility
-   * PATCH /admin/reviews/:id/visibility
-   */
-  updateReviewVisibility: async (id: string, data: UpdateReviewVisibilityDto): Promise<AdminReview> => {
-    const response = await patch<AdminReview>(`/admin/reviews/${id}/visibility`, data);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to update review visibility');
-    }
-  },
-
-  /**
-   * Update review status (approval, verification, flagging)
-   * PATCH /admin/reviews/:id/status
-   */
-  updateReviewStatus: async (id: string, data: UpdateReviewStatusDto): Promise<AdminReview> => {
-    const response = await patch<AdminReview>(`/admin/reviews/${id}/status`, data);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to update review status');
-    }
-  },
-
-  /**
-   * Add admin response to review
-   * POST /admin/reviews/:id/response
-   */
-  addAdminResponse: async (id: string, data: AdminResponseDto): Promise<AdminReview> => {
-    const response = await post<AdminReview>(`/admin/reviews/${id}/response`, data);
-    
-    if (response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response.message || 'Failed to add admin response');
-    }
-  },
-
-  /**
-   * Delete review
-   * DELETE /admin/reviews/:id
-   */
-  deleteReview: async (id: string, reason?: string): Promise<void> => {
-    const response = await del(`/admin/reviews/${id}`, {
-      data: { reason }
-    });
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to delete review');
-    }
-  },
-
-  /**
    * Bulk update reviews
    * PATCH /admin/reviews/bulk
    */

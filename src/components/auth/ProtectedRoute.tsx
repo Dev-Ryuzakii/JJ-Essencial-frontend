@@ -38,7 +38,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Check role-based access
-  if (requiredRole === 'admin' && user?.role !== 'admin') {
+      if (requiredRole === 'USER' && !auth.isUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
