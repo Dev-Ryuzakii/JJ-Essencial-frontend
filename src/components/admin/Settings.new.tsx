@@ -5,23 +5,20 @@ import {
   AlertCircle,
   CheckCircle,
   DollarSign,
-  Globe,
-  Shield,
   Eye,
   EyeOff,
   Plus,
   Trash2,
   Edit2
 } from 'lucide-react'
-import adminApi, { 
-  AdminSettingsDto, 
+import adminApi from '../../services/adminApi'
+import type { 
   BankAccountDto, 
   CreateBankAccountDto, 
   UpdateBankAccountDto 
 } from '../../services/adminApi'
 
 export default function Settings() {
-  const [settings, setSettings] = useState<AdminSettingsDto | null>(null)
   const [bankAccounts, setBankAccounts] = useState<BankAccountDto[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -77,7 +74,6 @@ export default function Settings() {
       setError(null)
       
       const data = await adminApi.settings.getSettings()
-      setSettings(data)
       setSettingsForm(data)
     } catch (err: any) {
       console.log('Settings loaded successfully or using defaults')
@@ -104,7 +100,6 @@ export default function Settings() {
       setError(null)
       
       const updatedSettings = await adminApi.settings.updateSettings(settingsForm)
-      setSettings(updatedSettings)
       setSuccessMessage('Settings updated successfully!')
       
       setTimeout(() => setSuccessMessage(null), 3000)

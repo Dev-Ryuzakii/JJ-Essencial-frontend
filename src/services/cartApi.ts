@@ -1,5 +1,4 @@
 import { get, post, put, del } from './apiClient'
-import type { ApiResponse } from './apiClient'
 
 // Cart item structure
 export interface CartItem {
@@ -48,13 +47,8 @@ const cartApi = {
    * GET /api/v1/cart
    */
   getCart: async (): Promise<CartResponse> => {
-    const response = await get<ApiResponse<CartResponse>>('/cart')
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to get cart')
-    }
+    const response = await get<CartResponse>('/cart')
+    return response.data
   },
 
   /**
@@ -62,13 +56,8 @@ const cartApi = {
    * POST /api/v1/cart/items
    */
   addItem: async (data: AddToCartData): Promise<CartItem> => {
-    const response = await post<ApiResponse<CartItem>>('/cart/items', data)
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to add item to cart')
-    }
+    const response = await post<CartItem>('/cart/items', data)
+    return response.data
   },
 
   /**
@@ -76,13 +65,8 @@ const cartApi = {
    * PUT /api/v1/cart/items/:id
    */
   updateItem: async (id: string, data: UpdateCartItemData): Promise<CartItem> => {
-    const response = await put<ApiResponse<CartItem>>(`/cart/items/${id}`, data)
-    
-    if (response.success && response.data) {
-      return response.data
-    } else {
-      throw new Error(response.message || 'Failed to update cart item')
-    }
+    const response = await put<CartItem>(`/cart/items/${id}`, data)
+    return response.data
   },
 
   /**
@@ -90,11 +74,7 @@ const cartApi = {
    * DELETE /api/v1/cart/items/:id
    */
   removeItem: async (id: string): Promise<void> => {
-    const response = await del<ApiResponse<null>>(`/cart/items/${id}`)
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to remove item from cart')
-    }
+    await del<null>(`/cart/items/${id}`)
   },
 
   /**
@@ -102,11 +82,7 @@ const cartApi = {
    * DELETE /api/v1/cart
    */
   clearCart: async (): Promise<void> => {
-    const response = await del<ApiResponse<null>>('/cart')
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to clear cart')
-    }
+    await del<null>('/cart')
   }
 }
 

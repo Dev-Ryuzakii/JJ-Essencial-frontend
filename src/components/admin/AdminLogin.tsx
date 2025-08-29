@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Lock, Mail, AlertCircle, Loader2, EyeOff, Eye, Shield } from 'lucide-react'
+import { Lock, Mail, AlertCircle, Loader2, EyeOff, Eye } from 'lucide-react'
 import useAdminAuth from '../../hooks/useAdminAuth'
 import toast from 'react-hot-toast'
 
@@ -11,7 +11,7 @@ export const AdminLogin = () => {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
-  const { login, isAuthenticated, isLoading: authLoading } = useAdminAuth()
+  const { login, isAuthenticated } = useAdminAuth()
 
   useEffect(() => {
     // If already authenticated, redirect to dashboard
