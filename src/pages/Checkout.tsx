@@ -381,9 +381,8 @@ const Checkout: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Method</h3>
                 <div className="space-y-4">
                   {[
-                    { key: 'standard', name: 'Standard Delivery', time: '5-7 business days', price: 0 },
-                    { key: 'express', name: 'Express Delivery', time: '2-3 business days', price: 15.99 },
-                    { key: 'overnight', name: 'Overnight Delivery', time: 'Next business day', price: 29.99 }
+                    { key: 'standard', name: 'Local pick up within Abeokuta', time: '5-7 business days', price: 0 },
+                    { key: 'express', name: 'Delivery fee to park', time: '2-3 business days', price: 500 },
                   ].map((method) => (
                     <label key={method.key} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
                       <input
