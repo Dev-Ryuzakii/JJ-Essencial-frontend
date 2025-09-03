@@ -86,7 +86,7 @@ export const AdminLogin = () => {
       <div className="w-full max-w-md space-y-8">
         <div>
           <div className="flex justify-center">
-            <img src="/logo.svg" className="h-12 w-auto" alt="JJ Essencial" />
+            <img src="/logo.svg" className="h-12 w-auto" alt="JJ Essential" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
             Admin Login

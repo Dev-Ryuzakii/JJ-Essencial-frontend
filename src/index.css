@@ -1,5 +1,64 @@
 @import "tailwindcss";
 
+/* Mobile touch improvements */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection for content */
+p, span, div[contenteditable], input, textarea {
+  -webkit-user-select: text;
+  -khtml-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Touch manipulation for interactive elements */
+button, a, [role="button"], [onclick] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Improve button and link interactions on mobile */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    min-height: 44px; /* Apple's recommended minimum touch target size */
+    min-width: 44px;
+  }
+  
+  /* Prevent double tap zoom on buttons */
+  button {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Improve mobile menu interactions */
+  .mobile-menu-item {
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Add active state feedback */
+  .mobile-menu-item:active {
+    background-color: rgba(0, 0, 0, 0.05);
+    transform: scale(0.98);
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

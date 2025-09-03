@@ -5,8 +5,8 @@ import axios from 'axios';
  */
 export const testApiConnection = async () => {
   try {
-    // Test connection to the base API URL
-    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1';
+    // Test connection to the base API URL with the relative path that works with the Vite proxy
+    const API_URL = '/api/v1';
     const response = await axios.get(API_URL, {
       headers: {
         'Content-Type': 'application/json',
@@ -45,8 +45,8 @@ export const testApiConnection = async () => {
 // Export a function to test the signup endpoint specifically
 export const testSignupEndpoint = async () => {
   try {
-    // Test the signup endpoint with minimal data
-    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1';
+    // Test the signup endpoint with minimal data using the relative path
+    const API_URL = '/api/v1';
     const response = await axios.post(
       `${API_URL}/auth/signup`,
       {
