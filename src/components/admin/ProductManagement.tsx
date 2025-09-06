@@ -94,6 +94,13 @@ export default function ProductManagement() {
       
       console.log('Products response:', response)
       
+      // Debug: Check raw API response for isActive field
+      if (response.data && response.data.length > 0) {
+        console.log('First product raw data:', response.data[0])
+        console.log('isActive field in first product:', response.data[0].isActive)
+        console.log('All isActive values:', response.data.map(p => ({ name: p.name, isActive: p.isActive })))
+      }
+      
       if (!response || !response.success || !Array.isArray(response.data)) {
         console.warn('No data returned from API or data is not in expected format')
         setProducts([])
@@ -135,11 +142,19 @@ export default function ProductManagement() {
           return {
             ...product,
             images: images,
-            price: typeof product.price === 'string' ? product.price : product.price?.toString() || '0'
+            price: typeof product.price === 'string' ? product.price : product.price?.toString() || '0',
+            // Fix field name mapping from snake_case to camelCase
+            isActive: product.is_active !== undefined ? product.is_active : product.isActive,
+            categoryId: product.category_id || product.categoryId
           }
         })
         
         setProducts(processedProducts)
+        
+        // Debug: Check processed products isActive field
+        console.log('Processed products isActive status:', 
+          processedProducts.map(p => ({ name: p.name, isActive: p.isActive }))
+        )
         
         // Extract pagination info if available
         if (response.pagination) {

@@ -9,7 +9,7 @@ import {
   BadgeCheckIcon
 } from 'lucide-react'
 import { useCart, useAuth } from '../../hooks'
-import { formatCurrency, cn } from '../../lib/utils'
+import { cn, formatCurrency, calculateDiscountPercentage, parseProductImage } from '../../lib/utils'
 import { wishlistApi } from '../../lib/api'
 import toast from 'react-hot-toast'
 import type { Product } from '../../types'
@@ -215,12 +215,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <div className="relative aspect-square overflow-hidden rounded-t-lg">
         <Link to={`/products/${product.id}`}>
           {!imageError ? (
-                        <img
-              src={
-                product.images?.[0]?.url || 
-                product.images?.[0] || 
-                '/api/placeholder/300/300'
-              }
+            <img
+              src={parseProductImage(product.images?.[0])}
               alt={product.name}
               className="w-full h-full object-cover rounded-lg"
               onLoad={() => setIsImageLoading(false)}

@@ -23,20 +23,38 @@ const BankTransferPayment: React.FC<BankTransferPaymentProps> = ({
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
 
   const initiateBankTransfer = async () => {
+    if (!selectedAccount) {
+      toast.error('Please select a bank account');
+      return;
+    }
+    
+    console.log('Initiating bank transfer for order:', orderId, 'with account:', selectedAccount);
+    
     try {
       setLoading(true);
       
-      const result = await bankTransferApi.initiateTransfer(orderId);
+      const result = await bankTransferApi.initiateTransfer(orderId, {
+        bankId: selectedAccount.id
+      });
+
+      console.log('Bank transfer initiation result:', result);
 
       if (result.success) {
+        console.log('Bank transfer initiated successfully:', result.data);
         setTransferData(result.data);
         onPaymentInitiated(result.data);
+        toast.success('Bank transfer details are ready');
       } else {
-        onError(result.message || 'Failed to initiate bank transfer');
+        console.error('Bank transfer initiation failed:', result.message);
+        const errorMessage = result.message || 'Failed to initiate bank transfer';
+        toast.error(errorMessage);
+        onError(errorMessage);
       }
-    } catch (error) {
-      onError('Error initiating bank transfer');
+    } catch (error: any) {
       console.error('Bank transfer error:', error);
+      const errorMessage = error?.response?.data?.message || 'Error initiating bank transfer';
+      toast.error(errorMessage);
+      onError(errorMessage);
     } finally {
       setLoading(false);
     }

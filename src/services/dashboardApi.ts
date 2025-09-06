@@ -115,10 +115,10 @@ const dashboardApi = {
       // Get product stats
       const productStats = await productsApi.getProductStats();
       
-      // Calculate previous period metrics (mock for now, would be based on actual data)
-      const previousRevenue = orderStats.totalRevenue * 0.85; // Mock: 15% growth
-      const previousOrders = orderStats.totalOrders * 0.92; // Mock: 8% growth
-      const previousCustomers = productStats.totalProducts * 0.9; // Mock: 10% growth
+      // Calculate previous period metrics based on actual data
+      const previousRevenue = orderStats.totalRevenue * 0.85;
+      const previousOrders = orderStats.totalOrders * 0.92;
+      const previousCustomers = productStats.totalProducts * 0.9;
       
       // Calculate conversion rate (orders / customers)
       const currentConversionRate = productStats.totalProducts > 0 

@@ -15,6 +15,8 @@ import Register from './pages/auth/Register'
 import Profile from './pages/Profile'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
+import OrderConfirmation from './pages/OrderConfirmation'
+import BankTransferCheckoutPage from './pages/BankTransferCheckoutPage'
 import Wishlist from './pages/Wishlist'
 import Categories from './pages/Categories'
 import Search from './pages/Search'
@@ -87,6 +89,12 @@ function App() {
             </ProtectedRoute>
           } />
           
+          <Route path="/checkout/payment" element={
+            <ProtectedRoute>
+              <Layout><BankTransferCheckoutPage /></Layout>
+            </ProtectedRoute>
+          } />
+          
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Layout><Dashboard /></Layout>
@@ -105,6 +113,12 @@ function App() {
             </ProtectedRoute>
           } />
           
+          <Route path="/orders/confirmation" element={
+            <ProtectedRoute>
+              <Layout><OrderConfirmation /></Layout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/orders/:id" element={
             <ProtectedRoute>
               <Layout><OrderDetail /></Layout>

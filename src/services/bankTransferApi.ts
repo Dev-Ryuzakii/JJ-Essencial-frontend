@@ -21,6 +21,7 @@ export interface BankTransferData {
     currency: string;
   }>;
   instructions: string[];
+  expiresAt?: string; // ISO date string when this payment request expires
 }
 
 export interface ReceiptData {
@@ -30,7 +31,16 @@ export interface ReceiptData {
   receiptUrl: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   uploadedAt: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
 }
+
+export type BankTransferStatus = 
+  | 'pending' 
+  | 'awaiting_verification' 
+  | 'verified' 
+  | 'rejected'
+  | 'expired';
 
 const bankTransferApi = {
   /**
@@ -45,9 +55,17 @@ const bankTransferApi = {
   /**
    * Initiate bank transfer payment
    * POST /api/v1/payments/bank-transfer/initiate
+   * @param orderId Order ID for the payment
+   * @param options Optional parameters (bankId for preferred bank account)
    */
-  initiateTransfer: async (orderId: string): Promise<ApiResponse<BankTransferData>> => {
-    const response = await post<ApiResponse<BankTransferData>>('/api/v1/payments/bank-transfer/initiate', { orderId });
+  initiateTransfer: async (
+    orderId: string, 
+    options?: { bankId?: string }
+  ): Promise<ApiResponse<BankTransferData>> => {
+    const response = await post<ApiResponse<BankTransferData>>(
+      '/api/v1/payments/bank-transfer/initiate', 
+      { orderId, ...(options || {}) }
+    );
     return response.data;
   },
 
@@ -69,6 +87,41 @@ const bankTransferApi = {
     return response.data;
   },
 
+  /**
+   * Check payment status by reference
+   * GET /api/v1/payments/bank-transfer/status/:reference
+   */
+  checkPaymentStatus: async (reference: string): Promise<ApiResponse<{
+    status: BankTransferStatus;
+    receipt?: ReceiptData;
+    message?: string;
+  }>> => {
+    const response = await get<ApiResponse<{
+      status: BankTransferStatus;
+      receipt?: ReceiptData;
+      message?: string;
+    }>>(`/api/v1/payments/bank-transfer/status/${reference}`);
+    return response.data;
+  },
+
+  /**
+   * Get payment details by reference
+   * GET /api/v1/payments/bank-transfer/:reference
+   */
+  getPaymentDetails: async (reference: string): Promise<ApiResponse<BankTransferData>> => {
+    const response = await get<ApiResponse<BankTransferData>>(`/api/v1/payments/bank-transfer/${reference}`);
+    return response.data;
+  },
+
+  /**
+   * Get receipt by reference
+   * GET /api/v1/payments/receipt/:reference
+   */
+  getReceipt: async (reference: string): Promise<ApiResponse<ReceiptData>> => {
+    const response = await get<ApiResponse<ReceiptData>>(`/api/v1/payments/receipt/${reference}`);
+    return response.data;
+  },
+  
   /**
    * Get pending receipts for verification (Admin only)
    * GET /api/v1/payments/receipts/pending

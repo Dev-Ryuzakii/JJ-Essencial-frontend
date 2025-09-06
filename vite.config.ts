@@ -11,7 +11,7 @@ export default defineConfig({
         target: 'https://jj-essencial.onrender.com',
         changeOrigin: true,
         secure: true,
-        rewrite: (path) => path.replace(/^\/api/, ''), 
+        rewrite: (path) => path.replace(/^\/api/, '/api'), // Don't remove /api - the backend expects it 
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);

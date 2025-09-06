@@ -13,12 +13,16 @@ import {
   Calendar,
   Shield,
   Gift,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  RefreshCw
 } from 'lucide-react'
+
 import { useCart, useAuth } from '../hooks'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { formatCurrency } from '../lib/utils'
+import { ordersApi, productsApi } from '../services'
 import toast from 'react-hot-toast'
 
 interface CheckoutForm {
@@ -29,10 +33,11 @@ interface CheckoutForm {
   city: string
   state: string
   zipCode: string
+  postalCode: string
   country: string
   phone: string
   shippingMethod: 'standard' | 'express' | 'overnight'
-  paymentMethod: 'card' | 'paypal' | 'apple_pay'
+  paymentMethod: 'card' | 'paypal' | 'apple_pay' | 'bank_transfer'
   cardNumber: string
   expiryDate: string
   cvv: string
@@ -44,19 +49,20 @@ interface CheckoutForm {
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate()
-  const { items, getFinalAmount, getSubtotal } = useCart()
+  const { items, clearCart, removeFromCart, getSubtotal, getFinalAmount } = useCart()
   const { isAuthenticated, user } = useAuth()
   
   const [step, setStep] = useState<'shipping' | 'payment' | 'review'>('shipping')
   const [isProcessing, setIsProcessing] = useState(false)
   const [formData, setFormData] = useState<CheckoutForm>({
     email: user?.email || '',
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: user?.fullName?.split(' ')[0] || '',
+    lastName: user?.fullName?.split(' ').slice(1).join(' ') || '',
     address: '',
     city: '',
     state: '',
     zipCode: '',
+    postalCode: '',
     country: 'Nigeria',
     phone: user?.phone || '',
     shippingMethod: 'standard',
@@ -81,6 +87,153 @@ const Checkout: React.FC = () => {
   }
   
   const shipping = shippingCosts[formData.shippingMethod]
+
+  const validateCartProducts = async () => {
+    console.log('Validating cart products...');
+    const invalidItems: string[] = [];
+    const validationResults: Array<{id: string, name: string, status: string}> = [];
+    
+    for (const item of items) {
+      try {
+        // Ensure we're using the right ID for validation
+        const productId = item.id;
+        console.log(`Checking product ${productId} (${item.name})...`);
+        
+        // Explicitly log the raw API request to ensure correct endpoint
+        console.log(`🔍 Making API request to: /products/${productId}`);
+        
+        const product = await productsApi.getById(productId);
+        
+        if (!product) {
+          console.log(`Product ${productId} (${item.name}) not found`);
+          invalidItems.push(productId);
+          validationResults.push({id: productId, name: item.name, status: 'NOT_FOUND'});
+        } else {
+          // Enhanced validation with more robust checking and detailed logging
+          
+          // First, log all relevant fields from the product response
+          console.log(`🔍 Raw product fields:`, {
+            id: product.id,
+            name: product.name,
+            isActive: product.isActive,
+            is_active: (product as any).is_active,
+            active: (product as any).active,
+            status: (product as any).status,
+            stock: product.stock
+          });
+          
+          // Handle both camelCase and snake_case field names, with robust fallback
+          const isActive = product.isActive !== undefined ? product.isActive : 
+                          (product as any).is_active !== undefined ? (product as any).is_active : 
+                          (product as any).active !== undefined ? (product as any).active :
+                          (product as any).status === 'active' ? true :
+                          true; // Default to true if field is missing (assumes product is active if field not provided)
+          
+          console.log(`Product ${productId} field debug:`, {
+            isActive: product.isActive,
+            is_active: (product as any).is_active,
+            calculated: isActive
+          });
+          
+          if (isActive === false) {
+            console.log(`Product ${productId} (${item.name}) is inactive`);
+            invalidItems.push(productId);
+            validationResults.push({id: productId, name: item.name, status: 'INACTIVE'});
+          } else if (product.stock <= 0) {
+            console.log(`Product ${productId} (${item.name}) is out of stock`);
+            invalidItems.push(productId);
+            validationResults.push({id: productId, name: item.name, status: 'OUT_OF_STOCK'});
+          } else {
+            console.log(`Product ${productId} (${item.name}) is valid`);
+            validationResults.push({id: productId, name: item.name, status: 'VALID'});
+          }
+        }
+      } catch (error) {
+        console.log(`Error validating product ${item.id} (${item.name}):`, error);
+        invalidItems.push(item.id);
+        validationResults.push({id: item.id, name: item.name, status: 'ERROR'});
+      }
+    }
+    
+    console.log('Validation results:', validationResults);
+    return { invalidItems, validationResults };
+  };
+
+  const handleClearCart = () => {
+    if (items.length === 0) {
+      toast.error('Cart is already empty');
+      return;
+    }
+    
+    const itemCount = items.length;
+    clearCart();
+    toast.success(`Cart cleared successfully. Removed ${itemCount} item(s). Please add fresh products to continue.`, {
+      duration: 5000,
+    });
+    console.log(`🗑️ Cart cleared: removed ${itemCount} items`);
+  };
+
+  const refreshCartFromBackend = async () => {
+    console.log('🔄 Refreshing cart items from backend...');
+    toast.loading('Refreshing cart...', { id: 'refresh' });
+    
+    try {
+      let updatedCount = 0;
+      let removedCount = 0;
+      
+      for (const item of items) {
+        try {
+          const response = await productsApi.getById(item.id);
+          if (response.success && response.data && response.data.isActive) {
+            // Product still exists and is active - could update price/stock if needed
+            console.log(`✅ Refreshed: ${item.name}`);
+            updatedCount++;
+          } else {
+            // Product no longer exists or is inactive - remove from cart
+            console.log(`❌ Removing unavailable product: ${item.name}`);
+            removeFromCart(item.id);
+            removedCount++;
+          }
+        } catch (error) {
+          console.log(`❌ Error checking ${item.name}, removing from cart`);
+          removeFromCart(item.id);
+          removedCount++;
+        }
+      }
+      
+      toast.success(
+        `Cart refreshed! Updated: ${updatedCount}, Removed: ${removedCount}`,
+        { id: 'refresh', duration: 4000 }
+      );
+    } catch (error) {
+      console.error('Failed to refresh cart:', error);
+      toast.error('Failed to refresh cart. Please try clearing and re-adding items.', {
+        id: 'refresh',
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleRemoveInvalidItems = async () => {
+    const { invalidItems, validationResults } = await validateCartProducts();
+    
+    console.log('Cart validation complete:', validationResults);
+    
+    if (invalidItems.length > 0) {
+      invalidItems.forEach(productId => {
+        removeFromCart(productId);
+      });
+      
+      const invalidDetails = validationResults
+        .filter(result => result.status !== 'VALID')
+        .map(result => `${result.name} (${result.status})`)
+        .join(', ');
+      
+      toast.success(`Removed ${invalidItems.length} invalid item(s): ${invalidDetails}`);
+    } else {
+      toast.success('All items in cart are valid and ready for checkout');
+    }
+  };
   const finalTotal = total + tax + shipping
 
   const handleInputChange = (field: keyof CheckoutForm, value: string | boolean) => {
@@ -144,15 +297,170 @@ const Checkout: React.FC = () => {
 
     setIsProcessing(true)
     try {
-      // Simulate order processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Log cart items for debugging
+      console.log('Cart items for order:', items.map(item => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        fullItem: item
+      })));
+
+      // Validate cart products before creating order
+      console.log('Pre-order validation...');
+      const { invalidItems, validationResults } = await validateCartProducts();
       
-      toast.success('Order placed successfully!')
-      navigate('/orders/confirmation')
-    } catch (error) {
-      toast.error('Failed to place order. Please try again.')
+      if (invalidItems.length > 0) {
+        const invalidDetails = validationResults
+          .filter(result => result.status !== 'VALID')
+          .map(result => `${result.name} (${result.status})`)
+          .join(', ');
+        
+        toast.error(`Cannot proceed: Invalid items found - ${invalidDetails}. Please use "Validate Cart" to remove them.`);
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log('All products validated successfully, proceeding with order creation...');
+
+      // Create the order with the exact format expected by the API (based on CreateOrderData interface)
+      // Use productId explicitly from the item to ensure we're sending the correct field
+      const orderData = {
+        items: items.map(item => ({
+          productId: item.productId || item.id, // Prefer productId if available, fallback to id
+          quantity: item.quantity
+        })),
+        deliveryAddress: {
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.zipCode || '100001',
+          country: formData.country,
+          phone: formData.phone
+        }
+      };
+      
+      // Add debugging to ensure we're sending the expected structure
+      console.log('📦 Item structure check:', items.map(item => ({
+        id: item.id,
+        productId: item.productId,
+        using: item.productId || item.id
+      })));
+
+      console.log('Sending order data:', JSON.stringify(orderData, null, 2));
+      
+      // CRITICAL DEBUG: Log the validation results from the frontend
+      console.log('🔍 Frontend validation results for order creation:');
+      validationResults.forEach(result => {
+        console.log(`Product ${result.id} (${result.name}): ${result.status}`);
+      });
+      
+      // Log the actual API client configuration being used for order creation
+      console.log('🔍 Using ordersApi from:', ordersApi);
+      
+      const response = await ordersApi.create(orderData);
+      
+      if (response.success && response.data) {
+        const orderId = response.data.id;
+        console.log('Order created successfully:', orderId, 'Payment method:', formData.paymentMethod);
+        
+        // Clear the cart after successful order creation
+        clearCart();
+        
+        // If the payment method is bank transfer, redirect to bank transfer checkout
+        if (formData.paymentMethod === 'bank_transfer') {
+          console.log('Redirecting to bank transfer checkout');
+          navigate(`/checkout/payment?orderId=${orderId}&method=bank_transfer`);
+        } else {
+          toast.success('Order placed successfully!');
+          navigate(`/orders/confirmation?orderId=${orderId}`);
+        }
+      } else {
+        console.error('Order creation failed:', response);
+        toast.error(response.message || 'Failed to place order');
+      }
+    } catch (error: any) {
+      console.error('Order creation error:', error);
+      
+      // Debug: Log the full error response for investigation
+      if (error.response) {
+        console.error('Full error response:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+        
+        // CRITICAL DEBUG: Log the exact backend error structure
+        console.error('🔥 BACKEND ERROR DETAILS:', JSON.stringify(error.response.data, null, 2));
+      }
+      
+      // Extract specific error message from API response
+      let errorMessage = 'Failed to place order. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+        console.log('API Error Message:', errorMessage);
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Show specific error to user with actionable solutions
+      if (errorMessage.includes('products not found') || errorMessage.includes('inactive')) {
+        // For the exact error you're experiencing
+        toast.error('⚠️ Cart contains invalid products. Use "Validate Cart" or "Clear Cart" buttons below to fix this issue.', {
+          duration: 8000,
+        });
+        
+        // Automatically run validation to show which products are problematic
+        console.log('Running automatic cart validation to identify problematic items...');
+        try {
+          const { invalidItems, validationResults } = await validateCartProducts();
+          if (invalidItems.length > 0) {
+            const problemProducts = validationResults
+              .filter(r => r.status !== 'VALID')
+              .map(r => `• ${r.name} (${r.status})`)
+              .join('\n');
+            console.error('Problematic products found:\n' + problemProducts);
+          } else {
+            console.log('⚠️ BACKEND VALIDATION MISMATCH: Frontend validation passed but backend failed');
+            console.log('This suggests the backend uses different validation criteria for order creation');
+            
+            // Try to get more debug info - check if product exists via different endpoint
+            for (const item of items) {
+              try {
+                console.log(`🔍 Debug: Re-checking product ${item.id} for order creation compatibility...`);
+                const debugProduct = await productsApi.getById(item.id);
+                console.log(`🔍 Debug product data:`, {
+                  id: debugProduct.id,
+                  name: debugProduct.name,
+                  is_active: (debugProduct as any).is_active,
+                  isActive: (debugProduct as any).isActive,
+                  stock: debugProduct.stock,
+                  category: debugProduct.category,
+                  full: debugProduct
+                });
+              } catch (debugError) {
+                console.error(`🔍 Debug: Error fetching product ${item.id}:`, debugError);
+              }
+            }
+          }
+        } catch (validationError) {
+          console.error('Could not run validation:', validationError);
+        }
+      } else if (errorMessage.includes('stock')) {
+        toast.error('Some items in your cart are out of stock. Please update quantities or remove them.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('address') || errorMessage.includes('delivery')) {
+        toast.error('Please check your delivery address information and try again.', {
+          duration: 6000,
+        });
+      } else {
+        toast.error(`Order failed: ${errorMessage}`, {
+          duration: 6000,
+        });
+      }
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
   }
 
@@ -429,6 +737,7 @@ const Checkout: React.FC = () => {
                 <div className="space-y-3">
                   {[
                     { key: 'card', name: 'Credit/Debit Card', icon: CreditCard },
+                    { key: 'bank_transfer', name: 'Bank Transfer', icon: CreditCard },
                     { key: 'paypal', name: 'PayPal', icon: CreditCard },
                     { key: 'apple_pay', name: 'Apple Pay', icon: CreditCard }
                   ].map((method) => (
@@ -534,6 +843,47 @@ const Checkout: React.FC = () => {
           {step === 'review' && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Review Your Order</h2>
+              
+              {/* Cart Management */}
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-yellow-800 mb-1">Cart Management</h3>
+                    <p className="text-xs text-yellow-700">
+                      Having issues with your order? Validate, refresh, or clear your cart
+                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshCartFromBackend}
+                      className="text-blue-700 border-blue-300 hover:bg-blue-100 flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Refresh
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveInvalidItems}
+                      className="text-yellow-700 border-yellow-300 hover:bg-yellow-100 flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Validate
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearCart}
+                      className="text-red-700 border-red-300 hover:bg-red-100 flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Clear Cart
+                    </Button>
+                  </div>
+                </div>
+              </div>
               
               {/* Order Items */}
               <div className="mb-6">

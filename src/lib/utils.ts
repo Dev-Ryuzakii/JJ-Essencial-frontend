@@ -74,6 +74,32 @@ export function getImageUrl(url: string): string {
   return `${import.meta.env.VITE_API_URL}/uploads/${url}`
 }
 
+export function parseProductImage(image: any): string {
+  if (!image) return '/api/placeholder/400/400'
+  
+  // If it's already a URL
+  if (typeof image === 'string') {
+    // Try to parse as JSON first
+    if (image.startsWith('{') && image.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(image)
+        return parsed.url || '/api/placeholder/400/400'
+      } catch {
+        // If JSON parsing fails, treat as regular URL
+        return image.startsWith('http') ? image : '/api/placeholder/400/400'
+      }
+    }
+    return image.startsWith('http') ? image : '/api/placeholder/400/400'
+  }
+  
+  // If it's an object with url property
+  if (typeof image === 'object' && image.url) {
+    return image.url
+  }
+  
+  return '/api/placeholder/400/400'
+}
+
 export function calculateDiscountPercentage(
   originalPrice: number,
   discountPrice: number

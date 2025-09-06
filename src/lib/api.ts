@@ -2,8 +2,11 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import toast from 'react-hot-toast'
 
-// API Configuration - Use environment variable or production fallback
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
+// API Configuration - Use relative URL for development and environment variable for production
+const isDevelopment = import.meta.env.DEV
+const API_BASE_URL = isDevelopment
+  ? '/api/v1'  // Use relative URL for development (works with Vite proxy)
+  : import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
 
 class ApiClient {
   private client: AxiosInstance
