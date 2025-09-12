@@ -51,9 +51,18 @@ const OrderDetail: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to load order:', error)
+      
+      // Add more detailed error logging to diagnose API issues
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        config: error.config
+      })
+      
       const errorMessage = error.response?.status === 404 
-        ? 'Order not found'
-        : 'Failed to load order details'
+        ? 'Order not found - please check the order ID or your account access'
+        : 'Failed to load order details. Please try again later.'
       toast.error(errorMessage)
       navigate('/orders')
     } finally {

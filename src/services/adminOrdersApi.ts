@@ -41,6 +41,7 @@ export interface AdminOrder {
   createdAt: string;
   updatedAt: string;
   statusHistory: OrderStatusHistory[];
+  receiptUrl?: string; // Added to handle payment receipt URLs
 }
 
 export interface AdminOrderItem {
@@ -54,10 +55,17 @@ export interface AdminOrderItem {
     id: string;
     name: string;
     sku: string;
-    image?: string;
+    images?: ProductImage[]; // Changed to array of ProductImage objects
     isActive: boolean;
     stock: number;
   };
+}
+
+export interface ProductImage {
+  id: string;
+  url: string;
+  isMain: boolean;
+  sortOrder: number;
 }
 
 export interface OrderAddress {
@@ -166,6 +174,44 @@ export interface OrderAnalytics {
   }[];
 }
 
+/**
+ * Helper function to safely parse images from API response
+ */
+const parseProductImages = (imageData: any): ProductImage[] => {
+  if (!imageData) return [];
+
+  try {
+    // If imageData is already an array of objects, return it
+    if (Array.isArray(imageData) && typeof imageData[0] === 'object') {
+      return imageData;
+    }
+
+    // If imageData is a JSON string, parse it
+    if (typeof imageData === 'string') {
+      return JSON.parse(imageData);
+    }
+
+    // If imageData is an array of strings, parse each one
+    if (Array.isArray(imageData)) {
+      return imageData.map(img => {
+        if (typeof img === 'string') {
+          try {
+            return JSON.parse(img);
+          } catch {
+            return { id: Math.random().toString(), url: img, isMain: false, sortOrder: 0 };
+          }
+        }
+        return img;
+      });
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error parsing product images:', error);
+    return [];
+  }
+};
+
 const adminOrdersApi = {
   /**
    * Get all orders (Admin view with extended data)
@@ -185,68 +231,76 @@ const adminOrdersApi = {
         
         return {
           id: order.id,
-          orderNumber: order.id, // Use ID as order number since backend doesn't have this field
+          orderNumber: order.order_number || order.id, // Use order_number if available, fallback to ID
           userId: order.user_id,
           customer: {
             id: order.user_id,
             fullName: order.profile?.full_name || 'Unknown Customer',
             email: order.profile?.email || 'unknown@email.com',
-            phone: order.delivery_phone || '',
-            avatar: '',
-            totalOrders: 1,
-            totalSpent: order.total_amount?.toString() || '0'
+            phone: order.profile?.phone || order.delivery_phone || '',
+            avatar: order.profile?.avatar_url || '',
+            totalOrders: order.profile?.total_orders || 1,
+            totalSpent: order.profile?.total_spent?.toString() || order.total_amount?.toString() || '0'
           },
           items: order.order_item?.map((item: any) => ({
             id: item.id,
             productId: item.product_id,
-            productName: item.product?.name || 'Unknown Product',
-            productSku: item.product?.sku || '',
-            productImage: item.product?.images?.[0] ? JSON.parse(item.product.images[0]).url : '',
             quantity: item.quantity,
             price: item.price?.toString() || '0',
-            total: (item.price * item.quantity)?.toString() || '0',
-            discount: '0'
+            discount: item.discount?.toString() || '0',
+            finalPrice: ((item.price - (item.discount || 0)) * item.quantity)?.toString() || '0',
+            product: {
+              id: item.product?.id || item.product_id,
+              name: item.product?.name || 'Unknown Product',
+              sku: item.product?.sku || '',
+              images: parseProductImages(item.product?.images),
+              isActive: item.product?.is_active !== false,
+              stock: item.product?.stock || 0
+            }
           })) || [],
           status: order.status || 'PENDING',
           paymentStatus: order.payment_status || 'PENDING',
           paymentMethod: order.payment_method || 'bank_transfer',
           paymentId: order.payment_ref || '',
           totalAmount: order.total_amount?.toString() || '0',
-          subtotal: order.total_amount?.toString() || '0',
-          tax: '0',
-          discount: '0',
-          shippingCost: '0',
+          subtotal: order.subtotal?.toString() || order.total_amount?.toString() || '0',
+          tax: order.tax?.toString() || '0',
+          discount: order.discount?.toString() || '0',
+          shippingCost: order.shipping_cost?.toString() || '0',
+          receiptUrl: order.receipt_url || '',
           shippingAddress: {
             fullName: order.profile?.full_name || 'Unknown',
+            company: order.company || '',
             addressLine1: order.delivery_address || 'No address provided',
-            addressLine2: '',
-            phone: order.delivery_phone || '',
+            addressLine2: order.delivery_address_line2 || '',
             city: order.delivery_city || '',
             state: order.delivery_state || '',
             postalCode: order.delivery_postal || '',
-            country: order.delivery_country || ''
+            country: order.delivery_country || '',
+            phone: order.delivery_phone || ''
           },
           billingAddress: {
             fullName: order.profile?.full_name || 'Unknown',
+            company: order.company || '',
             addressLine1: order.delivery_address || 'No address provided',
-            addressLine2: '',
-            phone: order.delivery_phone || '',
+            addressLine2: order.delivery_address_line2 || '',
             city: order.delivery_city || '',
             state: order.delivery_state || '',
             postalCode: order.delivery_postal || '',
-            country: order.delivery_country || ''
+            country: order.delivery_country || '',
+            phone: order.delivery_phone || ''
           },
-          shippingMethod: 'standard',
-          trackingNumber: '',
-          trackingUrl: '',
-          estimatedDelivery: '',
-          actualDelivery: '',
+          shippingMethod: order.shipping_method || 'standard',
+          trackingNumber: order.tracking_number || '',
+          trackingUrl: order.tracking_url || '',
+          estimatedDelivery: order.estimated_delivery || '',
+          actualDelivery: order.actual_delivery || '',
           notes: order.notes || '',
-          adminNotes: '',
-          couponCode: '',
-          couponDiscount: '0',
-          refundAmount: '0',
-          refundReason: '',
+          adminNotes: order.admin_notes || '',
+          couponCode: order.coupon_code || '',
+          couponDiscount: order.coupon_discount?.toString() || '0',
+          refundAmount: order.refund_amount?.toString() || '0',
+          refundReason: order.refund_reason || '',
           createdAt: order.created_at,
           updatedAt: order.updated_at,
           statusHistory: []
@@ -280,12 +334,103 @@ const adminOrdersApi = {
    * GET /admin/orders/:id
    */
   getOrder: async (id: string): Promise<AdminOrder> => {
-    const response = await get<AdminOrder>(`/admin/orders/${id}`);
+    console.log('🔍 AdminOrdersApi.getOrder: Fetching order details for:', id);
+    
+    const response = await get<any>(`/admin/orders/${id}`);
+    
+    console.log('📦 AdminOrdersApi.getOrder: Raw response:', response);
     
     if (response.success && response.data) {
-      return response.data;
+      // Transform single order data from backend format to frontend format
+      const order = response.data;
+      
+      console.log('🔄 Transforming single order:', order.id);
+      
+      const transformedOrder: AdminOrder = {
+        id: order.id,
+        orderNumber: order.order_number || order.id, // Use order_number if available, fallback to ID
+        userId: order.user_id,
+        customer: {
+          id: order.user_id,
+          fullName: order.profile?.full_name || 'Unknown Customer',
+          email: order.profile?.email || 'unknown@email.com',
+          phone: order.profile?.phone || order.delivery_phone || '',
+          avatar: order.profile?.avatar_url || '',
+          totalOrders: order.profile?.total_orders || 1,
+          totalSpent: order.profile?.total_spent?.toString() || order.total_amount?.toString() || '0'
+        },
+        items: order.order_item?.map((item: any) => ({
+          id: item.id,
+          productId: item.product_id,
+          quantity: item.quantity,
+          price: item.price?.toString() || '0',
+          discount: item.discount?.toString() || '0',
+          finalPrice: ((item.price - (item.discount || 0)) * item.quantity)?.toString() || '0',
+          product: {
+            id: item.product?.id || item.product_id,
+            name: item.product?.name || 'Unknown Product',
+            sku: item.product?.sku || '',
+            images: parseProductImages(item.product?.images),
+            isActive: item.product?.is_active !== false,
+            stock: item.product?.stock || 0
+          }
+        })) || [],
+        status: order.status || 'PENDING',
+        paymentStatus: order.payment_status || 'PENDING',
+        paymentMethod: order.payment_method || 'bank_transfer',
+        paymentId: order.payment_ref || '',
+        totalAmount: order.total_amount?.toString() || '0',
+        subtotal: order.subtotal?.toString() || order.total_amount?.toString() || '0',
+        tax: order.tax?.toString() || '0',
+        discount: order.discount?.toString() || '0',
+        shippingCost: order.shipping_cost?.toString() || '0',
+        receiptUrl: order.receipt_url || '',
+        shippingAddress: {
+          fullName: order.profile?.full_name || 'Unknown',
+          company: order.company || '',
+          addressLine1: order.delivery_address || 'No address provided',
+          addressLine2: order.delivery_address_line2 || '',
+          city: order.delivery_city || '',
+          state: order.delivery_state || '',
+          postalCode: order.delivery_postal || '',
+          country: order.delivery_country || '',
+          phone: order.delivery_phone || ''
+        },
+        billingAddress: {
+          fullName: order.profile?.full_name || 'Unknown',
+          company: order.company || '',
+          addressLine1: order.delivery_address || 'No address provided',
+          addressLine2: order.delivery_address_line2 || '',
+          city: order.delivery_city || '',
+          state: order.delivery_state || '',
+          postalCode: order.delivery_postal || '',
+          country: order.delivery_country || '',
+          phone: order.delivery_phone || ''
+        },
+        shippingMethod: order.shipping_method || 'standard',
+        trackingNumber: order.tracking_number || '',
+        trackingUrl: order.tracking_url || '',
+        estimatedDelivery: order.estimated_delivery || '',
+        actualDelivery: order.actual_delivery || '',
+        notes: order.notes || '',
+        adminNotes: order.admin_notes || '',
+        couponCode: order.coupon_code || '',
+        couponDiscount: order.coupon_discount?.toString() || '0',
+        refundAmount: order.refund_amount?.toString() || '0',
+        refundReason: order.refund_reason || '',
+        createdAt: order.created_at,
+        updatedAt: order.updated_at,
+        statusHistory: []
+      };
+      
+      console.log('✅ AdminOrdersApi.getOrder: Transformed order:', transformedOrder);
+      
+      return transformedOrder;
     } else {
-      throw new Error(response.message || 'Failed to get order details');
+      console.error('❌ AdminOrdersApi.getOrder: Invalid response:', response);
+      const errorResponse = response as any;
+      const errorMessage = errorResponse.error?.message || errorResponse.message || 'Failed to get order details';
+      throw new Error(errorMessage);
     }
   },
 
@@ -522,6 +667,26 @@ const adminOrdersApi = {
       return response.data;
     } else {
       throw new Error(response.message || 'Failed to get order timeline');
+    }
+  },
+
+  /**
+   * View payment receipt
+   * GET /admin/orders/:id/receipt
+   */
+  getPaymentReceipt: async (id: string): Promise<{
+    receiptUrl: string;
+    uploadedAt: string;
+  }> => {
+    const response = await get<{
+      receiptUrl: string;
+      uploadedAt: string;
+    }>(`/admin/orders/${id}/receipt`);
+    
+    if (response.success && response.data) {
+      return response.data;
+    } else {
+      throw new Error(response.message || 'Failed to get payment receipt');
     }
   }
 };

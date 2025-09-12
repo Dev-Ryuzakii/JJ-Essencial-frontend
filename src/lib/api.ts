@@ -69,8 +69,16 @@ class ApiClient {
         return response
       },
       (error) => {
+        console.error('API Error:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message
+        });
+        
         if (error.response?.status === 401) {
-          localStorage.removeItem('auth_token')
+          localStorage.removeItem('access_token')
           localStorage.removeItem('user')
           window.location.href = '/login'
           toast.error('Session expired. Please login again.')
@@ -80,6 +88,9 @@ class ApiClient {
                           error.response?.data?.message ||
                           'Bad request. Please check your input.'
           toast.error(errorMsg)
+        } else if (error.response?.status === 404) {
+          // Log 404 errors but don't show toast - handled by components
+          console.warn('Resource not found:', error.config?.url);
         } else if (error.response?.status >= 500) {
           toast.error('Server error. Please try again later.')
         } else if (error.message === 'Network Error') {

@@ -440,8 +440,16 @@ const Checkout: React.FC = () => {
           formData.phone
         )
       case 'payment':
-        // Bank transfer doesn't require card validation
-        return true
+        // For bank transfer, require receipt upload
+        if (formData.paymentMethod === 'bank_transfer') {
+          if (!paymentReceipt) {
+            toast.error('Please upload your payment receipt for bank transfers');
+            return false;
+          }
+          return true;
+        }
+        // For other payment methods, no additional validation needed at this stage
+        return true;
       default:
         return true
     }
@@ -471,6 +479,12 @@ const Checkout: React.FC = () => {
   const handlePlaceOrder = async () => {
     if (!validateStep('payment')) {
       toast.error('Please check your payment information')
+      return
+    }
+    
+    // Validate receipt upload for bank transfers
+    if (formData.paymentMethod === 'bank_transfer' && !paymentReceipt) {
+      toast.error('Please upload your payment receipt for bank transfers')
       return
     }
 
@@ -561,7 +575,7 @@ const Checkout: React.FC = () => {
                   // Handle specific error cases
                   if (receiptError.response?.status === 404) {
                     console.log('Payment reference not found - this is expected for new transfers');
-                    toast.info('Order created successfully! You can upload your receipt after making the payment.');
+                    toast.success('Order created successfully! You can upload your receipt after making the payment.');
                   } else {
                     toast.error('Order created but failed to upload receipt. You can upload it later from the order details.');
                   }
@@ -1093,7 +1107,13 @@ const Checkout: React.FC = () => {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  Upload your payment receipt for faster order processing. You can also upload it later from your order details.
+                  {formData.paymentMethod === 'bank_transfer' ? (
+                    <span className="text-red-600 font-medium">
+                      Payment receipt upload is mandatory for bank transfers. Your order cannot be processed without proof of payment.
+                    </span>
+                  ) : (
+                    "Upload your payment receipt for faster order processing. You can also upload it later from your order details."
+                  )}
                 </p>
               </div>
 
