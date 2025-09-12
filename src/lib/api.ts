@@ -2,11 +2,10 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import toast from 'react-hot-toast'
 
-// API Configuration - Use relative URL for development and environment variable for production
-const isDevelopment = import.meta.env.DEV
-const API_BASE_URL = isDevelopment
-  ? '/api/v1'  // Use relative URL for development (works with Vite proxy)
-  : import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
+// API Configuration - Use localhost:3000 for local backend development
+const API_BASE_URL = 'http://localhost:3000/api/v1'
+
+console.log('🌐 API Base URL:', API_BASE_URL); // Debug log to confirm URL
 
 class ApiClient {
   private client: AxiosInstance
@@ -24,10 +23,10 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor
+    // Request interceptor - Use correct token key
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('auth_token')
+        const token = localStorage.getItem('access_token') // ✅ Matches auth service
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
@@ -174,9 +173,9 @@ export interface PaginatedResponse<T> {
 
 // Auth API
 export const authApi = {
-  // Sign in user
+  // Sign in user - Fixed to extract token from correct location
   login: (credentials: { email: string; password: string }) =>
-    api.post<ApiResponse<any>>('/auth/signin', credentials),
+    api.post<ApiResponse<{access_token: string; user: any}>>('/auth/signin', credentials),
   
   // Register a new user
   register: (userData: {

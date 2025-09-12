@@ -24,32 +24,52 @@ export interface DeliveryAddress {
 
 export interface OrderItem {
   id: string;
-  product: {
+  productId: string;                  // ✅ Updated to match backend field
+  quantity: number;
+  price: number;                      // ✅ Updated to match backend field (not unitPrice)
+  product?: {                         // ✅ Updated to match backend structure
     id: string;
     name: string;
-    price: number;
-    image?: string;
-    sku: string;
-    attributes?: Record<string, string>;
+    images?: string[];                // ✅ Updated from image to images array
+    price?: number;                   // ✅ Made optional
+    sku?: string;                     // ✅ Made optional
+    attributes?: Record<string, string>; // ✅ Made optional
   };
-  quantity: number;
-  price: number;
-  finalPrice: number;
+  finalPrice?: number;                // ✅ Made optional for backward compatibility
 }
 
 export interface Order {
   id: string;
+  userId?: string;                    // ✅ Added userId field from backend
   totalAmount: number;
   status: OrderStatus;
-  items: OrderItem[];
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';  // ✅ Added paymentStatus
+  paymentRef?: string | null;         // ✅ Added paymentRef 
+  receiptUrl?: string | null;         // ✅ Added receiptUrl
+  orderItems?: OrderItem[];           // ✅ Renamed from items to orderItems to match backend
+  items?: OrderItem[];                // ✅ Keep items for backward compatibility
   createdAt: string;
-  subtotal: number;
-  shippingCost: number;
-  tax: number;
-  shippingAddress: ShippingAddress;
-  paymentMethod: string;
+  updatedAt?: string;                 // ✅ Added updatedAt
+  subtotal?: number;                  // ✅ Made optional
+  shippingCost?: number;              // ✅ Made optional
+  tax?: number;                       // ✅ Made optional
+  shippingAddress?: ShippingAddress;  // ✅ Made optional
+  paymentMethod?: string;             // ✅ Made optional  
   trackingNumber?: string;
   estimatedDelivery?: string;
+  user?: {                            // ✅ Added user object from backend
+    id: string;
+    fullName?: string;
+    email?: string;
+  };
+  notes?: string;                     // ✅ Added notes field
+  // ✅ Delivery address fields from backend response
+  deliveryPhone?: string;
+  deliveryAddressText?: string;       // ✅ Renamed to avoid conflict with DeliveryAddress interface
+  deliveryCity?: string;
+  deliveryState?: string;
+  deliveryPostal?: string;
+  deliveryCountry?: string;
 }
 
 export interface OrderDetails extends Order {
@@ -62,6 +82,7 @@ export interface CreateOrderData {
     quantity: number;
   }>;
   deliveryAddress: DeliveryAddress;
+  orderNotes?: string;  // ✅ Added orderNotes field to match backend expectations
 }
 
 export interface OrdersQueryParams {
@@ -96,28 +117,113 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// API Response formatting helpers
+const formatOrderResponse = (backendOrder: any): Order => {
+  // Handle both camelCase frontend and snake_case database fields
+  return {
+    id: backendOrder.id,
+    userId: backendOrder.userId || backendOrder.user_id,
+    totalAmount: parseFloat((backendOrder.totalAmount || backendOrder.total_amount || 0).toString()),
+    status: backendOrder.status,
+    paymentStatus: backendOrder.paymentStatus || backendOrder.payment_status,
+    paymentRef: backendOrder.paymentRef || backendOrder.payment_ref,
+    receiptUrl: backendOrder.receiptUrl || backendOrder.receipt_url,
+    createdAt: backendOrder.createdAt || backendOrder.created_at,
+    updatedAt: backendOrder.updatedAt || backendOrder.updated_at,
+    
+    // ✅ Add delivery address fields from backend response
+    deliveryPhone: backendOrder.deliveryPhone,
+    deliveryAddressText: backendOrder.deliveryAddress,
+    deliveryCity: backendOrder.deliveryCity,
+    deliveryState: backendOrder.deliveryState,
+    deliveryPostal: backendOrder.deliveryPostal,
+    deliveryCountry: backendOrder.deliveryCountry,
+    
+    // Handle order items - support both field names
+    orderItems: (backendOrder.orderItems || backendOrder.order_item || []).map((item: any) => ({
+      id: item.id,
+      productId: item.productId || item.product_id,
+      quantity: item.quantity,
+      price: parseFloat((item.price || 0).toString()),
+      product: item.product ? {
+        id: item.product.id,
+        name: item.product.name,
+        images: item.product.images || []
+      } : undefined
+    })),
+    
+    // Backward compatibility
+    items: (backendOrder.orderItems || backendOrder.order_item || []).map((item: any) => ({
+      id: item.id,
+      productId: item.productId || item.product_id,
+      quantity: item.quantity,
+      price: parseFloat((item.price || 0).toString()),
+      product: item.product ? {
+        id: item.product.id,
+        name: item.product.name,
+        images: item.product.images || []
+      } : undefined
+    })),
+    
+    user: backendOrder.user,
+    notes: backendOrder.notes,
+    
+    // Optional legacy fields
+    subtotal: backendOrder.subtotal,
+    shippingCost: backendOrder.shippingCost,
+    tax: backendOrder.tax,
+    paymentMethod: backendOrder.paymentMethod,
+    trackingNumber: backendOrder.trackingNumber,
+    estimatedDelivery: backendOrder.estimatedDelivery
+  };
+};
+
 const ordersApi = {
   /**
-   * Create a new order
+   * Create a new order - Updated for backend schema compatibility
    * POST /orders
    */
   create: async (data: CreateOrderData): Promise<ApiResponse<Order>> => {
     // Add pre-request logging to see what's actually being sent
     console.log('📦 Order API client: Request data:', JSON.stringify(data, null, 2));
     
-    // Ensure the fields are correctly formatted for the backend
+    // Format data to match the corrected backend DTO structure
     const formattedData = {
-      ...data,
+      // Order items with correct structure - backend expects camelCase here
       items: data.items.map(item => ({
-        // Backend expects only productId (camelCase), not product_id
-        productId: item.productId,
-        quantity: item.quantity
-      }))
+        productId: item.productId,  // ✅ Correct: frontend camelCase maps to backend processing
+        quantity: item.quantity     // ✅ Only send productId and quantity as per fixed backend DTO
+      })),
+      
+      // Delivery address with proper field mapping
+      deliveryAddress: {
+        phone: data.deliveryAddress.phone,       // ✅ Required phone field
+        address: data.deliveryAddress.address,   // ✅ Maps to delivery_address in DB
+        city: data.deliveryAddress.city,         // ✅ Maps to delivery_city in DB  
+        state: data.deliveryAddress.state,       // ✅ Maps to delivery_state in DB
+        postalCode: data.deliveryAddress.postalCode, // ✅ Maps to delivery_postal in DB
+        country: data.deliveryAddress.country    // ✅ Maps to delivery_country in DB
+      },
+      
+      // Optional order notes
+      orderNotes: data.orderNotes || null       // ✅ Maps to notes in DB
+      
+      // ✅ Removed paymentMethod, shippingMethod - handled separately by backend
     };
     
-    console.log('📦 Order API client: Formatted request data:', JSON.stringify(formattedData, null, 2));
+    console.log('📦 Order API client: Formatted request data (aligned with backend fixes):', JSON.stringify(formattedData, null, 2));
     
-    return await api.post<ApiResponse<Order>>('/orders', formattedData);
+    const response = await api.post<ApiResponse<any>>('/orders', formattedData);
+    
+    // Format the response to ensure consistent frontend data structure
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: formatOrderResponse(response.data)
+      };
+    }
+    
+    return response as ApiResponse<Order>;
   },
 
   /**
@@ -147,17 +253,21 @@ const ordersApi = {
   },
 
   /**
-   * Get order details by ID - added to match the component usage in OrderDetail.tsx
+   * Get order details by ID - updated with response formatting
    * GET /orders/:id
    */
   getById: async (id: string): Promise<ApiResponse<Order>> => {
-    try {
-      const response = await api.get<ApiResponse<Order>>(`/orders/${id}`);
-      return response;
-    } catch (error) {
-      console.error(`Error fetching order ${id}:`, error);
-      throw error; // Let the component handle the error
+    const response = await api.get<ApiResponse<any>>(`/orders/${id}`);
+    
+    // Format the response to ensure consistent frontend data structure
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: formatOrderResponse(response.data)
+      };
     }
+    
+    return response as ApiResponse<Order>;
   },
 
   /**

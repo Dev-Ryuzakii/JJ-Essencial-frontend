@@ -72,31 +72,53 @@ export interface Category {
   updatedAt: string
 }
 
-// Order types
+// Order types - Updated to match backend schema fixes
 export interface Order {
   id: string
+  userId?: string                     // ✅ Added userId from backend response
   status: OrderStatus
   totalAmount: string
+  paymentStatus?: PaymentStatus       // ✅ Added paymentStatus
+  paymentRef?: string | null         // ✅ Added paymentRef
+  receiptUrl?: string | null         // ✅ Added receiptUrl  
   items: OrderItem[]
   address: Address
   paymentMethod: PaymentMethod
-  paymentStatus: PaymentStatus
   paymentDetails?: PaymentDetails
   tracking?: OrderTracking
-  notes?: string
-  user?: User
+  notes?: string                     // ✅ Added notes field to match backend
+  user?: User                        // ✅ Added user object
   createdAt: string
-  updatedAt: string
+  updatedAt?: string                 // ✅ Added updatedAt
+  // ✅ Delivery address fields from backend response
+  deliveryPhone?: string
+  deliveryAddressText?: string        // ✅ Renamed to avoid conflict
+  deliveryCity?: string
+  deliveryState?: string
+  deliveryPostal?: string
+  deliveryCountry?: string
+  // ✅ Optional shipping address for backward compatibility
+  shippingAddress?: {
+    fullName?: string
+    addressLine1?: string
+    addressLine2?: string
+    city?: string
+    state?: string
+    postalCode?: string
+    country?: string
+    phone?: string
+  }
 }
 
 export interface OrderItem {
   id: string
-  productId: string
+  productId: string                   // ✅ Consistent with backend schema
   productName: string
   quantity: number
   unitPrice: string
   totalPrice: string
-  product?: Product
+  price?: number                      // ✅ Added price field to match backend
+  product?: Product                   // ✅ Added product object to match backend response
 }
 
 export type OrderStatus = 

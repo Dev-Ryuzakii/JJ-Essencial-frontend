@@ -93,11 +93,11 @@ export default function OrderManagement() {
       
       const response = await adminOrdersApi.getOrders(filterParams)
       
-      setOrders(response.data)
+      setOrders(response.items || response.data || [])
       setPagination(prev => ({
         ...prev,
-        total: response.meta?.total || 0,
-        totalPages: response.meta?.lastPage || 0
+        total: response.meta?.totalItems || response.meta?.total || 0,
+        totalPages: response.meta?.totalPages || response.meta?.lastPage || 0
       }))
       
       setError(null)

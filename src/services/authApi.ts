@@ -1,8 +1,16 @@
-// UPDATED VERSION - CACHE BREAKER 2025-08-22
 import { post, get, patch } from './apiClient';
+import type { SuccessResponseDto, ErrorResponseDto } from '../types';
 
 // Make sure we're using the correct apiClient and not importing anything from Supabase
 console.log('authApi.ts: Loaded - using backend API client only, NO SUPABASE');
+
+// Utility function to handle API response types safely
+const handleApiResponse = <T>(response: any): T => {
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error(response.error?.message || 'API request failed');
+};
 
 // User profile response structure
 export interface UserProfile {
@@ -41,30 +49,27 @@ export interface ProfileUpdateData {
 // Admin-specific auth functions - Uses dedicated admin endpoints with /api/v1
 export const adminAuthApi = {
   /**
-   * Admin signin using dedicated admin signin endpoint
+   * Admin signin using dedicated admin signin endpoint - Fixed response handling
    */
   signin: async (data: SignInData): Promise<AuthResponse> => {
     console.log('Admin signin: Using /api/v1/auth/admin/signin endpoint');
     
     try {
       // Use the dedicated admin signin endpoint
-      const response = await post<AuthResponse>('/auth/admin/signin', data);
-      console.log('Admin signin: Backend response received:', { success: true });
+      const response = await post<{access_token: string; user: UserProfile}>('/auth/admin/signin', data);
       
-      const { access_token, user } = response.data;
+      // Handle successful response using utility function
+      const { access_token, user } = handleApiResponse<{access_token: string; user: UserProfile}>(response);
 
-      // Check if user has admin role
-      if (user.role !== 'ADMIN') {
-        throw new Error('Access denied. Admin privileges required.');
-      }
-
-      // Store admin authentication data
+      // Store in admin-specific localStorage
       localStorage.setItem('adminToken', access_token);
       localStorage.setItem('adminUser', JSON.stringify(user));
-
-      return response.data;
+      
+      console.log('Admin signin: Authentication successful');
+      
+      return { access_token, user };
     } catch (error) {
-      console.error('Admin signin: Backend error:', error);
+      console.error('Admin signin failed:', error);
       throw error;
     }
   },
@@ -228,14 +233,24 @@ const authApi = {
   },
 
   /**
-   * Sign in user (regular user endpoint)
+   * Sign in user (regular user endpoint) - Fixed to use correct response structure
    */
   signin: async (data: SignInData): Promise<AuthResponse> => {
-    const response = await post<AuthResponse>('/auth/signin', data);
+    const response = await post<{access_token: string; user: UserProfile}>('/auth/signin', data);
+    
+    // ✅ CORRECT: Extract from response.data (the T in SuccessResponseDto<T>)
+    if (!response.success || !response.data) {
+      throw new Error('Authentication failed');
+    }
+
     const { access_token, user } = response.data;
 
-    // Store authentication data
-    localStorage.setItem('token', access_token);
+    if (!access_token || !user) {
+      throw new Error('Invalid response structure from server');
+    }
+
+    // Store authentication data - use access_token as key (matches backend)
+    localStorage.setItem('access_token', access_token);
     localStorage.setItem('user', JSON.stringify(user));
 
     // If user is admin, also store in admin-specific storage
@@ -244,7 +259,7 @@ const authApi = {
       localStorage.setItem('adminUser', JSON.stringify(user));
     }
 
-    return response.data;
+    return { access_token, user };
   }
 }
 

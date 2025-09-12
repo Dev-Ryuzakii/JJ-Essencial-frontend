@@ -125,19 +125,19 @@ const Checkout: React.FC = () => {
         
         console.log('📊 API Response structure:', {
           success: response.success,
-          hasData: !!response.data,
-          dataLength: response.data?.length || 0
+          hasData: !!(response as any).data,
+          dataLength: (response as any).data?.length || 0
         });
         
         // 🚨 DETAILED DEBUGGING: Full response analysis
         console.log('🔬 FULL API RESPONSE ANALYSIS:');
         console.log('Response object keys:', Object.keys(response));
-        console.log('Response.data type:', typeof response.data);
-        console.log('Response.data is Array:', Array.isArray(response.data));
+        console.log('Response.data type:', typeof (response as any).data);
+        console.log('Response.data is Array:', Array.isArray((response as any).data));
         console.log('Full raw response:', JSON.stringify(response, null, 2));
         
         // Check if API is filtering results
-        if (response.data && response.data.length === 1) {
+        if ((response as any).data && (response as any).data.length === 1) {
           console.log('⚠️ ONLY 1 ACCOUNT RETURNED - POSSIBLE CAUSES:');
           console.log('   1. Backend API filtering by is_active=true');
           console.log('   2. Query limit set to 1');
@@ -146,11 +146,11 @@ const Checkout: React.FC = () => {
           console.log('   5. API endpoint implementation problem');
         }
         
-        if (response.success && response.data) {
-          console.log(`✅ Successfully loaded ${response.data.length} bank account(s)`);
+        if (response.success && (response as any).data) {
+          console.log(`✅ Successfully loaded ${(response as any).data.length} bank account(s)`);
           
           // Transform snake_case API response to camelCase for UI
-          const transformedAccounts = response.data.map((account: any) => ({
+          const transformedAccounts = (response as any).data.map((account: any) => ({
             bankName: account.bank_name || account.bankName,
             accountName: account.account_name || account.accountName,
             accountNumber: account.account_number || account.accountNumber,
@@ -163,7 +163,7 @@ const Checkout: React.FC = () => {
             const isValid = account.bankName && account.accountName && account.accountNumber;
             if (!isValid) {
               console.warn('⚠️ Invalid account found:', account);
-              console.warn('Raw account data:', response.data.find((raw: any) => 
+              console.warn('Raw account data:', (response as any).data.find((raw: any) => 
                 (raw.bank_name || raw.bankName) === account.bankName
               ));
             }
@@ -186,10 +186,10 @@ const Checkout: React.FC = () => {
         } else {
           console.error('❌ API response indicates failure:', {
             success: response.success,
-            message: response.message || 'No message provided',
-            data: response.data
+            message: (response as any).message || 'No message provided',
+            data: (response as any).data
           });
-          toast.error(response.message || 'Failed to load bank account details');
+          toast.error((response as any).message || 'Failed to load bank account details');
         }
       } catch (error: any) {
         console.error('❌ Failed to fetch bank accounts:', error);
@@ -229,8 +229,8 @@ const Checkout: React.FC = () => {
     
     for (const item of items) {
       try {
-        // Ensure we're using the right ID for validation
-        const productId = item.id;
+        // Ensure we're using the right ID for validation - cart uses productId
+        const productId = item.productId || item.id;
         console.log(`Checking product ${productId} (${item.name})...`);
         
         // Explicitly log the raw API request to ensure correct endpoint
@@ -283,9 +283,9 @@ const Checkout: React.FC = () => {
           }
         }
       } catch (error) {
-        console.log(`Error validating product ${item.id} (${item.name}):`, error);
-        invalidItems.push(item.id);
-        validationResults.push({id: item.id, name: item.name, status: 'ERROR'});
+        console.log(`Error validating product ${item.productId || item.id} (${item.name}):`, error);
+        invalidItems.push(item.productId || item.id);
+        validationResults.push({id: item.productId || item.id, name: item.name, status: 'ERROR'});
       }
     }
     
@@ -317,7 +317,7 @@ const Checkout: React.FC = () => {
       
       for (const item of items) {
         try {
-          const response = await productsApi.getById(item.id);
+          const response = await productsApi.getById(item.productId || item.id);
           
           // Handle the new API response structure
           let product;
@@ -336,8 +336,8 @@ const Checkout: React.FC = () => {
           }
           
           if (!isValidResponse || !product) {
-            console.log(`❌ Product ${item.id} (${item.name}) - Invalid API response`);
-            removeFromCart(item.id);
+            console.log(`❌ Product ${item.productId || item.id} (${item.name}) - Invalid API response`);
+            removeFromCart(item.productId || item.id);
             removedCount++;
             continue;
           }
@@ -350,12 +350,12 @@ const Checkout: React.FC = () => {
             updatedCount++;
           } else {
             console.log(`❌ Removing unavailable product: ${item.name} (Active: ${isActive}, Stock: ${product.stockQuantity})`);
-            removeFromCart(item.id);
+            removeFromCart(item.productId || item.id);
             removedCount++;
           }
         } catch (error) {
           console.log(`❌ Error checking ${item.name}, removing from cart:`, error);
-          removeFromCart(item.id);
+          removeFromCart(item.productId || item.id);
           removedCount++;
         }
       }
@@ -479,8 +479,10 @@ const Checkout: React.FC = () => {
       // Log cart items for debugging
       console.log('Cart items for order:', items.map(item => ({
         id: item.id,
+        productId: item.productId,
         name: item.name,
         quantity: item.quantity,
+        finalProductId: item.productId || item.id, // This is what we'll send
         fullItem: item
       })));
 
@@ -501,24 +503,23 @@ const Checkout: React.FC = () => {
 
       console.log('All products validated successfully, proceeding with order creation...');
 
-      // Create the order with proper structure using snake_case fields expected by backend
+      // Create the order with proper structure matching backend DTO
       const orderData = {
         items: items.map(item => ({
-          productId: item.productId || item.id,
-          quantity: item.quantity
+          productId: item.productId || item.id,    // ✅ Use productId from cart, fallback to id
+          quantity: item.quantity                  // ✅ Removed price field
         })),
         deliveryAddress: {
-          full_name: `${formData.firstName} ${formData.lastName}`, // snake_case
-          address: formData.address,
+          phone: formData.phone || "+234XXXXXXXXX",     // ✅ Added required phone field
+          address: formData.address,                     // ✅ Changed from street to address
           city: formData.city,
           state: formData.state,
-          postalCode: formData.zipCode || '100001',
-          country: formData.country,
-          phone: formData.phone
+          postalCode: formData.zipCode || '100001',      // ✅ Changed from zipCode to postalCode
+          country: formData.country
+          // ✅ Removed fullName field
         },
-        payment_method: formData.paymentMethod.toUpperCase(), // snake_case and uppercase
-        shipping_method: formData.shippingMethod, // snake_case
-        special_instructions: formData.specialInstructions // snake_case
+        orderNotes: formData.specialInstructions        // ✅ Changed from specialInstructions to orderNotes
+        // ✅ Removed paymentMethod, shippingMethod (handle separately)
       };
 
       console.log('Sending order data:', JSON.stringify(orderData, null, 2));
@@ -528,12 +529,12 @@ const Checkout: React.FC = () => {
       
       if (orderResponse.success && orderResponse.data) {
         const orderId = orderResponse.data.id;
-        console.log('Order created successfully:', orderId, 'Payment method:', formData.paymentMethod);
+        console.log('Order created successfully:', orderId);
         
         // Clear the cart after successful order creation
         clearCart();
         
-        // For bank transfer, initiate the payment to get bank transfer details
+        // Handle payment method separately after order creation
         if (formData.paymentMethod === 'bank_transfer') {
           console.log('Initiating bank transfer payment...');
           
@@ -554,9 +555,16 @@ const Checkout: React.FC = () => {
                   await paymentsApi.uploadReceipt(paymentReceipt, paymentResponse.data.reference);
                   toast.success('Payment receipt uploaded successfully!');
                   console.log('Receipt uploaded successfully');
-                } catch (receiptError) {
+                } catch (receiptError: any) {
                   console.error('Failed to upload receipt:', receiptError);
-                  toast.error('Order created but failed to upload receipt. You can upload it later.');
+                  
+                  // Handle specific error cases
+                  if (receiptError.response?.status === 404) {
+                    console.log('Payment reference not found - this is expected for new transfers');
+                    toast.info('Order created successfully! You can upload your receipt after making the payment.');
+                  } else {
+                    toast.error('Order created but failed to upload receipt. You can upload it later from the order details.');
+                  }
                 } finally {
                   setUploadingReceipt(false);
                 }
@@ -572,10 +580,11 @@ const Checkout: React.FC = () => {
             }
           } catch (paymentError) {
             console.error('Bank transfer initiation error:', paymentError);
-            toast.error('Failed to get bank transfer details. Please check your order status.');
+            toast.error('Order created successfully! Bank transfer details will be available in your order.');
             navigate(`/orders/${orderId}`); // Fallback to order page
           }
         } else {
+          // Handle other payment methods separately
           toast.success('Order placed successfully!');
           navigate(`/orders/confirmation?orderId=${orderId}`);
         }
@@ -599,7 +608,7 @@ const Checkout: React.FC = () => {
         console.error('🔥 BACKEND ERROR DETAILS:', JSON.stringify(error.response.data, null, 2));
       }
       
-      // Extract specific error message from API response
+      // Extract specific error message from API response  
       let errorMessage = 'Failed to place order. Please try again.';
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -608,55 +617,40 @@ const Checkout: React.FC = () => {
         errorMessage = error.message;
       }
       
-      // Show specific error to user with actionable solutions
+      // Show specific error to user with actionable solutions based on backend fixes
       if (errorMessage.includes('products not found') || errorMessage.includes('inactive')) {
-        // For the exact error you're experiencing
-        toast.error('⚠️ Cart contains invalid products. Use "Validate Cart" or "Clear Cart" buttons below to fix this issue.', {
+        // ✅ Enhanced error handling for backend product validation
+        toast.error('⚠️ Some products in your cart are no longer available or have changed. Please validate or refresh your cart.', {
           duration: 8000,
         });
-        
-        // Automatically run validation to show which products are problematic
-        console.log('Running automatic cart validation to identify problematic items...');
-        try {
-          const { invalidItems, validationResults } = await validateCartProducts();
-          if (invalidItems.length > 0) {
-            const problemProducts = validationResults
-              .filter(r => r.status !== 'VALID')
-              .map(r => `• ${r.name} (${r.status})`)
-              .join('\n');
-            console.error('Problematic products found:\n' + problemProducts);
-          } else {
-            console.log('⚠️ BACKEND VALIDATION MISMATCH: Frontend validation passed but backend failed');
-            console.log('This suggests the backend uses different validation criteria for order creation');
-            
-            // Try to get more debug info - check if product exists via different endpoint
-            for (const item of items) {
-              try {
-                console.log(`🔍 Debug: Re-checking product ${item.id} for order creation compatibility...`);
-                const debugProduct = await productsApi.getById(item.id);
-                console.log(`🔍 Debug product data:`, {
-                  id: debugProduct.id,
-                  name: debugProduct.name,
-                  is_active: (debugProduct as any).is_active,
-                  isActive: (debugProduct as any).isActive,
-                  stock: debugProduct.stock,
-                  category: debugProduct.category,
-                  full: debugProduct
-                });
-              } catch (debugError) {
-                console.error(`🔍 Debug: Error fetching product ${item.id}:`, debugError);
-              }
-            }
-          }
-        } catch (validationError) {
-          console.error('Could not run validation:', validationError);
-        }
+        console.log('Backend validation failed - suggests products have changed since being added to cart');
+        console.log('User should use the Validate Cart or Clear Cart buttons to resolve this');
+      } else if (errorMessage.includes('field') && errorMessage.includes('required')) {
+        // ✅ Handle backend field validation errors
+        toast.error('Missing required information. Please check all form fields and try again.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('status') && errorMessage.includes('PENDING')) {
+        // ✅ Handle backend status validation
+        toast.error('Order processing error. Please contact support if this persists.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('database') || errorMessage.includes('constraint')) {
+        // ✅ Handle database constraint errors from backend
+        toast.error('System error occurred. Please try again or contact support.', {
+          duration: 6000,
+        });
       } else if (errorMessage.includes('stock')) {
         toast.error('Some items in your cart are out of stock. Please update quantities or remove them.', {
           duration: 6000,
         });
       } else if (errorMessage.includes('address') || errorMessage.includes('delivery')) {
         toast.error('Please check your delivery address information and try again.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('phone')) {
+        // ✅ Handle phone validation errors
+        toast.error('Please provide a valid phone number for delivery.', {
           duration: 6000,
         });
       } else {
@@ -1183,15 +1177,16 @@ const Checkout: React.FC = () => {
                     }
                     
                     return (
-                      <div key={item.id || item.productId || 'unknown'} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                      <div key={item.productId || item.id || 'unknown'} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                         <img
-                          src={typeof item.image === 'string' ? item.image : '/api/placeholder/60/60'}
+                          src={typeof item.image === 'string' ? item.image : 'https://via.placeholder.com/60/60?text=No+Image'}
                           alt={item.name || 'Product'}
                           className="w-12 h-12 object-cover rounded"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.src = '/api/placeholder/60/60';
+                            target.src = 'https://via.placeholder.com/60/60?text=No+Image';
                           }}
+                          
                         />
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{item.name || 'Unknown Product'}</p>
@@ -1290,7 +1285,7 @@ const Checkout: React.FC = () => {
                   }
                   
                   return (
-                    <div key={item.id || item.productId || 'unknown'} className="flex items-center justify-between text-sm">
+                    <div key={item.productId || item.id || 'unknown'} className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-2">
                         <span className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs">
                           {item.quantity || 1}

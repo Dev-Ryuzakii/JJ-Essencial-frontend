@@ -17,8 +17,6 @@ import { Badge } from '../components/ui/Badge'
 import { useCart, useAuth, useWishlist } from '../hooks'
 import type { WishlistItem } from '../services/wishlistApi'
 import toast from 'react-hot-toast'
-// Import debug hook
-import { useWishlistDebug } from '../utils/useWishlistDebug'
 
 const Wishlist: React.FC = () => {
   const [removingItems, setRemovingItems] = useState<Set<string>>(new Set())
@@ -26,29 +24,24 @@ const Wishlist: React.FC = () => {
   const { isAuthenticated } = useAuth()
   const { 
     items: wishlistItems, 
-    isLoading: loading, 
+    loading, 
     loadWishlist, 
     removeFromWishlist 
   } = useWishlist()
-  
-  // Use debug hook in development
-  const { debugRefetch } = useWishlistDebug()
 
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log('Wishlist component mounted, fetching wishlist...')
-      loadWishlist()
-      
-      // In development, add a debug button
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Debug refetch function available via window.debugWishlist')
-        // @ts-ignore - Adding to window for debugging
-        window.debugWishlist = debugRefetch
+    // The useWishlist hook already handles loading on authentication change
+    // No need to duplicate the call here
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Wishlist component mounted')
+      console.log('Debug refetch function available via window.debugWishlist')
+      // @ts-ignore - Adding to window for debugging
+      window.debugWishlist = () => {
+        console.log('Manual debug refetch triggered')
+        loadWishlist(true) // Force reload for debugging
       }
-    } else {
-      console.log('Not fetching wishlist - user not authenticated')
     }
-  }, [isAuthenticated, loadWishlist]) // Updated dependency array
+  }, []) // Empty dependency array to run only on mount
 
   const handleRemoveItem = async (itemId: string) => {
     setRemovingItems(prev => new Set(prev).add(itemId))
@@ -230,7 +223,7 @@ const Wishlist: React.FC = () => {
                   variant="secondary" 
                   onClick={() => {
                     console.log('Manual refresh triggered');
-                    fetchWishlist();
+                    loadWishlist(true);
                   }}
                   size="sm"
                 >

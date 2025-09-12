@@ -1,5 +1,5 @@
 import { get, post, put, patch, del } from './apiClient';
-import type { PaginatedResponse } from './apiClient';
+import type { PaginatedResponse, PaginationMeta } from '../types';
 
 // Admin order interfaces with extended data
 export interface AdminOrder {
@@ -172,11 +172,105 @@ const adminOrdersApi = {
    * GET /admin/orders
    */
   getOrders: async (filters?: AdminOrderFilter): Promise<PaginatedResponse<AdminOrder>> => {
-    const response = await get<PaginatedResponse<AdminOrder>>('/admin/orders', { params: filters });
+    console.log('🔍 AdminOrdersApi.getOrders: Fetching orders with filters:', filters);
+    
+    const response = await get<any>('/admin/orders', { params: filters });
+    
+    console.log('📦 AdminOrdersApi.getOrders: Raw response:', response);
     
     if (response.success && response.data) {
-      return response.data;
+      // Transform backend data to frontend format
+      const transformedOrders = response.data.map((order: any) => {
+        console.log('🔄 Transforming order:', order.id);
+        
+        return {
+          id: order.id,
+          orderNumber: order.id, // Use ID as order number since backend doesn't have this field
+          userId: order.user_id,
+          customer: {
+            id: order.user_id,
+            fullName: order.profile?.full_name || 'Unknown Customer',
+            email: order.profile?.email || 'unknown@email.com',
+            phone: order.delivery_phone || '',
+            avatar: '',
+            totalOrders: 1,
+            totalSpent: order.total_amount?.toString() || '0'
+          },
+          items: order.order_item?.map((item: any) => ({
+            id: item.id,
+            productId: item.product_id,
+            productName: item.product?.name || 'Unknown Product',
+            productSku: item.product?.sku || '',
+            productImage: item.product?.images?.[0] ? JSON.parse(item.product.images[0]).url : '',
+            quantity: item.quantity,
+            price: item.price?.toString() || '0',
+            total: (item.price * item.quantity)?.toString() || '0',
+            discount: '0'
+          })) || [],
+          status: order.status || 'PENDING',
+          paymentStatus: order.payment_status || 'PENDING',
+          paymentMethod: order.payment_method || 'bank_transfer',
+          paymentId: order.payment_ref || '',
+          totalAmount: order.total_amount?.toString() || '0',
+          subtotal: order.total_amount?.toString() || '0',
+          tax: '0',
+          discount: '0',
+          shippingCost: '0',
+          shippingAddress: {
+            fullName: order.profile?.full_name || 'Unknown',
+            addressLine1: order.delivery_address || 'No address provided',
+            addressLine2: '',
+            phone: order.delivery_phone || '',
+            city: order.delivery_city || '',
+            state: order.delivery_state || '',
+            postalCode: order.delivery_postal || '',
+            country: order.delivery_country || ''
+          },
+          billingAddress: {
+            fullName: order.profile?.full_name || 'Unknown',
+            addressLine1: order.delivery_address || 'No address provided',
+            addressLine2: '',
+            phone: order.delivery_phone || '',
+            city: order.delivery_city || '',
+            state: order.delivery_state || '',
+            postalCode: order.delivery_postal || '',
+            country: order.delivery_country || ''
+          },
+          shippingMethod: 'standard',
+          trackingNumber: '',
+          trackingUrl: '',
+          estimatedDelivery: '',
+          actualDelivery: '',
+          notes: order.notes || '',
+          adminNotes: '',
+          couponCode: '',
+          couponDiscount: '0',
+          refundAmount: '0',
+          refundReason: '',
+          createdAt: order.created_at,
+          updatedAt: order.updated_at,
+          statusHistory: []
+        } as AdminOrder;
+      });
+      
+      console.log('✅ AdminOrdersApi.getOrders: Transformed orders:', transformedOrders.length);
+      
+      // Cast response to include pagination data from the curl response
+      const paginatedResponse = response as any;
+      const pagination = paginatedResponse.pagination || {};
+      
+      return {
+        items: transformedOrders,
+        meta: {
+          totalItems: pagination.total || transformedOrders.length,
+          itemCount: transformedOrders.length,
+          itemsPerPage: pagination.limit || 10,
+          totalPages: pagination.pages || 1,
+          currentPage: pagination.page || 1
+        }
+      } as PaginatedResponse<AdminOrder>;
     } else {
+      console.error('❌ AdminOrdersApi.getOrders: Invalid response:', response);
       throw new Error(response.message || 'Failed to get orders');
     }
   },

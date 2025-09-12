@@ -64,23 +64,49 @@ export const paymentsApi = {
     }
   },
 
-  // Initiate bank transfer payment
+  // Initiate bank transfer payment - Exact match with integration guide
   initiateBankTransfer: async (data: BankTransferInitiateData): Promise<ApiResponse<BankTransferResponse>> => {
     try {
-      const response = await api.post('/payments/bank-transfer/initiate', data)
-      // Handle both new and legacy response formats
+      console.log('🏦 Initiating bank transfer for order:', data.orderId);
+      
+      // ✅ EXACT match with integration guide: Only send orderId
+      const requestPayload = {
+        orderId: data.orderId
+      };
+      
+      console.log('💳 Bank transfer request payload:', requestPayload);
+      console.log('🌐 Using API endpoint: /payments/bank-transfer/initiate');
+      
+      const response = await api.post('/payments/bank-transfer/initiate', requestPayload)
+      
+      console.log('📦 Bank transfer response received:', response);
+      
+      // Backend returns response in the exact format from the guide
       if (response.success && response.data) {
+        console.log('✅ Bank transfer initiated successfully:', {
+          reference: response.data.reference,
+          amount: response.data.amount,
+          accountsCount: response.data.bankAccounts?.length || 0
+        });
         return response as ApiResponse<BankTransferResponse>
       }
-      // Legacy format - data is directly in response
+      
+      // If response doesn't match expected structure, wrap it properly
+      console.log('🔄 Wrapping non-standard response format');
       return {
         success: true,
         data: response.data || response,
-        message: response.message || 'Bank transfer initiated successfully',
+        message: response.message || 'Bank transfer details provided successfully',
         timestamp: new Date().toISOString()
       } as ApiResponse<BankTransferResponse>
     } catch (error) {
-      console.error('Failed to initiate bank transfer:', error)
+      console.error('❌ Bank transfer initiation failed:', error)
+      console.error('❌ Error details:', {
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        data: error?.response?.data,
+        message: error?.message
+      });
       throw error
     }
   },

@@ -16,7 +16,6 @@ import {
   Mail,
   CreditCard,
   Calendar,
-  Copy,
   ExternalLink,
   AlertCircle
 } from 'lucide-react'
@@ -239,7 +238,7 @@ const OrderDetail: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Badge variant={getStatusColor(order.status)} size="lg">
+              <Badge variant={getStatusColor(order.status)} size="md">
                 <span className="flex items-center space-x-2">
                   {getStatusIcon(order.status)}
                   <span className="capitalize">{order.status.toLowerCase()}</span>
@@ -290,12 +289,12 @@ const OrderDetail: React.FC = () => {
                       {order.items.map((item) => (
                         <div key={item.id} className="flex items-center space-x-6 pb-6 border-b border-gray-200 last:border-b-0">
                           <img
-                            src={item.product.image || '/api/placeholder/80/80'}
+                            src={item.product?.images?.[0] || 'https://via.placeholder.com/80/80?text=No+Image'}
                             alt={item.product.name}
                             className="w-20 h-20 object-cover rounded-lg"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
-                              target.src = '/api/placeholder/80/80'
+                              target.src = 'https://via.placeholder.com/80/80?text=No+Image'
                             }}
                           />
                           <div className="flex-1">
@@ -362,18 +361,20 @@ const OrderDetail: React.FC = () => {
                           <div className="flex items-start space-x-3">
                             <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                             <div className="text-sm text-gray-600">
-                              <p className="font-medium text-gray-900 mb-1">{order.shippingAddress.fullName}</p>
-                              <p>{order.shippingAddress.addressLine1}</p>
-                              {order.shippingAddress.addressLine2 && (
+                              <p className="font-medium text-gray-900 mb-1">
+                                {order.shippingAddress?.fullName || 'Customer'}
+                              </p>
+                              <p>{order.shippingAddress?.addressLine1 || order.deliveryAddressText || 'Address not available'}</p>
+                              {order.shippingAddress?.addressLine2 && (
                                 <p>{order.shippingAddress.addressLine2}</p>
                               )}
                               <p>
-                                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                                {order.shippingAddress?.city || order.deliveryCity || 'City'}, {order.shippingAddress?.state || order.deliveryState || 'State'} {order.shippingAddress?.postalCode || order.deliveryPostal || ''}
                               </p>
-                              <p>{order.shippingAddress.country}</p>
+                              <p>{order.shippingAddress?.country || order.deliveryCountry || 'Country'}</p>
                               <div className="flex items-center space-x-2 mt-2">
                                 <Phone className="w-4 h-4" />
-                                <span>{order.shippingAddress.phone}</span>
+                                <span>{order.shippingAddress?.phone || order.deliveryPhone || 'Phone not available'}</span>
                               </div>
                             </div>
                           </div>
