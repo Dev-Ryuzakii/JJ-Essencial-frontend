@@ -109,9 +109,8 @@ const ordersApi = {
     const formattedData = {
       ...data,
       items: data.items.map(item => ({
-        // Include both formats to be safe - the backend might expect product_id
+        // Backend expects only productId (camelCase), not product_id
         productId: item.productId,
-        product_id: item.productId,
         quantity: item.quantity
       }))
     };

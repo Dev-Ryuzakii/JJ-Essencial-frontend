@@ -232,7 +232,7 @@ const Cart: React.FC = () => {
                 <h2 className="text-lg font-medium text-gray-900 mb-6">Order Summary</h2>
 
                 {/* Coupon Section */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                {/* <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-2 mb-3">
                     <Tag className="w-5 h-5 text-gray-600" />
                     <span className="font-medium text-gray-900">Promo Code</span>
@@ -270,7 +270,7 @@ const Cart: React.FC = () => {
                       </Button>
                     </div>
                   )}
-                </div>
+                </div> */}
 
                 {/* Price Breakdown */}
                 <div className="space-y-3 mb-6">
@@ -304,7 +304,7 @@ const Cart: React.FC = () => {
                 </div>
 
                 {/* Free Shipping Progress */}
-                {shipping > 0 && (
+                {/* {shipping > 0 && (
                   <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                     <div className="flex items-center space-x-2 mb-2">
                       <Truck className="w-5 h-5 text-blue-600" />
@@ -320,7 +320,7 @@ const Cart: React.FC = () => {
                       />
                     </div>
                   </div>
-                )}
+                )} */}
 
                 {/* Trust Signals */}
                 <div className="grid grid-cols-3 gap-4 mb-6 pt-4 border-t border-gray-200">

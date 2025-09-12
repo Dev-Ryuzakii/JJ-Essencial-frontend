@@ -27,7 +27,7 @@ const Wishlist: React.FC = () => {
   const { 
     items: wishlistItems, 
     isLoading: loading, 
-    fetchWishlist, 
+    loadWishlist, 
     removeFromWishlist 
   } = useWishlist()
   
@@ -37,7 +37,7 @@ const Wishlist: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
       console.log('Wishlist component mounted, fetching wishlist...')
-      fetchWishlist()
+      loadWishlist()
       
       // In development, add a debug button
       if (process.env.NODE_ENV === 'development') {
@@ -48,7 +48,7 @@ const Wishlist: React.FC = () => {
     } else {
       console.log('Not fetching wishlist - user not authenticated')
     }
-  }, [isAuthenticated, fetchWishlist]) // Remove debugRefetch from dependency array
+  }, [isAuthenticated, loadWishlist]) // Updated dependency array
 
   const handleRemoveItem = async (itemId: string) => {
     setRemovingItems(prev => new Set(prev).add(itemId))

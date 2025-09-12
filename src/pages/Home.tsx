@@ -388,7 +388,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Enhanced Categories Section */}
-      {categories.length > 0 && (
+      {/* {categories.length > 0 && (
         <section className="py-20 bg-white">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
@@ -463,7 +463,7 @@ const Home: React.FC = () => {
             </div>
           </div>
         </section>
-      )}
+      )} */}
 
       {/* Enhanced Featured Products */}
       {featuredProducts.length > 0 && (

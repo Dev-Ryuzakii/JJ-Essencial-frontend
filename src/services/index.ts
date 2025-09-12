@@ -31,7 +31,11 @@ export type { WishlistItem } from './wishlistApi';
 
 // Bank Transfer API
 export { default as bankTransferApi } from './bankTransferApi';
-export type { BankAccount, BankTransferData, ReceiptData } from './bankTransferApi';
+export type { BankTransferData, ReceiptData } from './bankTransferApi';
+
+// Payments API
+export { paymentsApi } from './paymentsApi';
+export type { BankTransferInitiateData, BankTransferResponse } from './paymentsApi';
 
 // Dashboard API
 export { default as dashboardApi } from './dashboardApi';
@@ -76,5 +80,10 @@ export {
   adminAnalyticsApi
 } from './adminApi';
 
-// Common types
-export type { ApiResponse, PaginatedResponse } from './apiClient';
+// Common types - using standardized API structure
+export type { 
+  ApiResponse, 
+  SuccessResponseDto, 
+  ErrorResponseDto,
+  PaginatedResponse 
+} from '../types';

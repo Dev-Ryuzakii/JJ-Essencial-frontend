@@ -51,6 +51,7 @@ export interface Product {
   averageRating: number
   reviewCount: number
   isFeatured?: boolean // Backend field
+  isActive?: boolean // Backend field - product status
   isInWishlist?: boolean // Frontend field
   featured?: boolean // Backend field
   createdAt: string
@@ -147,6 +148,20 @@ export interface BankAccount {
   bankName: string
   accountNumber: string
   accountName: string
+  currency?: string
+  sortCode?: string
+  swiftCode?: string
+}
+
+// New API structure for bank accounts
+export interface BankAccountDto {
+  id: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  isActive?: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface PaymentReceipt {
@@ -356,7 +371,29 @@ export interface PaginationMeta {
   currentPage: number
 }
 
-export interface ApiResponse<T = any> {
+// New API Response structure based on documentation
+export interface SuccessResponseDto<T = any> {
+  success: true
+  data: T
+  message: string
+  timestamp: string
+}
+
+export interface ErrorResponseDto {
+  success: false
+  error: {
+    code: string
+    message: string
+    details?: any
+  }
+  timestamp: string
+}
+
+// Union type for API responses
+export type ApiResponse<T = any> = SuccessResponseDto<T> | ErrorResponseDto
+
+// Legacy response structure for backward compatibility
+export interface LegacyApiResponse<T = any> {
   success: boolean
   data?: T
   message: string

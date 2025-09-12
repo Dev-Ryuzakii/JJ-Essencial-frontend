@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   CreditCard,
@@ -15,14 +15,15 @@ import {
   Gift,
   AlertCircle,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Copy
 } from 'lucide-react'
 
 import { useCart, useAuth } from '../hooks'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { formatCurrency } from '../lib/utils'
-import { ordersApi, productsApi } from '../services'
+import { ordersApi, productsApi, paymentsApi } from '../services'
 import toast from 'react-hot-toast'
 
 interface CheckoutForm {
@@ -47,6 +48,15 @@ interface CheckoutForm {
   specialInstructions: string
 }
 
+interface BankAccount {
+  bankName: string
+  accountName: string
+  accountNumber: string
+  sortCode?: string
+  swiftCode?: string
+  currency: string
+}
+
 const Checkout: React.FC = () => {
   const navigate = useNavigate()
   const { items, clearCart, removeFromCart, getSubtotal, getFinalAmount } = useCart()
@@ -54,6 +64,11 @@ const Checkout: React.FC = () => {
   
   const [step, setStep] = useState<'shipping' | 'payment' | 'review'>('shipping')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [loadingBankAccounts, setLoadingBankAccounts] = useState(false)
+  const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null)
+  const [uploadingReceipt, setUploadingReceipt] = useState(false)
+  
   const [formData, setFormData] = useState<CheckoutForm>({
     email: user?.email || '',
     firstName: user?.fullName?.split(' ')[0] || '',
@@ -66,7 +81,7 @@ const Checkout: React.FC = () => {
     country: 'Nigeria',
     phone: user?.phone || '',
     shippingMethod: 'standard',
-    paymentMethod: 'card',
+    paymentMethod: 'bank_transfer',
     cardNumber: '',
     expiryDate: '',
     cvv: '',
@@ -78,15 +93,134 @@ const Checkout: React.FC = () => {
 
   const subtotal = getSubtotal()
   const total = getFinalAmount()
-  const tax = total * 0.1
+  const tax = 0 // Remove tax for Nigerian context
   
   const shippingCosts = {
     standard: 0,
-    express: 15.99,
-    overnight: 29.99
+    express: 1500, // ₦1,500 for express delivery
+    overnight: 3000 // ₦3,000 for overnight delivery
   }
   
   const shipping = shippingCosts[formData.shippingMethod]
+
+  // Function to copy account number to clipboard
+  const copyToClipboard = async (text: string, type: string = 'Account number') => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success(`${type} copied to clipboard!`)
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error)
+      toast.error('Failed to copy to clipboard')
+    }
+  }
+
+  // Fetch bank accounts on component mount
+  useEffect(() => {
+    const fetchBankAccounts = async () => {
+      console.log('🧪 Fetching bank accounts using new API structure...\n');
+      setLoadingBankAccounts(true)
+      try {
+        console.log('🔍 Making API request to: /api/v1/payments/bank-accounts');
+        const response = await paymentsApi.getBankAccounts()
+        
+        console.log('📊 API Response structure:', {
+          success: response.success,
+          hasData: !!response.data,
+          dataLength: response.data?.length || 0
+        });
+        
+        // 🚨 DETAILED DEBUGGING: Full response analysis
+        console.log('🔬 FULL API RESPONSE ANALYSIS:');
+        console.log('Response object keys:', Object.keys(response));
+        console.log('Response.data type:', typeof response.data);
+        console.log('Response.data is Array:', Array.isArray(response.data));
+        console.log('Full raw response:', JSON.stringify(response, null, 2));
+        
+        // Check if API is filtering results
+        if (response.data && response.data.length === 1) {
+          console.log('⚠️ ONLY 1 ACCOUNT RETURNED - POSSIBLE CAUSES:');
+          console.log('   1. Backend API filtering by is_active=true');
+          console.log('   2. Query limit set to 1');
+          console.log('   3. User permission restricting access');
+          console.log('   4. Database query issue');
+          console.log('   5. API endpoint implementation problem');
+        }
+        
+        if (response.success && response.data) {
+          console.log(`✅ Successfully loaded ${response.data.length} bank account(s)`);
+          
+          // Transform snake_case API response to camelCase for UI
+          const transformedAccounts = response.data.map((account: any) => ({
+            bankName: account.bank_name || account.bankName,
+            accountName: account.account_name || account.accountName,
+            accountNumber: account.account_number || account.accountNumber,
+            currency: account.currency || 'NGN',
+            sortCode: account.sort_code || account.sortCode,
+            swiftCode: account.swift_code || account.swiftCode
+          }));
+          
+          const validAccounts = transformedAccounts.filter((account: any) => {
+            const isValid = account.bankName && account.accountName && account.accountNumber;
+            if (!isValid) {
+              console.warn('⚠️ Invalid account found:', account);
+              console.warn('Raw account data:', response.data.find((raw: any) => 
+                (raw.bank_name || raw.bankName) === account.bankName
+              ));
+            }
+            return isValid;
+          });
+
+          console.log('💳 Bank accounts ready for display:');
+          validAccounts.forEach((account: any, index: number) => {
+            console.log(`   ${index + 1}. ${account.bankName}`);
+            console.log(`      Account Name: ${account.accountName}`);
+            console.log(`      Account Number: ${account.accountNumber}`);
+            console.log(`      Currency: ${account.currency || 'NGN'}`);
+            if (account.sortCode) console.log(`      Sort Code: ${account.sortCode}`);
+            if (account.swiftCode) console.log(`      Swift Code: ${account.swiftCode}`);
+            console.log('');
+          });
+          
+          setBankAccounts(validAccounts);
+          console.log('🎉 Bank accounts loaded successfully into state!');
+        } else {
+          console.error('❌ API response indicates failure:', {
+            success: response.success,
+            message: response.message || 'No message provided',
+            data: response.data
+          });
+          toast.error(response.message || 'Failed to load bank account details');
+        }
+      } catch (error: any) {
+        console.error('❌ Failed to fetch bank accounts:', error);
+        console.error('Full error context:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          responseData: error.response?.data,
+          url: error.config?.url
+        });
+        
+        // More specific error messages based on the new API structure
+        let errorMessage = 'Failed to load bank account details';
+        if (error.response?.status === 401) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (error.response?.status === 403) {
+          errorMessage = 'Access denied. Insufficient permissions.';
+        } else if (error.response?.status === 404) {
+          errorMessage = 'Bank accounts service not found. Please try again later.';
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
+        toast.error(errorMessage);
+      } finally {
+        setLoadingBankAccounts(false)
+      }
+    }
+
+    fetchBankAccounts()
+  }, [])
 
   const validateCartProducts = async () => {
     console.log('Validating cart products...');
@@ -184,18 +318,43 @@ const Checkout: React.FC = () => {
       for (const item of items) {
         try {
           const response = await productsApi.getById(item.id);
-          if (response.success && response.data && response.data.isActive) {
-            // Product still exists and is active - could update price/stock if needed
+          
+          // Handle the new API response structure
+          let product;
+          let isValidResponse = false;
+          
+          if (response && typeof response === 'object') {
+            // Check if it's a SuccessResponseDto structure
+            if ('success' in response && 'data' in response && response.success) {
+              product = response.data;
+              isValidResponse = true;
+            } else if ('id' in response) {
+              // Direct product object
+              product = response;
+              isValidResponse = true;
+            }
+          }
+          
+          if (!isValidResponse || !product) {
+            console.log(`❌ Product ${item.id} (${item.name}) - Invalid API response`);
+            removeFromCart(item.id);
+            removedCount++;
+            continue;
+          }
+          
+          // Check if product is active using the new API structure
+          const isActive = product.isActive !== undefined ? product.isActive : true;
+          
+          if (isActive && product.stockQuantity > 0) {
             console.log(`✅ Refreshed: ${item.name}`);
             updatedCount++;
           } else {
-            // Product no longer exists or is inactive - remove from cart
-            console.log(`❌ Removing unavailable product: ${item.name}`);
+            console.log(`❌ Removing unavailable product: ${item.name} (Active: ${isActive}, Stock: ${product.stockQuantity})`);
             removeFromCart(item.id);
             removedCount++;
           }
         } catch (error) {
-          console.log(`❌ Error checking ${item.name}, removing from cart`);
+          console.log(`❌ Error checking ${item.name}, removing from cart:`, error);
           removeFromCart(item.id);
           removedCount++;
         }
@@ -240,6 +399,33 @@ const Checkout: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
+  const handleReceiptUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Please upload a valid file (JPG, PNG, or PDF)')
+        return
+      }
+      
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (file.size > maxSize) {
+        toast.error('File size should be less than 5MB')
+        return
+      }
+      
+      setPaymentReceipt(file)
+      toast.success('Payment receipt selected successfully')
+    }
+  }
+
+  const removeReceipt = () => {
+    setPaymentReceipt(null)
+    toast.success('Payment receipt removed')
+  }
+
   const validateStep = (currentStep: string): boolean => {
     switch (currentStep) {
       case 'shipping':
@@ -254,14 +440,7 @@ const Checkout: React.FC = () => {
           formData.phone
         )
       case 'payment':
-        if (formData.paymentMethod === 'card') {
-          return !!(
-            formData.cardNumber &&
-            formData.expiryDate &&
-            formData.cvv &&
-            formData.nameOnCard
-          )
-        }
+        // Bank transfer doesn't require card validation
         return true
       default:
         return true
@@ -322,61 +501,87 @@ const Checkout: React.FC = () => {
 
       console.log('All products validated successfully, proceeding with order creation...');
 
-      // Create the order with the exact format expected by the API (based on CreateOrderData interface)
-      // Use productId explicitly from the item to ensure we're sending the correct field
+      // Create the order with proper structure using snake_case fields expected by backend
       const orderData = {
         items: items.map(item => ({
-          productId: item.productId || item.id, // Prefer productId if available, fallback to id
+          productId: item.productId || item.id,
           quantity: item.quantity
         })),
         deliveryAddress: {
+          full_name: `${formData.firstName} ${formData.lastName}`, // snake_case
           address: formData.address,
           city: formData.city,
           state: formData.state,
           postalCode: formData.zipCode || '100001',
           country: formData.country,
           phone: formData.phone
-        }
+        },
+        payment_method: formData.paymentMethod.toUpperCase(), // snake_case and uppercase
+        shipping_method: formData.shippingMethod, // snake_case
+        special_instructions: formData.specialInstructions // snake_case
       };
-      
-      // Add debugging to ensure we're sending the expected structure
-      console.log('📦 Item structure check:', items.map(item => ({
-        id: item.id,
-        productId: item.productId,
-        using: item.productId || item.id
-      })));
 
       console.log('Sending order data:', JSON.stringify(orderData, null, 2));
       
-      // CRITICAL DEBUG: Log the validation results from the frontend
-      console.log('🔍 Frontend validation results for order creation:');
-      validationResults.forEach(result => {
-        console.log(`Product ${result.id} (${result.name}): ${result.status}`);
-      });
+      // Create the order first
+      const orderResponse = await ordersApi.create(orderData);
       
-      // Log the actual API client configuration being used for order creation
-      console.log('🔍 Using ordersApi from:', ordersApi);
-      
-      const response = await ordersApi.create(orderData);
-      
-      if (response.success && response.data) {
-        const orderId = response.data.id;
+      if (orderResponse.success && orderResponse.data) {
+        const orderId = orderResponse.data.id;
         console.log('Order created successfully:', orderId, 'Payment method:', formData.paymentMethod);
         
         // Clear the cart after successful order creation
         clearCart();
         
-        // If the payment method is bank transfer, redirect to bank transfer checkout
+        // For bank transfer, initiate the payment to get bank transfer details
         if (formData.paymentMethod === 'bank_transfer') {
-          console.log('Redirecting to bank transfer checkout');
-          navigate(`/checkout/payment?orderId=${orderId}&method=bank_transfer`);
+          console.log('Initiating bank transfer payment...');
+          
+          try {
+            // Call the bank transfer initiation API
+            const paymentResponse = await paymentsApi.initiateBankTransfer({
+              orderId: orderId
+            });
+            
+            if (paymentResponse.success && paymentResponse.data) {
+              console.log('Bank transfer initiated successfully');
+              
+              // If user uploaded a receipt, upload it now
+              if (paymentReceipt) {
+                setUploadingReceipt(true);
+                try {
+                  console.log('Uploading payment receipt...');
+                  await paymentsApi.uploadReceipt(paymentReceipt, paymentResponse.data.reference);
+                  toast.success('Payment receipt uploaded successfully!');
+                  console.log('Receipt uploaded successfully');
+                } catch (receiptError) {
+                  console.error('Failed to upload receipt:', receiptError);
+                  toast.error('Order created but failed to upload receipt. You can upload it later.');
+                } finally {
+                  setUploadingReceipt(false);
+                }
+              }
+              
+              // Navigate to bank transfer payment page with the payment details
+              const paymentData = encodeURIComponent(JSON.stringify(paymentResponse.data));
+              navigate(`/checkout/bank-transfer?orderId=${orderId}&paymentData=${paymentData}`);
+            } else {
+              console.error('Bank transfer initiation failed:', paymentResponse);
+              toast.error('Failed to initiate bank transfer. Please try again.');
+              navigate(`/orders/${orderId}`); // Fallback to order page
+            }
+          } catch (paymentError) {
+            console.error('Bank transfer initiation error:', paymentError);
+            toast.error('Failed to get bank transfer details. Please check your order status.');
+            navigate(`/orders/${orderId}`); // Fallback to order page
+          }
         } else {
           toast.success('Order placed successfully!');
           navigate(`/orders/confirmation?orderId=${orderId}`);
         }
       } else {
-        console.error('Order creation failed:', response);
-        toast.error(response.message || 'Failed to place order');
+        console.error('Order creation failed:', orderResponse);
+        toast.error(orderResponse.message || 'Failed to place order');
       }
     } catch (error: any) {
       console.error('Order creation error:', error);
@@ -689,9 +894,9 @@ const Checkout: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Method</h3>
                 <div className="space-y-4">
                   {[
-                    { key: 'standard', name: 'Standard Delivery', time: '5-7 business days', price: 0 },
-                    { key: 'express', name: 'Express Delivery', time: '2-3 business days', price: 15.99 },
-                    { key: 'overnight', name: 'Overnight Delivery', time: 'Next business day', price: 29.99 }
+                    { key: 'standard', name: 'Local Pickup', time: '5-7 business days', price: 0 },
+                    { key: 'express', name: 'Delivery Fee to Park', time: '2-3 business days', price: 1500 },
+                    
                   ].map((method) => (
                     <label key={method.key} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
                       <input
@@ -735,98 +940,181 @@ const Checkout: React.FC = () => {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Payment Method</h3>
                 <div className="space-y-3">
-                  {[
-                    { key: 'card', name: 'Credit/Debit Card', icon: CreditCard },
-                    { key: 'bank_transfer', name: 'Bank Transfer', icon: CreditCard },
-                    { key: 'paypal', name: 'PayPal', icon: CreditCard },
-                    { key: 'apple_pay', name: 'Apple Pay', icon: CreditCard }
-                  ].map((method) => (
-                    <label key={method.key} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value={method.key}
-                        checked={formData.paymentMethod === method.key}
-                        onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <method.icon className="ml-3 w-5 h-5 text-gray-400" />
-                      <span className="ml-3 font-medium text-gray-900">{method.name}</span>
-                    </label>
-                  ))}
+                  <label className="flex items-center p-3 border rounded-lg bg-blue-50 border-blue-200">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="bank_transfer"
+                      checked={true}
+                      readOnly
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <CreditCard className="ml-3 w-5 h-5 text-blue-600" />
+                    <span className="ml-3 font-medium text-gray-900">Bank Transfer</span>
+                  </label>
                 </div>
+                
+             
+
+                {/* Show Bank Accounts Preview */}
+                {bankAccounts.length > 0 ? (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Available Bank Accounts Preview</h4>
+                    <div className="space-y-2">
+                      {bankAccounts.slice(0, 2).map((account, index) => (
+                        <div key={`${account.bankName}-${index}`} className="p-3 bg-gray-50 rounded-lg text-sm">
+                          <div className="font-medium text-gray-900">{account.bankName}</div>
+                          <div className="text-gray-600">{account.accountName}</div>
+                          <div className="flex items-center justify-between group">
+                            <span className="text-gray-600">Account: {account.accountNumber}</span>
+                            <button
+                              onClick={() => copyToClipboard(account.accountNumber, 'Account number')}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-200 rounded"
+                              title="Copy account number"
+                            >
+                              <Copy className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                            </button>
+                          </div>
+                          {account.sortCode && (
+                            <div className="flex items-center justify-between group">
+                              <span className="text-gray-600">Sort Code: {account.sortCode}</span>
+                              <button
+                                onClick={() => copyToClipboard(account.sortCode, 'Sort code')}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-200 rounded"
+                                title="Copy sort code"
+                              >
+                                <Copy className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                              </button>
+                            </div>
+                          )}
+                          {account.swiftCode && (
+                            <div className="flex items-center justify-between group">
+                              <span className="text-gray-600">Swift Code: {account.swiftCode}</span>
+                              <button
+                                onClick={() => copyToClipboard(account.swiftCode, 'Swift code')}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-200 rounded"
+                                title="Copy swift code"
+                              >
+                                <Copy className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                              </button>
+                            </div>
+                          )}
+                          <div className="text-gray-500 text-xs">Currency: {account.currency}</div>
+                        </div>
+                      ))}
+                      {bankAccounts.length > 2 && (
+                        <div className="text-sm text-gray-500 pl-3">
+                          +{bankAccounts.length - 2} more account(s) available
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : !loadingBankAccounts ? (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 text-yellow-600" />
+                      <span className="text-yellow-800">No bank accounts available. Bank details will be provided after order creation.</span>
+                    </div>
+                  </div>
+                ) : null}
+
+                {loadingBankAccounts && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                    Loading bank account details...
+                  </div>
+                )}
               </div>
 
-              {/* Card Details */}
-              {formData.paymentMethod === 'card' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Card Number *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cardNumber}
-                      onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="1234 5678 9012 3456"
-                    />
-                  </div>
+              {/* Order Notes */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order Notes (Optional)
+                </label>
+                <textarea
+                  value={formData.specialInstructions}
+                  onChange={(e) => handleInputChange('specialInstructions', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={4}
+                  placeholder="Add any special instructions or notes for your order..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  You can include delivery preferences, gift messages, or any other special requests.
+                </p>
+              </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Expiry Date *
-                      </label>
+              {/* Payment Receipt Upload */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Receipt (Optional)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  {!paymentReceipt ? (
+                    <div className="text-center">
                       <input
-                        type="text"
-                        value={formData.expiryDate}
-                        onChange={(e) => handleInputChange('expiryDate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="MM/YY"
+                        type="file"
+                        id="receipt-upload"
+                        accept="image/*,.pdf"
+                        onChange={handleReceiptUpload}
+                        className="hidden"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        CVV *
+                      <label
+                        htmlFor="receipt-upload"
+                        className="cursor-pointer flex flex-col items-center space-y-2"
+                      >
+                        <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                          <CreditCard className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-600 hover:text-blue-500">
+                            Click to upload payment receipt
+                          </span>
+                          <p className="text-gray-500 mt-1">or drag and drop</p>
+                        </div>
+                        <p className="text-xs text-gray-400">
+                          JPG, PNG or PDF (max 5MB)
+                        </p>
                       </label>
-                      <input
-                        type="text"
-                        value={formData.cvv}
-                        onChange={(e) => handleInputChange('cvv', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="123"
-                      />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-green-900">{paymentReceipt.name}</p>
+                          <p className="text-xs text-green-700">
+                            {(paymentReceipt.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={removeReceipt}
+                        className="text-red-600 hover:text-red-800 p-1"
+                        title="Remove receipt"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Upload your payment receipt for faster order processing. You can also upload it later from your order details.
+                </p>
+              </div>
 
+              {/* Confirmation Note */}
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Name on Card *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.nameOnCard}
-                      onChange={(e) => handleInputChange('nameOnCard', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="John Doe"
-                    />
-                  </div>
-
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.saveCard}
-                      onChange={(e) => handleInputChange('saveCard', e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <label className="ml-2 text-sm text-gray-700">
-                      Save this card for future purchases
-                    </label>
+                    <h4 className="text-sm font-medium text-green-800 mb-2">Ready for Bank Transfer</h4>
+                    <p className="text-sm text-green-700">
+                      Your order will be processed using bank transfer. Complete payment details will be provided after order confirmation.
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="mt-8 flex items-center justify-between">
                 <Button variant="outline" onClick={handleBack}>
@@ -929,6 +1217,36 @@ const Checkout: React.FC = () => {
                 </p>
               </div>
 
+              {/* Payment Information */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Payment Information</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Payment Method:</span>
+                    <span className="text-gray-900 font-medium">Bank Transfer</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Payment Receipt:</span>
+                    <span className={`font-medium ${paymentReceipt ? 'text-green-600' : 'text-gray-500'}`}>
+                      {paymentReceipt ? (
+                        <div className="flex items-center space-x-1">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Uploaded</span>
+                        </div>
+                      ) : (
+                        'Not uploaded'
+                      )}
+                    </span>
+                  </div>
+                  {formData.specialInstructions && (
+                    <div className="pt-2 border-t border-gray-200">
+                      <span className="text-gray-600">Special Instructions:</span>
+                      <p className="text-gray-900 mt-1">{formData.specialInstructions}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Security Notice */}
               <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-start space-x-3">
@@ -936,7 +1254,7 @@ const Checkout: React.FC = () => {
                   <div>
                     <h4 className="text-sm font-medium text-blue-800">Secure Checkout</h4>
                     <p className="text-sm text-blue-700 mt-1">
-                      Your payment information is encrypted and secure. We never store your card details.
+                      Your order information is encrypted and secure. Bank transfer details will be provided securely.
                     </p>
                   </div>
                 </div>
@@ -1001,10 +1319,12 @@ const Checkout: React.FC = () => {
                     {shipping === 0 ? 'Free' : formatCurrency(shipping)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="text-gray-900">{formatCurrency(tax)}</span>
-                </div>
+                {tax > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tax</span>
+                    <span className="text-gray-900">{formatCurrency(tax)}</span>
+                  </div>
+                )}
                 <hr className="my-2" />
                 <div className="flex justify-between text-lg font-semibold">
                   <span className="text-gray-900">Total</span>
@@ -1016,15 +1336,15 @@ const Checkout: React.FC = () => {
               <div className="mt-6 space-y-3">
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Shield className="w-4 h-4 text-green-600" />
-                  <span>SSL Encrypted Checkout</span>
+                  <span>Secure Bank Transfer</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Truck className="w-4 h-4 text-blue-600" />
                   <span>Free Returns within 30 days</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Gift className="w-4 h-4 text-purple-600" />
-                  <span>Gift wrapping available</span>
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>Fast Payment Verification</span>
                 </div>
               </div>
             </div>

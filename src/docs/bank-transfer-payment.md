@@ -34,7 +34,7 @@ The system consists of the following components:
 
 ### Public Endpoints (No Authentication Required)
 ```
-GET /api/v1/payments/bank-accounts - Get bank accounts for customer checkout
+GET /api/v1/payments/bank-transfer/bank-accounts - Get bank accounts for customer checkout
 ```
 
 ### Authenticated Endpoints (Require JWT Token)

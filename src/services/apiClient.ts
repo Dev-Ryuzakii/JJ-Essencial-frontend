@@ -1,30 +1,18 @@
 import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { 
+  ApiResponse, 
+  SuccessResponseDto, 
+  ErrorResponseDto, 
+  PaginatedResponse,
+  PaginationMeta 
+} from '../types';
 
-// API Response structure
-export type ApiResponse<T> = {
-  data: T;
-  success: boolean;
-  message?: string;
-  status: number;
-}
-
-// API Error response structure
+// Legacy API Error response structure for backward compatibility
 export type ApiError = {
   statusCode: number;
   message: string;
   error: string;
-};
-
-// Paginated response structure
-export type PaginatedResponse<T> = {
-  data: T[];
-  meta: {
-    total: number;
-    page: number;
-    lastPage: number;
-    hasNextPage: boolean;
-  };
 };
 
 // Base API URL - Use environment variable or production fallback

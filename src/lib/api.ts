@@ -31,6 +31,18 @@ class ApiClient {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
+        
+        // 🚨 DEBUG: Log bank account requests
+        if (config.url?.includes('bank-account')) {
+          console.log('🌐 API Client - Making bank account request:', {
+            method: config.method?.toUpperCase(),
+            url: config.url,
+            baseURL: config.baseURL,
+            fullURL: `${config.baseURL}${config.url}`,
+            hasAuth: !!config.headers.Authorization
+          });
+        }
+        
         return config
       },
       (error) => {
@@ -41,6 +53,20 @@ class ApiClient {
   // Response interceptor
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
+        // 🚨 DEBUG: Log bank account responses
+        if (response.config.url?.includes('bank-account')) {
+          console.log('📨 API Client - Bank account response received:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: response.config.url,
+            dataType: typeof response.data,
+            dataKeys: response.data ? Object.keys(response.data) : [],
+            dataLength: Array.isArray(response.data) ? response.data.length : 
+                       response.data?.data?.length || 'not array',
+            fullResponse: response.data
+          });
+        }
+        
         return response
       },
       (error) => {

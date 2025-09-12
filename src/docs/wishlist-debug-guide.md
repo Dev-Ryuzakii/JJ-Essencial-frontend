@@ -17,7 +17,7 @@ This guide helps identify and resolve common issues with the bank transfer payme
 
 **Solutions:**
 - Check if bank accounts are configured in the admin panel
-- Verify the `/api/v1/payments/bank-accounts` endpoint is working
+- Verify the `/api/v1/payments/bank-transfer/bank-accounts` endpoint is working
 - Check browser console for specific API errors
 - Ensure the user has internet connectivity
 
