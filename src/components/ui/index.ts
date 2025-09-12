@@ -11,3 +11,5 @@ export {
 } from './Skeleton'
 export { Rating, InteractiveRating } from './Rating'
 export { Pagination, SimplePagination } from './Pagination'
+export { default as Alert } from './Alert'
+export { default as Spinner } from './Spinner'

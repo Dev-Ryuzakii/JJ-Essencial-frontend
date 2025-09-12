@@ -24,6 +24,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { formatCurrency } from '../lib/utils'
 import { ordersApi, productsApi, paymentsApi } from '../services'
+import FlutterwavePayment from '../components/payment/FlutterwavePayment'
 import toast from 'react-hot-toast'
 
 interface CheckoutForm {
@@ -38,7 +39,7 @@ interface CheckoutForm {
   country: string
   phone: string
   shippingMethod: 'standard' | 'express' | 'overnight'
-  paymentMethod: 'card' | 'paypal' | 'apple_pay' | 'bank_transfer'
+  paymentMethod: 'card' | 'paypal' | 'apple_pay' | 'bank_transfer' | 'flutterwave'
   cardNumber: string
   expiryDate: string
   cvv: string
@@ -68,6 +69,7 @@ const Checkout: React.FC = () => {
   const [loadingBankAccounts, setLoadingBankAccounts] = useState(false)
   const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
+  const [orderResponse, setOrderResponse] = useState<any>(null)
   
   const [formData, setFormData] = useState<CheckoutForm>({
     email: user?.email || '',
@@ -448,6 +450,10 @@ const Checkout: React.FC = () => {
           }
           return true;
         }
+        // For Flutterwave, no additional validation needed at this stage
+        else if (formData.paymentMethod === 'flutterwave') {
+          return true;
+        }
         // For other payment methods, no additional validation needed at this stage
         return true;
       default:
@@ -532,8 +538,9 @@ const Checkout: React.FC = () => {
           country: formData.country
           // ✅ Removed fullName field
         },
-        orderNotes: formData.specialInstructions        // ✅ Changed from specialInstructions to orderNotes
-        // ✅ Removed paymentMethod, shippingMethod (handle separately)
+        orderNotes: formData.specialInstructions,        // ✅ Changed from specialInstructions to orderNotes
+        paymentMethod: formData.paymentMethod            // ✅ Added payment method field
+        // ✅ Removed shippingMethod (handle separately)
       };
 
       console.log('Sending order data:', JSON.stringify(orderData, null, 2));
@@ -545,8 +552,8 @@ const Checkout: React.FC = () => {
         const orderId = orderResponse.data.id;
         console.log('Order created successfully:', orderId);
         
-        // Clear the cart after successful order creation
-        clearCart();
+        // Store the order response for later use
+        setOrderResponse(orderResponse);
         
         // Handle payment method separately after order creation
         if (formData.paymentMethod === 'bank_transfer') {
@@ -597,8 +604,20 @@ const Checkout: React.FC = () => {
             toast.error('Order created successfully! Bank transfer details will be available in your order.');
             navigate(`/orders/${orderId}`); // Fallback to order page
           }
+        } else if (formData.paymentMethod === 'flutterwave') {
+          // Clear the cart after successful order creation
+          clearCart();
+          
+          // Proceed to Flutterwave payment in the review step
+          toast.success('Order created successfully! Proceed to payment.');
+          
+          // Set step to review with Flutterwave payment
+          if (step !== 'review') {
+            setStep('review');
+          }
         } else {
           // Handle other payment methods separately
+          clearCart();
           toast.success('Order placed successfully!');
           navigate(`/orders/confirmation?orderId=${orderId}`);
         }
@@ -948,13 +967,35 @@ const Checkout: React.FC = () => {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Payment Method</h3>
                 <div className="space-y-3">
-                  <label className="flex items-center p-3 border rounded-lg bg-blue-50 border-blue-200">
+                  <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="flutterwave"
+                      checked={formData.paymentMethod === 'flutterwave'}
+                      onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <div className="ml-3 w-5 h-5 flex items-center justify-center">
+                      <svg width="20" height="20" viewBox="0 0 220 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M32.6 0L0 18.6V36.1L32.6 54L65.3 36.1V18.6L32.6 0Z" fill="#F5A623"/>
+                        <path d="M120 17.2H132.4C142.4 17.2 148.1 23.1 148.1 31.8C148.1 40.5 142.4 46.4 132.4 46.4H120V17.2ZM132.3 41.1C139.2 41.1 142.7 37.4 142.7 31.8C142.7 26.2 139.2 22.5 132.3 22.5H125.4V41.1H132.3Z" fill="#10122B"/>
+                        <path d="M186.1 17.2H191.5V46.4H186.4V26.7L180.3 43.1H176.4L170.3 26.7V46.4H165.2V17.2H170.6L178.4 35.1L186.1 17.2Z" fill="#10122B"/>
+                        <path d="M73.3 46.4H69L82.1 17.2H86.7L99.8 46.4H95.4L91.9 38.5H76.8L73.3 46.4ZM78.6 33.2H90.1L84.3 19.2L78.6 33.2Z" fill="#10122B"/>
+                        <path d="M205 25.3V46.4H199.5V17.2H204.5L217.6 38.2V17.2H223.1V46.4H218.1L205 25.3Z" fill="#10122B"/>
+                      </svg>
+                    </div>
+                    <span className="ml-3 font-medium text-gray-900">Flutterwave</span>
+                    <span className="ml-auto text-sm text-gray-500">Credit/Debit Card, Bank Transfer, USSD, etc.</span>
+                  </label>
+                  
+                  <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
                     <input
                       type="radio"
                       name="paymentMethod"
                       value="bank_transfer"
-                      checked={true}
-                      readOnly
+                      checked={formData.paymentMethod === 'bank_transfer'}
+                      onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
                       className="text-blue-600 focus:ring-blue-500"
                     />
                     <CreditCard className="ml-3 w-5 h-5 text-blue-600" />
@@ -1238,21 +1279,36 @@ const Checkout: React.FC = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Payment Method:</span>
-                    <span className="text-gray-900 font-medium">Bank Transfer</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Payment Receipt:</span>
-                    <span className={`font-medium ${paymentReceipt ? 'text-green-600' : 'text-gray-500'}`}>
-                      {paymentReceipt ? (
-                        <div className="flex items-center space-x-1">
-                          <CheckCircle className="w-4 h-4" />
-                          <span>Uploaded</span>
-                        </div>
-                      ) : (
-                        'Not uploaded'
-                      )}
+                    <span className="text-gray-900 font-medium">
+                      {formData.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 
+                       formData.paymentMethod === 'flutterwave' ? 'Flutterwave' : 
+                       formData.paymentMethod}
                     </span>
                   </div>
+                  
+                  {formData.paymentMethod === 'bank_transfer' && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Payment Receipt:</span>
+                      <span className={`font-medium ${paymentReceipt ? 'text-green-600' : 'text-gray-500'}`}>
+                        {paymentReceipt ? (
+                          <div className="flex items-center space-x-1">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Uploaded</span>
+                          </div>
+                        ) : (
+                          'Not uploaded'
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {formData.paymentMethod === 'flutterwave' && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Status:</span>
+                      <span className="text-purple-600 font-medium">Ready for payment</span>
+                    </div>
+                  )}
+                  
                   {formData.specialInstructions && (
                     <div className="pt-2 border-t border-gray-200">
                       <span className="text-gray-600">Special Instructions:</span>
@@ -1261,6 +1317,47 @@ const Checkout: React.FC = () => {
                   )}
                 </div>
               </div>
+              
+              {/* Flutterwave Payment Button */}
+              {step === 'review' && formData.paymentMethod === 'flutterwave' && (
+                <div className="mb-6">
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg mb-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <svg width="24" height="24" viewBox="0 0 220 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M32.6 0L0 18.6V36.1L32.6 54L65.3 36.1V18.6L32.6 0Z" fill="#F5A623"/>
+                          <path d="M120 17.2H132.4C142.4 17.2 148.1 23.1 148.1 31.8C148.1 40.5 142.4 46.4 132.4 46.4H120V17.2ZM132.3 41.1C139.2 41.1 142.7 37.4 142.7 31.8C142.7 26.2 139.2 22.5 132.3 22.5H125.4V41.1H132.3Z" fill="#10122B"/>
+                          <path d="M186.1 17.2H191.5V46.4H186.4V26.7L180.3 43.1H176.4L170.3 26.7V46.4H165.2V17.2H170.6L178.4 35.1L186.1 17.2Z" fill="#10122B"/>
+                          <path d="M73.3 46.4H69L82.1 17.2H86.7L99.8 46.4H95.4L91.9 38.5H76.8L73.3 46.4ZM78.6 33.2H90.1L84.3 19.2L78.6 33.2Z" fill="#10122B"/>
+                          <path d="M205 25.3V46.4H199.5V17.2H204.5L217.6 38.2V17.2H223.1V46.4H218.1L205 25.3Z" fill="#10122B"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-purple-800">Ready to Complete Your Payment</h4>
+                        <p className="text-sm text-purple-700 mt-1">
+                          Click the button below to proceed with your payment via Flutterwave's secure gateway.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <FlutterwavePayment
+                    amount={finalTotal}
+                    email={formData.email}
+                    name={`${formData.firstName} ${formData.lastName}`}
+                    phone={formData.phone}
+                    orderId={orderResponse?.data?.id || 'temporary-id'}
+                    onSuccess={(transactionId, txRef) => {
+                      toast.success('Payment successful!');
+                      navigate(`/orders/confirmation?orderId=${orderResponse?.data?.id}`);
+                    }}
+                    onFailure={(error) => {
+                      toast.error('Payment failed. Please try again or use another payment method.');
+                      console.error('Flutterwave payment error:', error);
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Security Notice */}
               <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -1279,13 +1376,15 @@ const Checkout: React.FC = () => {
                 <Button variant="outline" onClick={handleBack}>
                   Back to Payment
                 </Button>
-                <Button 
-                  onClick={handlePlaceOrder} 
-                  disabled={isProcessing}
-                  className="min-w-[150px]"
-                >
-                  {isProcessing ? 'Processing...' : `Place Order • ${formatCurrency(finalTotal)}`}
-                </Button>
+                {formData.paymentMethod !== 'flutterwave' || !orderResponse ? (
+                  <Button 
+                    onClick={handlePlaceOrder} 
+                    disabled={isProcessing}
+                    className="min-w-[150px]"
+                  >
+                    {isProcessing ? 'Processing...' : `Place Order • ${formatCurrency(finalTotal)}`}
+                  </Button>
+                ) : null}
               </div>
             </div>
           )}
