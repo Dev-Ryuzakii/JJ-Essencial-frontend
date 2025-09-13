@@ -922,7 +922,7 @@ const Checkout: React.FC = () => {
                 <div className="space-y-4">
                   {[
                     { key: 'standard', name: 'Local Pickup', time: '5-7 business days', price: 0 },
-                    { key: 'express', name: 'Delivery Fee to Park', time: '2-3 business days', price: 1500 },
+                    { key: 'express', name: 'Delivery Fee to Park', time: '2-3 business days', price: 500 },
                     
                   ].map((method) => (
                     <label key={method.key} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
