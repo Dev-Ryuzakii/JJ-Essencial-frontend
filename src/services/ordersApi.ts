@@ -240,10 +240,38 @@ const ordersApi = {
    */
   getAll: async (params: OrdersQueryParams = {}): Promise<ApiResponse<Order[]>> => {
     try {
-      const response = await api.get<ApiResponse<Order[]>>('/orders', { params });
-      return response;
+      console.log('🔍 Orders API: Making request to GET /orders with params:', params);
+      const response = await api.get<ApiResponse<Order[] | PaginatedResponse<Order>>>('/orders', { params });
+      console.log('📦 Orders API: Raw response:', response);
+      
+      // Handle the response format - backend might return paginated data
+      if (response.success && response.data) {
+        // Check if response.data is an array or paginated object
+        if (Array.isArray(response.data)) {
+          console.log('✅ Orders API: Got array with', response.data.length, 'orders');
+          return {
+            ...response,
+            data: response.data
+          };
+        } else if (response.data && typeof response.data === 'object' && 'items' in response.data) {
+          // Handle paginated response
+          const paginatedData = response.data as PaginatedResponse<Order>;
+          console.log('✅ Orders API: Got paginated response with', paginatedData.items?.length || 0, 'orders');
+          return {
+            ...response,
+            data: paginatedData.items || []
+          };
+        }
+      }
+      
+      console.log('⚠️ Orders API: Unexpected response format, returning empty array');
+      return {
+        success: true,
+        data: [],
+        message: 'No orders found'
+      };
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('❌ Orders API: Error fetching orders:', error);
       return {
         success: false,
         data: [],
