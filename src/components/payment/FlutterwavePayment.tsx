@@ -59,15 +59,20 @@ const FlutterwavePayment: React.FC<FlutterwavePaymentProps> = ({
       setLoading(true);
       setError(null);
 
-      // Initiate payment with backend
-      const response = await flutterwaveApi.initiatePayment(
+      // Initiate payment with backend (send orderId and all required fields)
+      const response = await flutterwaveApi.initiatePayment({
+        orderId,
         amount,
-        { email, name, phone },
-        currency
-      );
+        currency,
+        customer: {
+          email,
+          name,
+          phone: phone || ''
+        }
+      });
 
-      if (!response.data) {
-        throw new Error('Failed to initialize payment');
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to initialize payment');
       }
 
       const { publicKey, tx_ref, amount: confirmedAmount, currency: confirmedCurrency, customer } = response.data;
@@ -128,15 +133,14 @@ const FlutterwavePayment: React.FC<FlutterwavePaymentProps> = ({
       
       // Confirm payment with backend
       const response = await flutterwaveApi.confirmPayment(transactionId, txRef);
-      
-      if (response.data?.ok) {
+      if ((response as any).ok || (response as any).data?.ok) {
         console.log('Payment verification successful:', response);
         if (onSuccess) onSuccess(transactionId, txRef);
-        
         // Redirect to order confirmation
         navigate(`/order-confirmation/${orderId}`);
       } else {
-        throw new Error(response.data?.message || 'Payment verification failed');
+        const msg = (response as any).message || (response as any).data?.message || 'Payment verification failed';
+        throw new Error(msg);
       }
     } catch (err: any) {
       console.error('Payment verification error:', err);

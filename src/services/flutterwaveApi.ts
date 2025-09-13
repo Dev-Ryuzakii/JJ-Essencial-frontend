@@ -52,24 +52,22 @@ export interface FlutterwaveCheckoutParams {
 export const flutterwaveApi = {
   /**
    * Initiate a payment with the backend
-   * @param amount The amount to pay
-   * @param customer Customer information
-   * @param currency Currency code (default: NGN)
+   * @param payload The full payload including orderId, amount, currency, customer
    */
   initiatePayment: async (
-    amount: number,
-    customer: { email: string; name: string; phone?: string },
-    currency: string = 'NGN'
-  ): Promise<ApiResponse<PaymentInitiateResponse>> => {
+    payload: {
+      orderId: string;
+      amount: number;
+      currency?: string;
+      customer: { email: string; name: string; phone?: string };
+    }
+  ): Promise<{ success: boolean; message: string; data: PaymentInitiateResponse }> => {
     try {
-      console.log('🚀 Initiating Flutterwave payment:', { amount, currency, customer });
-      
-      const response = await api.post<ApiResponse<PaymentInitiateResponse>>('/payments/flutterwave/initiate', {
-        amount,
-        currency,
-        customer
-      });
-      
+      console.log('🚀 Initiating Flutterwave payment:', payload);
+      const response = await api.post<{ success: boolean; message: string; data: PaymentInitiateResponse }>(
+        '/payments/flutterwave/initiate',
+        payload
+      );
       console.log('✅ Payment initiated successfully:', response);
       return response;
     } catch (error) {

@@ -124,9 +124,9 @@ export default function OrderManagement() {
   const formatCurrency = (amount: string | number) => {
     if (amount === undefined || amount === null) return 'N/A'
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NG', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'NGN',
       minimumFractionDigits: 2
     }).format(numAmount)
   }
