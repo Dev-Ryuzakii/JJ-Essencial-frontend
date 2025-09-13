@@ -69,32 +69,39 @@ export function validatePhone(phone: string): boolean {
 }
 
 export function getImageUrl(url: string): string {
-  if (!url) return '/placeholder-image.jpg'
+  if (!url) return '/api/placeholder/400/400'
   if (url.startsWith('http')) return url
-  return `${import.meta.env.VITE_API_URL}/uploads/${url}`
+  
+  // Use the proxy setup in vite.config.ts - all /api requests are proxied to localhost:3000
+  return `/api/v1/uploads/${url}`
 }
 
 export function parseProductImage(image: any): string {
   if (!image) return '/api/placeholder/400/400'
   
-  // If it's already a URL
+  // If it's a string that looks like a JSON object, parse it
   if (typeof image === 'string') {
-    // Try to parse as JSON first
+    // Try to parse as JSON first (this handles the URL-encoded JSON objects)
     if (image.startsWith('{') && image.endsWith('}')) {
       try {
         const parsed = JSON.parse(image)
-        return parsed.url || '/api/placeholder/400/400'
+        if (parsed.url) {
+          // Ensure the URL uses the correct API path
+          return parsed.url.startsWith('http') ? parsed.url : `/api/v1/uploads/${parsed.url}`
+        }
+        return '/api/placeholder/400/400'
       } catch {
         // If JSON parsing fails, treat as regular URL
-        return image.startsWith('http') ? image : '/api/placeholder/400/400'
+        return image.startsWith('http') ? image : `/api/v1/uploads/${image}`
       }
     }
-    return image.startsWith('http') ? image : '/api/placeholder/400/400'
+    // Regular string URL
+    return image.startsWith('http') ? image : `/api/v1/uploads/${image}`
   }
   
   // If it's an object with url property
   if (typeof image === 'object' && image.url) {
-    return image.url
+    return image.url.startsWith('http') ? image.url : `/api/v1/uploads/${image.url}`
   }
   
   return '/api/placeholder/400/400'

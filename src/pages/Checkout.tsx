@@ -22,7 +22,7 @@ import {
 import { useCart, useAuth } from '../hooks'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, parseProductImage } from '../lib/utils'
 import { ordersApi, productsApi, paymentsApi } from '../services'
 import FlutterwavePayment from '../components/payment/FlutterwavePayment'
 import toast from 'react-hot-toast'
@@ -605,11 +605,11 @@ const Checkout: React.FC = () => {
             navigate(`/orders/${orderId}`); // Fallback to order page
           }
         } else if (formData.paymentMethod === 'flutterwave') {
-          // Clear the cart after successful order creation
-          clearCart();
+          // Store the order response for later use in the review step
+          // Don't clear cart yet - wait for successful payment
           
-          // Proceed to Flutterwave payment in the review step
-          toast.success('Order created successfully! Proceed to payment.');
+          // Proceed to review step with Flutterwave payment
+          toast.success('Order created successfully! Please complete your payment.');
           
           // Set step to review with Flutterwave payment
           if (step !== 'review') {
@@ -1240,12 +1240,12 @@ const Checkout: React.FC = () => {
                     return (
                       <div key={item.productId || item.id || 'unknown'} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                         <img
-                          src={typeof item.image === 'string' ? item.image : 'https://via.placeholder.com/60/60?text=No+Image'}
+                          src={parseProductImage(item.image)}
                           alt={item.name || 'Product'}
                           className="w-12 h-12 object-cover rounded"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.src = 'https://via.placeholder.com/60/60?text=No+Image';
+                            target.src = '/api/placeholder/60/60';
                           }}
                           
                         />
@@ -1319,7 +1319,7 @@ const Checkout: React.FC = () => {
               </div>
               
               {/* Flutterwave Payment Button */}
-              {step === 'review' && formData.paymentMethod === 'flutterwave' && (
+              {step === 'review' && formData.paymentMethod === 'flutterwave' && orderResponse?.data?.id && (
                 <div className="mb-6">
                   <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg mb-4">
                     <div className="flex items-start space-x-3">
@@ -1346,14 +1346,24 @@ const Checkout: React.FC = () => {
                     email={formData.email}
                     name={`${formData.firstName} ${formData.lastName}`}
                     phone={formData.phone}
-                    orderId={orderResponse?.data?.id || 'temporary-id'}
+                    orderId={orderResponse.data.id}
                     onSuccess={(transactionId, txRef) => {
-                      toast.success('Payment successful!');
-                      navigate(`/orders/confirmation?orderId=${orderResponse?.data?.id}`);
+                      clearCart(); // Clear cart after successful payment
+                      toast.success('🎉 Payment successful! Thank you for your order!');
+                      console.log('💳 Payment completed successfully:', { transactionId, txRef, orderId: orderResponse?.data?.id });
+                      
+                      // Optional: You can also navigate to order confirmation instead of home
+                      // navigate(`/orders/confirmation?orderId=${orderResponse?.data?.id}`);
                     }}
                     onFailure={(error) => {
-                      toast.error('Payment failed. Please try again or use another payment method.');
-                      console.error('Flutterwave payment error:', error);
+                      console.error('🚨 Flutterwave payment error:', error);
+                      
+                      // More specific error messages
+                      if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+                        toast.error('⚠️ Payment completed but verification timed out. Please check your order status or contact support.');
+                      } else {
+                        toast.error('Payment failed. Please try again or use another payment method.');
+                      }
                     }}
                   />
                 </div>

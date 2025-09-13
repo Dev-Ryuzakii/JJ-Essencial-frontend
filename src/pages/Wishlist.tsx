@@ -11,7 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { formatCurrency } from '../utils/formatters'
-import { getImageUrl } from '../lib/utils' // Import the image URL utility
+import { getImageUrl, parseProductImage } from '../lib/utils' // Import the image URL utility
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { useCart, useAuth, useWishlist } from '../hooks'
@@ -289,29 +289,13 @@ const Wishlist: React.FC = () => {
                   <Link to={`/products/${product.id}`}>
                     <img
                       src={product.images && product.images.length > 0 
-                        ? getImageUrl(product.images[0]) 
-                        : '/placeholder-image.jpg'}
+                        ? parseProductImage(product.images[0]) 
+                        : '/api/placeholder/400/400'}
                       alt={product.name}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
-                        console.error(`Image failed to load: ${product.images?.[0]}`, e);
                         const target = e.target as HTMLImageElement;
-                        target.src = '/placeholder-image.jpg';
-                        
-                        // Try to parse as JSON if it's a JSON string
-                        if (typeof product.images?.[0] === 'string' && 
-                            product.images[0].startsWith('{') && 
-                            product.images[0].endsWith('}')) {
-                          try {
-                            const imgObj = JSON.parse(product.images[0]);
-                            if (imgObj.url) {
-                              console.log('Trying direct URL from JSON:', imgObj.url);
-                              target.src = imgObj.url;
-                            }
-                          } catch (error) {
-                            console.error('Failed to parse image JSON:', error);
-                          }
-                        }
+                        target.src = '/api/placeholder/400/400';
                       }}
                     />
                   </Link>

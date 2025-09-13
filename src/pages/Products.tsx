@@ -11,6 +11,7 @@ import { categoriesApi, productsApi } from '../lib/api'
 import ProductCard from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import { cn } from '../lib/utils'
+import { parseProductImage } from '../lib/utils'
 import type { Category, Product, ProductFilters } from '../types'
 
 const Products: React.FC = () => {
@@ -121,15 +122,7 @@ const Products: React.FC = () => {
           
           if (product.images && Array.isArray(product.images)) {
             images = product.images.map((img: any) => {
-              if (typeof img === 'string') {
-                try {
-                  const parsed = JSON.parse(img)
-                  return parsed.url || img
-                } catch {
-                  return img
-                }
-              }
-              return img.url || img
+              return parseProductImage(img)
             })
           }
           

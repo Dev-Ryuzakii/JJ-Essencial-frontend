@@ -28,7 +28,7 @@ import { useCart, useAuth } from '../hooks'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import ProductCard from '../components/product/ProductCard'
-import { formatCurrency, cn } from '../lib/utils'
+import { formatCurrency, cn, parseProductImage } from '../lib/utils'
 import { productsApi, reviewsApi } from '../lib/api'
 import toast from 'react-hot-toast'
 import type { Product, Review } from '../types'
@@ -67,17 +67,7 @@ const ProductDetail: React.FC = () => {
         let processedProduct = { ...productResponse.data }
         
         if (processedProduct.images && Array.isArray(processedProduct.images)) {
-          processedProduct.images = processedProduct.images.map((img: any) => {
-            if (typeof img === 'string') {
-              try {
-                const parsed = JSON.parse(img)
-                return parsed.url || img
-              } catch {
-                return img
-              }
-            }
-            return img.url || img
-          })
+          processedProduct.images = processedProduct.images.map((img: any) => parseProductImage(img))
         } else {
           processedProduct.images = ['/api/placeholder/600/600']
         }

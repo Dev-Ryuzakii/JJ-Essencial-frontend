@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { productsApi } from '../lib/api'
 import { categoriesCache } from '../lib/categoriesCache'
+import { parseProductImage } from '../lib/utils'
 import ProductCard from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import type { Product, Category } from '../types'
@@ -122,17 +123,7 @@ const Home: React.FC = () => {
         const processedFeatured = featuredData.map((product: any) => {
           let images = []
           if (product.images && Array.isArray(product.images)) {
-            images = product.images.map((img: any) => {
-              if (typeof img === 'string') {
-                try {
-                  const parsed = JSON.parse(img)
-                  return parsed.url || img
-                } catch {
-                  return img
-                }
-              }
-              return img.url || img
-            })
+            images = product.images.map((img: any) => parseProductImage(img))
           }
           
           return {
@@ -170,17 +161,7 @@ const Home: React.FC = () => {
         const processedNewArrivals = newArrivalsData.map((product: any) => {
           let images = []
           if (product.images && Array.isArray(product.images)) {
-            images = product.images.map((img: any) => {
-              if (typeof img === 'string') {
-                try {
-                  const parsed = JSON.parse(img)
-                  return parsed.url || img
-                } catch {
-                  return img
-                }
-              }
-              return img.url || img
-            })
+            images = product.images.map((img: any) => parseProductImage(img))
           }
           
           return {

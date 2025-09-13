@@ -171,5 +171,45 @@ export const paymentsApi = {
       console.error('Failed to verify payment:', error)
       throw error
     }
+  },
+
+  // Flutterwave payment endpoints
+  flutterwave: {
+    // Initiate Flutterwave payment
+    initiate: async (data: {
+      orderId: string;
+      amount: number;
+      currency?: string;
+      customer: { email: string; name: string; phone?: string };
+    }): Promise<ApiResponse<any>> => {
+      try {
+        console.log('🚀 Initiating Flutterwave payment:', data);
+        const response = await api.post('/payments/flutterwave/initiate', data);
+        console.log('✅ Flutterwave payment initiated successfully:', response);
+        return response as ApiResponse<any>;
+      } catch (error) {
+        console.error('❌ Failed to initiate Flutterwave payment:', error);
+        throw error;
+      }
+    },
+
+    // Confirm Flutterwave payment
+    confirm: async (data: {
+      transaction_id: string;
+      tx_ref: string;
+    }): Promise<ApiResponse<any>> => {
+      try {
+        console.log('🔍 Confirming Flutterwave payment:', data);
+        // Use shorter timeout for confirmation to fail faster
+        const response = await api.post('/payments/flutterwave/confirm', data, {
+          timeout: 15000 // 15 seconds timeout for confirmation
+        });
+        console.log('✅ Flutterwave payment confirmed:', response);
+        return response as ApiResponse<any>;
+      } catch (error) {
+        console.error('❌ Failed to confirm Flutterwave payment:', error);
+        throw error;
+      }
+    }
   }
 }

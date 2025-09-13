@@ -4,7 +4,7 @@ import { Plus, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { searchApi } from '../../lib/api';
 import { useCart } from '../../hooks';
-import { getImageUrl, formatCurrency } from '../../lib/utils';
+import { getImageUrl, formatCurrency, parseProductImage } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -49,8 +49,9 @@ const RecommendedProducts: React.FC = () => {
 
   const handleAddToCart = (product: Product) => {
     try {
-      addToCart({
-        productId: product.id,
+      // Convert to proper Product structure expected by addToCart
+      const productForCart: any = {
+        id: product.id,
         name: product.name,
         price: typeof product.price === 'string' ? product.price : product.price.toString(),
         discountPrice: product.discountPrice ? 
@@ -58,10 +59,18 @@ const RecommendedProducts: React.FC = () => {
             product.discountPrice : 
             product.discountPrice.toString()) : 
           undefined,
-        image: product.image || (product.images && product.images.length > 0 ? product.images[0] : ''),
-        quantity: 1,
-        stock: product.stock
-      });
+        images: product.images || [product.image || ''],
+        stock: product.stock,
+        // Add required fields for Product type
+        description: '',
+        category: { id: '', name: '', slug: '', productCount: 0, createdAt: '', updatedAt: '' },
+        averageRating: 0,
+        reviewCount: 0,
+        createdAt: '',
+        updatedAt: ''
+      };
+      
+      addToCart(productForCart);
       toast.success(`${product.name} added to cart`);
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -96,7 +105,7 @@ const RecommendedProducts: React.FC = () => {
               <Link to={`/products/${product.id}`} className="flex-shrink-0">
                 <img
                   className="w-16 h-16 rounded-md object-cover bg-gray-100"
-                  src={getImageUrl(product.image || (product.images && product.images.length > 0 ? product.images[0] : ''))}
+                  src={parseProductImage(product.image || (product.images && product.images.length > 0 ? product.images[0] : ''))}
                   alt={product.name}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
