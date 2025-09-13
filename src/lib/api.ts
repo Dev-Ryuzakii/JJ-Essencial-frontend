@@ -245,6 +245,10 @@ export const authApi = {
   // Request password reset
   resetPassword: (email: string) =>
     api.post<ApiResponse<any>>('/auth/reset-password', { email }),
+
+  // Confirm password reset
+  confirmResetPassword: (data: { token: string; newPassword: string }) =>
+    api.post<ApiResponse<any>>('/auth/confirm-reset-password', data),
   
   // Admin sign in
   adminSignIn: (credentials: { email: string; password: string }) =>

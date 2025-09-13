@@ -137,7 +137,7 @@ export const adminAuthApi = {
       currentPassword,
       newPassword
     });
-    return response.data;
+    return handleApiResponse<{ message: string }>(response);
   }
 };
 
@@ -151,7 +151,7 @@ const authApi = {
       const response = await post<AuthResponse>('/auth/signup', data);
       console.log('authApi.signup: Server response:', response);
       
-      const { access_token, user } = response.data;
+      const { access_token, user } = handleApiResponse<AuthResponse>(response);
 
       // Store authentication data
       localStorage.setItem('token', access_token);
@@ -163,7 +163,7 @@ const authApi = {
         localStorage.setItem('adminUser', JSON.stringify(user));
       }
 
-      return response.data;
+      return { access_token, user };
     } catch (error: any) {
       // Check if the error is a 409 conflict (email already exists)
       if (error.statusCode === 409 || error.status === 409) {
@@ -190,7 +190,7 @@ const authApi = {
    */
   getProfile: async (): Promise<UserProfile> => {
     const response = await get<UserProfile>('/users/profile');
-    return response.data;
+    return handleApiResponse<UserProfile>(response);
   },
 
   /**
@@ -198,7 +198,7 @@ const authApi = {
    */
   updateProfile: async (data: ProfileUpdateData): Promise<UserProfile> => {
     const response = await patch<UserProfile>('/users/profile', data);
-    return response.data;
+    return handleApiResponse<UserProfile>(response);
   },
 
   /**
@@ -206,7 +206,18 @@ const authApi = {
    */
   resetPassword: async (email: string): Promise<{ message: string }> => {
     const response = await post<{ message: string }>('/auth/reset-password', { email });
-    return response.data;
+    return handleApiResponse<{ message: string }>(response);
+  },
+
+  /**
+   * Confirm password reset with token
+   */
+  confirmResetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await post<{ message: string }>('/auth/confirm-reset-password', {
+      token,
+      newPassword
+    });
+    return handleApiResponse<{ message: string }>(response);
   },
 
   /**
@@ -238,12 +249,8 @@ const authApi = {
   signin: async (data: SignInData): Promise<AuthResponse> => {
     const response = await post<{access_token: string; user: UserProfile}>('/auth/signin', data);
     
-    // ✅ CORRECT: Extract from response.data (the T in SuccessResponseDto<T>)
-    if (!response.success || !response.data) {
-      throw new Error('Authentication failed');
-    }
-
-    const { access_token, user } = response.data;
+    // ✅ CORRECT: Extract using handleApiResponse utility
+    const { access_token, user } = handleApiResponse<{access_token: string; user: UserProfile}>(response);
 
     if (!access_token || !user) {
       throw new Error('Invalid response structure from server');
