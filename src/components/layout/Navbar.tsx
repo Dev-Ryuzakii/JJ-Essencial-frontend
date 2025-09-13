@@ -6,6 +6,7 @@ import { useUIStore } from '../../store'
 import { categoriesCache } from '../../lib/categoriesCache'
 import { cn, formatCurrency } from '../../lib/utils'
 import type { Category } from '../../types'
+import LOGO from '../../assets/LOGO.png'
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate()
@@ -103,11 +104,9 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">JJ</span>
-            </div>
+            <img src={LOGO} alt="JJ Essential" className="w-10 h-10 rounded-full" />
             <span className="text-xl font-bold text-gray-900">
-              {import.meta.env.VITE_APP_NAME}
+              {import.meta.env.VITE_APP_NAME || 'JJ Essential'}
             </span>
           </Link>
 
