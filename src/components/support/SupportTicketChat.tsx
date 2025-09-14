@@ -36,7 +36,7 @@ const SupportTicketChat: React.FC<SupportTicketChatProps> = ({ ticketId, onBack 
       
       // Check if it's a support system unavailable error
       if (errorMessage.includes('Support system is currently unavailable') || 
-          errorMessage.includes('500')) {
+          errorMessage.includes('500') || errorMessage.includes('400') || errorMessage.includes('429')) {
         setSupportUnavailable(true);
       } else {
         setError(errorMessage);
@@ -69,7 +69,7 @@ const SupportTicketChat: React.FC<SupportTicketChatProps> = ({ ticketId, onBack 
       
       // Check if it's a support system unavailable error
       if (errorMessage.includes('Support system is currently unavailable') || 
-          errorMessage.includes('500')) {
+          errorMessage.includes('500') || errorMessage.includes('400') || errorMessage.includes('429')) {
         setSupportUnavailable(true);
       } else {
         setError(errorMessage);

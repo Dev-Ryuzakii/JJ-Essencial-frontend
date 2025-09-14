@@ -77,7 +77,8 @@ apiClient.interceptors.response.use(
       method: error.config?.method,
       status: error.response?.status,
       message: error.message,
-      code: error.code
+      code: error.code,
+      response_data: error.response?.data
     });
 
     // Handle timeout errors
@@ -120,11 +121,8 @@ apiClient.interceptors.response.use(
       }
     }
     
-    return Promise.reject(error.response?.data || {
-      statusCode: error.response?.status || 500,
-      message: error.message,
-      error: 'Unknown error'
-    });
+    // Return the full error response so that calling functions can properly handle it
+    return Promise.reject(error);
   }
 );
 

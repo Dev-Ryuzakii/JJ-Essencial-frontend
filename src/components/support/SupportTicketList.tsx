@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import userSupportApi, { type UserSupportTicket } from '../../services/userSupportApi';
 
@@ -15,12 +15,19 @@ const SupportTicketList: React.FC<SupportTicketListProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [supportUnavailable, setSupportUnavailable] = useState(false);
+  const fetchAttempted = useRef(false);
 
   useEffect(() => {
-    fetchTickets();
+    if (!fetchAttempted.current) {
+      fetchAttempted.current = true;
+      fetchTickets();
+    }
   }, []);
 
   const fetchTickets = async () => {
+    // Prevent multiple simultaneous requests
+    if (loading) return;
+    
     try {
       setLoading(true);
       setError(null);
@@ -41,7 +48,7 @@ const SupportTicketList: React.FC<SupportTicketListProps> = ({
       
       // Check if it's a support system unavailable error
       if (errorMessage.includes('Support system is currently unavailable') || 
-          errorMessage.includes('500')) {
+          errorMessage.includes('500') || errorMessage.includes('400') || errorMessage.includes('429')) {
         setSupportUnavailable(true);
         setTickets([]);
       } else {

@@ -75,13 +75,37 @@ const userSupportApi = {
       if (response.success && response.data) {
         return response.data;
       } else {
-        throw new Error(response.success === false ? response.error.message : 'Failed to create support ticket');
+        // Instead of throwing a generic error, let's check if there's an error in the response
+        if (response.success === false && response.error) {
+          throw new Error(response.error.message || 'Failed to create support ticket');
+        } else {
+          throw new Error('Failed to create support ticket');
+        }
       }
     } catch (error: any) {
       console.error('Error creating support ticket:', error);
+      console.error('Error details:', {
+        statusCode: error.statusCode,
+        response: error.response,
+        status: error.status,
+        message: error.message
+      });
       
-      // Check if it's a 500 error indicating the feature is not implemented
-      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || error.message?.includes('500')) {
+      // Check if it's an error indicating the feature is not implemented or available
+      // Also check the response data for error codes
+      const errorMessage = error.message || '';
+      const responseStatus = error.response?.status || error.statusCode || error.status;
+      
+      if (responseStatus === 500 || responseStatus === 400 || responseStatus === 429 ||
+          errorMessage.includes('500') || errorMessage.includes('400') || errorMessage.includes('429') ||
+          (error.response?.data && (
+            error.response.data.statusCode === 500 || 
+            error.response.data.statusCode === 400 || 
+            error.response.data.statusCode === 429 ||
+            error.response.data.message?.includes('500') || 
+            error.response.data.message?.includes('400') || 
+            error.response.data.message?.includes('429')
+          ))) {
         throw new Error('Support system is currently unavailable. Please contact us directly at support@jj-essential.com or call +234-XXX-XXXX-XXX.');
       }
       
@@ -105,8 +129,11 @@ const userSupportApi = {
     } catch (error: any) {
       console.error('Error fetching support tickets:', error);
       
-      // Check if it's a 500 error indicating the feature is not implemented
-      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || error.message?.includes('500')) {
+      // Check if it's an error indicating the feature is not implemented or available
+      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || 
+          error.statusCode === 400 || error.response?.status === 400 || error.status === 400 ||
+          error.statusCode === 429 || error.response?.status === 429 || error.status === 429 ||
+          error.message?.includes('500') || error.message?.includes('400') || error.message?.includes('429')) {
         console.log('Support system not available, returning empty array');
         return [];
       }
@@ -131,8 +158,11 @@ const userSupportApi = {
     } catch (error: any) {
       console.error('Error fetching ticket details:', error);
       
-      // Check if it's a 500 error indicating the feature is not implemented
-      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || error.message?.includes('500')) {
+      // Check if it's an error indicating the feature is not implemented or available
+      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || 
+          error.statusCode === 400 || error.response?.status === 400 || error.status === 400 ||
+          error.statusCode === 429 || error.response?.status === 429 || error.status === 429 ||
+          error.message?.includes('500') || error.message?.includes('400') || error.message?.includes('429')) {
         throw new Error('Support system is currently unavailable. Please contact us directly at support@jj-essential.com.');
       }
       
@@ -156,8 +186,11 @@ const userSupportApi = {
     } catch (error: any) {
       console.error('Error sending message:', error);
       
-      // Check if it's a 500 error indicating the feature is not implemented
-      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || error.message?.includes('500')) {
+      // Check if it's an error indicating the feature is not implemented or available
+      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || 
+          error.statusCode === 400 || error.response?.status === 400 || error.status === 400 ||
+          error.statusCode === 429 || error.response?.status === 429 || error.status === 429 ||
+          error.message?.includes('500') || error.message?.includes('400') || error.message?.includes('429')) {
         throw new Error('Support system is currently unavailable. Please contact us directly at support@jj-essential.com.');
       }
       
@@ -165,16 +198,16 @@ const userSupportApi = {
     }
   },
 
-  /**
-   * Check if support system is available
-   */
   checkAvailability: async (): Promise<boolean> => {
     try {
       const response = await get<UserSupportTicket[]>('/customer-support/my-chats');
       return response.success !== false;
     } catch (error: any) {
-      // If we get a 500 error, the support system is not implemented
-      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || error.message?.includes('500')) {
+      // If we get an error that indicates the support system is not implemented or available
+      if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || 
+          error.statusCode === 400 || error.response?.status === 400 || error.status === 400 ||
+          error.statusCode === 429 || error.response?.status === 429 || error.status === 429 ||
+          error.message?.includes('500') || error.message?.includes('400') || error.message?.includes('429')) {
         return false;
       }
       // For other errors, assume it's available but there's a different issue

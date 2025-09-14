@@ -36,11 +36,16 @@ const CreateSupportTicket: React.FC<CreateSupportTicketProps> = ({
       await userSupportApi.createTicket(formData);
       onTicketCreated();
     } catch (err) {
+      console.log('Caught error in CreateSupportTicket:', err);
+      console.log('Error type:', typeof err);
+      console.log('Error keys:', Object.keys(err));
+      
       const errorMessage = err instanceof Error ? err.message : 'Failed to create ticket';
+      console.log('Error message:', errorMessage);
       
       // Check if it's a support system unavailable error
       if (errorMessage.includes('Support system is currently unavailable') || 
-          errorMessage.includes('500')) {
+          errorMessage.includes('500') || errorMessage.includes('400') || errorMessage.includes('429')) {
         setSupportUnavailable(true);
       } else {
         setError(errorMessage);

@@ -19,7 +19,16 @@ const SupportDashboard: React.FC = () => {
       const fetchedTickets = await userSupportApi.getMyTickets();
       setTickets(fetchedTickets);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch tickets');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch tickets';
+      
+      // Check if it's a support system unavailable error
+      if (errorMessage.includes('Support system is currently unavailable') || 
+          errorMessage.includes('500') || errorMessage.includes('400') || errorMessage.includes('429')) {
+        // Redirect to main support page which will show the fallback UI
+        window.location.href = '/support';
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

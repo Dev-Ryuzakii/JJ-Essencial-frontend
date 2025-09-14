@@ -1,29 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Plus, ArrowLeft, AlertTriangle } from 'lucide-react';
 import SupportTicketList from '../components/support/SupportTicketList';
 import CreateSupportTicket from '../components/support/CreateSupportTicket';
 import SupportTicketChat from '../components/support/SupportTicketChat';
+import SupportFallback from '../components/support/SupportFallback';
 import userSupportApi from '../services/userSupportApi';
 
-type ViewMode = 'list' | 'create' | 'chat';
+type ViewMode = 'list' | 'create' | 'chat' | 'fallback';
 
 const UserSupport: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewMode>('list');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [supportAvailable, setSupportAvailable] = useState<boolean | null>(null);
+  const checkingAvailability = useRef(false);
+
+  const checkSupportAvailability = async () => {
+    // Prevent multiple simultaneous checks
+    if (checkingAvailability.current) return;
+    
+    try {
+      checkingAvailability.current = true;
+      const isAvailable = await userSupportApi.checkAvailability();
+      setSupportAvailable(isAvailable);
+      
+      // If support is not available, switch to fallback view
+      if (!isAvailable && currentView === 'list') {
+        setCurrentView('fallback');
+      } else if (isAvailable && currentView === 'fallback') {
+        setCurrentView('list');
+      }
+    } catch (error) {
+      console.error('Error checking support availability:', error);
+      setSupportAvailable(false);
+      if (currentView === 'list') {
+        setCurrentView('fallback');
+      }
+    } finally {
+      checkingAvailability.current = false;
+    }
+  };
 
   useEffect(() => {
     checkSupportAvailability();
   }, []);
 
-  const checkSupportAvailability = async () => {
-    try {
-      const isAvailable = await userSupportApi.checkAvailability();
-      setSupportAvailable(isAvailable);
-    } catch (error) {
-      setSupportAvailable(false);
+  useEffect(() => {
+    // When support availability changes, update the view accordingly
+    if (supportAvailable === false && currentView === 'list') {
+      setCurrentView('fallback');
+    } else if (supportAvailable === true && currentView === 'fallback') {
+      setCurrentView('list');
     }
-  };
+  }, [supportAvailable, currentView]);
 
   const handleTicketSelect = (ticketId: string) => {
     setSelectedTicketId(ticketId);
@@ -44,12 +72,21 @@ const UserSupport: React.FC = () => {
     setSelectedTicketId(null);
   };
 
-  const handleBackToList = () => {
-    setCurrentView('list');
+  const handleBackToMain = () => {
+    setCurrentView('fallback');
     setSelectedTicketId(null);
   };
 
+  const handleTryTicketSystem = () => {
+    checkSupportAvailability();
+  };
+
   const renderBreadcrumb = () => {
+    // Don't show breadcrumb in fallback mode
+    if (currentView === 'fallback') {
+      return null;
+    }
+    
     return (
       <nav className="flex mb-6" aria-label="Breadcrumb">
         <ol className="inline-flex items-center space-x-1 md:space-x-3">
@@ -112,9 +149,16 @@ const UserSupport: React.FC = () => {
           <div className="h-[600px]">
             <SupportTicketChat
               ticketId={selectedTicketId}
-              onBack={handleBackToList}
+              onBack={handleBackToMain}
             />
           </div>
+        );
+      
+      case 'fallback':
+        return (
+          <SupportFallback
+            onBackToMain={handleTryTicketSystem}
+          />
         );
       
       case 'list':
@@ -142,7 +186,7 @@ const UserSupport: React.FC = () => {
       {renderBreadcrumb()}
 
       {/* Quick Help Section - Only show on list view */}
-      {currentView === 'list' && (
+      {currentView === 'list' && supportAvailable && (
         <div className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h3 className="text-lg font-medium text-blue-900 mb-4">
             Need Quick Help?
@@ -189,7 +233,7 @@ const UserSupport: React.FC = () => {
       )}
 
       {/* Support Stats - Only show on list view */}
-      {currentView === 'list' && (
+      {currentView === 'list' && supportAvailable && (
         <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <div className="text-2xl font-bold text-indigo-600">24/7</div>
@@ -207,12 +251,12 @@ const UserSupport: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <div className="bg-white rounded-lg shadow">
+      <div className={currentView === 'fallback' ? '' : 'bg-white rounded-lg shadow'}>
         {renderContent()}
       </div>
 
       {/* Additional Help - Only show on list view */}
-      {currentView === 'list' && (
+      {currentView === 'list' && supportAvailable && (
         <div className="mt-8 bg-gray-50 rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             Other Ways to Get Help
