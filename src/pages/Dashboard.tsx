@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency } from '../utils/formatters'
 import { dashboardApi, ordersApi, wishlistApi } from '../services'
+import type { DashboardStats } from '../services/dashboardApi'
 import toast from 'react-hot-toast'
 
 interface UserStats {
@@ -53,6 +54,7 @@ const Dashboard: React.FC = () => {
     wishlistItems: 0,
     reviewCount: 0
   })
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
   const [recentOrders, setRecentOrders] = useState<OrderSummary[]>([])
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
 
@@ -71,41 +73,119 @@ const Dashboard: React.FC = () => {
       }
 
       try {
-        // Fetch user stats from dashboard API
-        const statsResponse = await dashboardApi.getStats()
-        setStats(statsResponse)
-
-        // Fetch recent orders
-        const ordersResponse = await ordersApi.list({
-          page: 1,
-          limit: 3
-        })
-        const orders: OrderSummary[] = ordersResponse.data.map((order: any) => ({
-          id: order.id,
-          orderNumber: `ORD-${order.id.slice(0, 8).toUpperCase()}`,
-          date: order.createdAt,
-          status: order.status,
-          total: order.totalAmount,
-          items: order.items.length
-        }))
-        setRecentOrders(orders)
-
-        // Fetch wishlist items
-        const wishlistItems = await wishlistApi.list()
-        const items: WishlistItem[] = wishlistItems.slice(0, 4).map((item: any) => ({
-          id: item.product.id,
-          name: item.product.name,
-          price: item.product.discountPrice || item.product.price,
-          image: item.product.images?.[0] || '/api/placeholder/150/150'
-        }))
-        setWishlistItems(items)
+        // Start loading all data in parallel for better performance
+        const [ordersResponse, wishlistResponse] = await Promise.all([
+          // Fetch ALL user orders to calculate proper statistics
+          ordersApi.getAll({ 
+            limit: 1000, // Get all orders for proper calculation
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+          }),
+          // Fetch wishlist items
+          wishlistApi.list()
+        ]);
+        
+        console.log('📊 Dashboard: Processing user statistics...');
+        console.log('📋 Dashboard: Orders response:', ordersResponse);
+        console.log('❤️ Dashboard: Wishlist response:', wishlistResponse);
+        
+        // Calculate user statistics from actual orders
+        let userStats: UserStats = {
+          totalOrders: 0,
+          pendingOrders: 0,
+          totalSpent: 0,
+          wishlistItems: 0,
+          reviewCount: 0 // TODO: Add when reviews API is available
+        };
+        
+        // Process orders data
+        if (ordersResponse.success && ordersResponse.data && Array.isArray(ordersResponse.data)) {
+          const orders = ordersResponse.data;
+          
+          // Calculate total orders
+          userStats.totalOrders = orders.length;
+          
+          // Calculate pending orders
+          userStats.pendingOrders = orders.filter(order => 
+            order.status === 'PENDING' || order.status === 'PROCESSING'
+          ).length;
+          
+          // Calculate total spent (only from delivered, shipped, or paid orders)
+          userStats.totalSpent = orders
+            .filter(order => {
+              // Count orders that are confirmed/completed or have confirmed payment
+              const isCompletedOrder = ['DELIVERED', 'SHIPPED'].includes(order.status);
+              const isPaidOrder = order.paymentStatus === 'PAID';
+              const isProcessingPaidOrder = order.status === 'PROCESSING' && isPaidOrder;
+              
+              return isCompletedOrder || isPaidOrder || isProcessingPaidOrder;
+            })
+            .reduce((total, order) => total + (order.totalAmount || 0), 0);
+          
+          console.log('📊 Dashboard: Calculated order stats:', {
+            totalOrders: userStats.totalOrders,
+            pendingOrders: userStats.pendingOrders,
+            totalSpent: userStats.totalSpent
+          });
+          
+          // Set recent orders for display (limit to 3 most recent)
+          const recentOrdersList: OrderSummary[] = orders.slice(0, 3).map((order: any) => ({
+            id: order.id,
+            orderNumber: order.orderNumber || `ORD-${order.id.slice(0, 8).toUpperCase()}`,
+            date: order.createdAt,
+            status: order.status,
+            total: order.totalAmount,
+            items: (order.items || order.orderItems || []).length
+          }));
+          setRecentOrders(recentOrdersList);
+          console.log('✅ Dashboard: Set', recentOrdersList.length, 'recent orders');
+        } else {
+          console.log('ℹ️ Dashboard: No orders found or response not successful');
+          setRecentOrders([]);
+        }
+        
+        // Process wishlist data
+        if (Array.isArray(wishlistResponse)) {
+          userStats.wishlistItems = wishlistResponse.length;
+          
+          // Set wishlist items for display (limit to 4 most recent)
+          const wishlistDisplayItems: WishlistItem[] = wishlistResponse.slice(0, 4).map((item: any) => ({
+            id: item.product.id,
+            name: item.product.name,
+            price: item.product.discountPrice || item.product.price,
+            image: item.product.images?.[0] || ''
+          }));
+          setWishlistItems(wishlistDisplayItems);
+          console.log('✅ Dashboard: Set', wishlistDisplayItems.length, 'wishlist display items');
+        } else {
+          console.log('ℹ️ Dashboard: No wishlist items found');
+          setWishlistItems([]);
+        }
+        
+        // Update stats state with calculated values
+        setStats(userStats);
+        console.log('✅ Dashboard: Final user stats:', userStats);
 
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-        // Don't show error toast for dashboard data fetch failures
-        // as this might be due to empty data, which is normal for new users
+        console.error('❌ Dashboard: Error fetching dashboard data:', error);
+        
+        // Set default stats to prevent showing undefined values
+        setStats({
+          totalOrders: 0,
+          pendingOrders: 0,
+          totalSpent: 0,
+          wishlistItems: 0,
+          reviewCount: 0
+        });
+        setRecentOrders([]);
+        setWishlistItems([]);
+        
+        // Only show error if it's not an authentication issue
+        if (error && typeof error === 'object' && 'status' in error && error.status !== 401) {
+          console.warn('Dashboard data fetch failed, but continuing with empty data');
+        }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
     
@@ -174,7 +254,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-sm text-gray-500">Total Orders</p>
-            <p className="text-2xl font-bold text-gray-800">{stats.totalOrders}</p>
+            <p className="text-2xl font-bold text-gray-800">{loading ? '...' : stats.totalOrders}</p>
           </div>
         </div>
         
@@ -183,8 +263,8 @@ const Dashboard: React.FC = () => {
             <Heart className="w-6 h-6 text-pink-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Wishlist</p>
-            <p className="text-2xl font-bold text-gray-800">{stats.wishlistItems}</p>
+            <p className="text-sm text-gray-500">Wishlist Items</p>
+            <p className="text-2xl font-bold text-gray-800">{loading ? '...' : stats.wishlistItems}</p>
           </div>
         </div>
         
@@ -194,17 +274,17 @@ const Dashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-sm text-gray-500">Total Spent</p>
-            <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.totalSpent)}</p>
+            <p className="text-2xl font-bold text-gray-800">{loading ? '...' : formatCurrency(stats.totalSpent)}</p>
           </div>
         </div>
         
         <div className="bg-white rounded-xl shadow-md p-6 flex items-center">
           <div className="bg-orange-100 p-3 rounded-lg mr-4">
-            <Star className="w-6 h-6 text-orange-600" />
+            <Package className="w-6 h-6 text-orange-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Reviews</p>
-            <p className="text-2xl font-bold text-gray-800">{stats.reviewCount}</p>
+            <p className="text-sm text-gray-500">Pending Orders</p>
+            <p className="text-2xl font-bold text-gray-800">{loading ? '...' : stats.pendingOrders}</p>
           </div>
         </div>
       </div>
@@ -301,15 +381,30 @@ const Dashboard: React.FC = () => {
                   to={`/products/${item.id}`}
                   className="group border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow"
                 >
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-full h-24 object-cover rounded-lg mb-3 group-hover:scale-105 transition-transform"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.src = '/api/placeholder/150/150'
-                    }}
-                  />
+                  <div className="w-full h-24 rounded-lg overflow-hidden bg-gray-100 mb-3">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          const parent = target.parentElement!
+                          parent.innerHTML = `
+                            <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                              <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                              </svg>
+                            </div>
+                          `
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                        <Heart className="w-6 h-6 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
                   <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">{item.name}</h3>
                   <p className="text-purple-600 font-semibold text-sm">{formatCurrency(item.price)}</p>
                 </Link>

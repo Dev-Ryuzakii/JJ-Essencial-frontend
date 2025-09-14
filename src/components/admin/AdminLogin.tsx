@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Lock, Mail, AlertCircle, Loader2, EyeOff, Eye } from 'lucide-react'
 import useAdminAuth from '../../hooks/useAdminAuth'
 import toast from 'react-hot-toast'
+import LOGO from '../../assets/LOGO.png'
 
 export const AdminLogin = () => {
   const [email, setEmail] = useState('jadesola0518@gmail.com') // Pre-fill admin email
@@ -86,7 +87,7 @@ export const AdminLogin = () => {
       <div className="w-full max-w-md space-y-8">
         <div>
           <div className="flex justify-center">
-            <img src="/logo.svg" className="h-12 w-auto" alt="JJ Essential" />
+            <img src={LOGO} className="w-16 h-16 rounded-full" alt="JJ Essential" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
             Admin Login

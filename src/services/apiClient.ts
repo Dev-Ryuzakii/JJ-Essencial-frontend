@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios'
 import type { 
   ApiResponse, 
   SuccessResponseDto, 
@@ -34,8 +34,9 @@ apiClient.interceptors.request.use(
     const fullUrl = `${config.baseURL}${config.url}`;
     console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${fullUrl}`);
     
-    // Only use admin token for actual admin endpoints
-    const isAdminRequest = config.url?.includes('/admin');
+    // Only use admin token for actual admin endpoints (but not auth endpoints)
+    const isAdminRequest = config.url?.includes('/admin') && !config.url?.includes('/auth/admin')
+    const isAdminAuthRequest = config.url?.includes('/auth/admin');
     
     // Choose the appropriate token
     let token;
@@ -43,6 +44,9 @@ apiClient.interceptors.request.use(
     if (isAdminRequest) {
       token = localStorage.getItem('adminToken');
       console.log('Using admin token for admin request:', config.url);
+    } else if (isAdminAuthRequest) {
+      // Don't use any token for admin auth endpoints (login/register)
+      console.log('Admin auth request - no token required:', config.url);
     } else {
       // For non-admin requests, prefer access_token (matches backend response)
       token = localStorage.getItem('access_token') || localStorage.getItem('token');

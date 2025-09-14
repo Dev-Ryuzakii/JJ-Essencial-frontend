@@ -9,6 +9,8 @@ import type {
   FlutterwaveCheckoutParams
 } from '../../services/flutterwaveApi';
 import { paymentsApi } from '../../services';
+import { fastPaymentService, type FastPaymentResult } from '../../services/fastPaymentService';
+import FastPaymentConfirmation from './FastPaymentConfirmation';
 import { Button, Alert, Spinner } from '../ui'; // Assuming you have these UI components
 
 interface FlutterwavePaymentProps {
@@ -38,6 +40,10 @@ const FlutterwavePayment: React.FC<FlutterwavePaymentProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(isFlutterwaveLoaded());
+  
+  // Fast confirmation states
+  const [showFastConfirmation, setShowFastConfirmation] = useState(false);
+  const [currentTransaction, setCurrentTransaction] = useState<{transactionId: string, txRef: string} | null>(null);
 
   // Load Flutterwave script
   useEffect(() => {
@@ -106,9 +112,14 @@ const FlutterwavePayment: React.FC<FlutterwavePaymentProps> = ({
         callback: (response: any) => {
           console.log('Payment callback:', response);
           
-          // Verify transaction with backend
+          // Verify transaction with fast confirmation
           if (response.status === 'successful' || response.status === 'completed') {
-            handleTransactionVerification(response.transaction_id, tx_ref);
+            setCurrentTransaction({
+              transactionId: response.transaction_id,
+              txRef: tx_ref
+            });
+            setShowFastConfirmation(true);
+            setLoading(false); // Hide payment loading, show confirmation UI
           } else {
             setError(`Payment failed: ${response.message || 'Unknown error'}`);
             if (onFailure) onFailure(response);
@@ -194,9 +205,55 @@ const FlutterwavePayment: React.FC<FlutterwavePaymentProps> = ({
     }, 2000); // Slightly longer delay to allow success message to be seen
   };
 
+  // Fast confirmation handlers
+  const handleFastConfirmationSuccess = (result: FastPaymentResult) => {
+    console.log('⚡ Fast confirmation successful:', result);
+    setShowFastConfirmation(false);
+    
+    if (currentTransaction) {
+      handleSuccessfulPayment(currentTransaction.transactionId, currentTransaction.txRef);
+    }
+  };
+
+  const handleFastConfirmationFailure = (result: FastPaymentResult) => {
+    console.warn('⚠️ Fast confirmation failed:', result);
+    setShowFastConfirmation(false);
+    
+    // For timeout, we still treat as success since payment was completed on Flutterwave
+    if (result.status === 'TIMEOUT' && currentTransaction) {
+      console.log('🕐 Treating timeout as success since Flutterwave confirmed payment');
+      handleSuccessfulPayment(currentTransaction.transactionId, currentTransaction.txRef);
+      return;
+    }
+    
+    // For real failures, show error and call failure callback
+    const errorMessage = result.error || 'Payment confirmation failed';
+    setError(`Payment completed but verification failed: ${errorMessage}. Please contact support.`);
+    
+    if (onFailure && currentTransaction) {
+      onFailure(new Error(errorMessage));
+    }
+  };
+
   return (
     <div className="flutterwave-payment">
       {error && <Alert type="error" message={error} />}
+      
+      {/* Fast Payment Confirmation Modal */}
+      {showFastConfirmation && currentTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-md w-full">
+            <FastPaymentConfirmation
+              transactionId={currentTransaction.transactionId}
+              txRef={currentTransaction.txRef}
+              onSuccess={handleFastConfirmationSuccess}
+              onFailure={handleFastConfirmationFailure}
+              maxAttempts={30}
+              className="shadow-xl"
+            />
+          </div>
+        </div>
+      )}
       
       {!orderId || orderId === 'temporary-id' ? (
         <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-md">
@@ -206,13 +263,15 @@ const FlutterwavePayment: React.FC<FlutterwavePaymentProps> = ({
       ) : (
         <Button
           onClick={handlePayment}
-          disabled={loading || !scriptLoaded}
+          disabled={loading || !scriptLoaded || showFastConfirmation}
           className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-md"
         >
           {loading ? (
             <div className="flex items-center justify-center">
               <Spinner size="sm" className="mr-2" /> Processing...
             </div>
+          ) : showFastConfirmation ? (
+            'Confirming Payment...'
           ) : (
             'Pay with Flutterwave'
           )}

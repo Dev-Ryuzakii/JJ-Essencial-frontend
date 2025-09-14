@@ -58,7 +58,7 @@ interface BankAccount {
   currency: string
 }
 
-const Checkout: React.FC = () => {
+const Checkout = () => {
   const navigate = useNavigate()
   const { items, clearCart, removeFromCart, getSubtotal, getFinalAmount } = useCart()
   const { isAuthenticated, user } = useAuth()
@@ -545,12 +545,22 @@ const Checkout: React.FC = () => {
 
       console.log('Sending order data:', JSON.stringify(orderData, null, 2));
       
-      // Create the order first
-      const orderResponse = await ordersApi.create(orderData);
+      // Show enhanced progress message for potentially long operation
+      let progressToast: string | undefined;
+      progressToast = toast.loading('Creating your order... This may take up to 2 minutes.', {
+        duration: 120000 // Show for up to 2 minutes
+      });
       
-      if (orderResponse.success && orderResponse.data) {
-        const orderId = orderResponse.data.id;
-        console.log('Order created successfully:', orderId);
+      try {
+        // Create the order first with enhanced timeout handling
+        const orderResponse = await ordersApi.create(orderData);
+        
+        // Dismiss the progress toast on success
+        toast.dismiss(progressToast);
+        
+        if (orderResponse.success && orderResponse.data) {
+          const orderId = orderResponse.data.id;
+          console.log('Order created successfully:', orderId);
         
         // Store the order response for later use
         setOrderResponse(orderResponse);
@@ -591,17 +601,24 @@ const Checkout: React.FC = () => {
                 }
               }
               
+              // Clear cart after successful bank transfer order creation
+              clearCart();
+              
               // Navigate to bank transfer payment page with the payment details
               const paymentData = encodeURIComponent(JSON.stringify(paymentResponse.data));
               navigate(`/checkout/bank-transfer?orderId=${orderId}&paymentData=${paymentData}`);
             } else {
               console.error('Bank transfer initiation failed:', paymentResponse);
               toast.error('Failed to initiate bank transfer. Please try again.');
+              // Clear cart even if bank transfer initiation failed, as order was created
+              clearCart();
               navigate(`/orders/${orderId}`); // Fallback to order page
             }
           } catch (paymentError) {
             console.error('Bank transfer initiation error:', paymentError);
             toast.error('Order created successfully! Bank transfer details will be available in your order.');
+            // Clear cart as order was successfully created
+            clearCart();
             navigate(`/orders/${orderId}`); // Fallback to order page
           }
         } else if (formData.paymentMethod === 'flutterwave') {
@@ -624,6 +641,30 @@ const Checkout: React.FC = () => {
       } else {
         console.error('Order creation failed:', orderResponse);
         toast.error(orderResponse.message || 'Failed to place order');
+      }
+      } catch (orderCreationError: any) {
+        // Dismiss the progress toast on error
+        toast.dismiss(progressToast);
+        
+        console.error('Order creation error:', orderCreationError);
+        
+        // Handle order creation specific errors
+        if (orderCreationError.code === 'ECONNABORTED' || orderCreationError.message?.includes('timeout')) {
+          console.log('⏰ Order creation timeout detected');
+          toast.error('⏰ Order creation is taking longer than expected. We\'re still processing your order in the background. Please check your orders page in a few minutes or contact support if the order doesn\'t appear.', {
+            duration: 12000,
+          });
+          
+          // Navigate to orders page where they can check if order was created
+          setTimeout(() => {
+            navigate('/orders');
+          }, 3000);
+          
+          return; // Exit early to avoid further error processing
+        }
+        
+        // Re-throw for outer catch to handle
+        throw orderCreationError;
       }
     } catch (error: any) {
       console.error('Order creation error:', error);
@@ -648,6 +689,21 @@ const Checkout: React.FC = () => {
         console.log('API Error Message:', errorMessage);
       } else if (error.message) {
         errorMessage = error.message;
+      }
+      
+      // ✅ Enhanced timeout error handling
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        console.log('⏰ Order creation timeout detected');
+        toast.error('⏰ Order creation is taking longer than expected. We\'re still processing your order in the background. Please check your orders page in a few minutes or contact support if the order doesn\'t appear.', {
+          duration: 12000,
+        });
+        
+        // Navigate to orders page where they can check if order was created
+        setTimeout(() => {
+          navigate('/orders');
+        }, 3000);
+        
+        return; // Exit early to avoid further error processing
       }
       
       // Show specific error to user with actionable solutions based on backend fixes
@@ -1188,7 +1244,7 @@ const Checkout: React.FC = () => {
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Review Your Order</h2>
               
               {/* Cart Management */}
-              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              {/* <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-medium text-yellow-800 mb-1">Cart Management</h3>
@@ -1226,7 +1282,7 @@ const Checkout: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-              </div>
+              </div> */}
               
               {/* Order Items */}
               <div className="mb-6">

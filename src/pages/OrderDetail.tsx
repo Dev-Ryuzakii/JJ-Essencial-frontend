@@ -17,7 +17,8 @@ import {
   CreditCard,
   Calendar,
   ExternalLink,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
@@ -42,29 +43,51 @@ const OrderDetail: React.FC = () => {
   const loadOrderDetail = async (orderId: string) => {
     setIsLoading(true)
     try {
+      console.log('🔍 OrderDetail: Loading order details for ID:', orderId)
+      console.log('🔍 OrderDetail: API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1')
+      
       const response = await ordersApi.getById(orderId)
+      
+      console.log('📦 OrderDetail: API response:', response)
+      
       if (response.success) {
+        console.log('✅ OrderDetail: Successfully loaded order details')
         setOrder(response.data)
       } else {
+        console.warn('⚠️ OrderDetail: API returned unsuccessful response:', response)
         toast.error('Order not found')
         navigate('/orders')
       }
     } catch (error: any) {
-      console.error('Failed to load order:', error)
+      console.error('❌ OrderDetail: Failed to load order:', error)
       
       // Add more detailed error logging to diagnose API issues
       console.error('Error details:', {
         status: error.response?.status,
+        statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message,
-        config: error.config
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
       })
       
-      const errorMessage = error.response?.status === 404 
-        ? 'Order not found - please check the order ID or your account access'
-        : 'Failed to load order details. Please try again later.'
+      let errorMessage = 'Failed to load order details. Please try again later.'
+      
+      if (error.response?.status === 404) {
+        errorMessage = 'Order not found. This order may not exist or you may not have permission to view it.'
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Please log in to view order details.'
+      } else if (error.response?.status === 403) {
+        errorMessage = 'You do not have permission to view this order.'
+      }
+      
       toast.error(errorMessage)
-      navigate('/orders')
+      
+      // Don't immediately navigate away, give user a chance to try again
+      setTimeout(() => {
+        navigate('/orders')
+      }, 3000)
     } finally {
       setIsLoading(false)
     }
@@ -173,7 +196,9 @@ const OrderDetail: React.FC = () => {
 
   const copyOrderNumber = () => {
     if (order) {
-      navigator.clipboard.writeText(`ORD-${order.id.slice(0, 8).toUpperCase()}`)
+      // ✅ Use backend orderNumber with fallback per memory specification
+      const displayOrderNumber = order.orderNumber || order.id.slice(-6).toUpperCase()
+      navigator.clipboard.writeText(displayOrderNumber)
       toast.success('Order number copied!')
     }
   }
@@ -202,14 +227,33 @@ const OrderDetail: React.FC = () => {
         <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Order not found</h1>
         <p className="text-gray-600 mb-8">The order you're looking for doesn't exist or you don't have permission to view it.</p>
-        <Button asChild>
-          <Link to="/orders">Back to Orders</Link>
-        </Button>
+        <div className="space-y-4">
+          <div className="flex justify-center space-x-4">
+            <Button asChild>
+              <Link to="/orders">Back to Orders</Link>
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                if (id) {
+                  console.log('🔄 OrderDetail: Retry loading order:', id)
+                  loadOrderDetail(id)
+                }
+              }}
+            >
+              Try Again
+            </Button>
+          </div>
+          <p className="text-sm text-gray-500">
+            Order ID: {id || 'Unknown'}
+          </p>
+        </div>
       </div>
     )
   }
 
-  const orderNumber = `ORD-${order.id.slice(0, 8).toUpperCase()}`
+  // ✅ Use backend orderNumber with fallback per memory specification
+  const displayOrderNumber = order.orderNumber || order.id.slice(-6).toUpperCase()
   const trackingSteps = getTrackingSteps(order.status)
 
   return (
@@ -225,7 +269,7 @@ const OrderDetail: React.FC = () => {
               </Button>
               <div>
                 <div className="flex items-center space-x-3">
-                  <h1 className="text-3xl font-bold text-gray-900">Order {orderNumber}</h1>
+                  <h1 className="text-3xl font-bold text-gray-900">Order #{displayOrderNumber}</h1>
                   <button
                     onClick={copyOrderNumber}
                     className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -527,7 +571,7 @@ const OrderDetail: React.FC = () => {
                       </Button>
                       
                       <div className="text-sm text-gray-500">
-                        <p>Invoice #: INV-{orderNumber}</p>
+                        <p>Invoice #: INV-{displayOrderNumber}</p>
                         <p>Date: {new Date(order.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>

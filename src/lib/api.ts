@@ -3,9 +3,9 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import toast from 'react-hot-toast'
 
 // API Configuration - Use localhost:3000 for local backend development
-const API_BASE_URL = 'https://jj-essencial.onrender.com/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
 
-console.log('🌐 API Base URL:', API_BASE_URL); // Debug log to confirm URL
+console.log('🌍 API Base URL:', API_BASE_URL) // Debug log to confirm URL
 
 class ApiClient {
   private client: AxiosInstance

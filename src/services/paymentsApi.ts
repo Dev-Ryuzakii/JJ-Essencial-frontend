@@ -210,6 +210,39 @@ export const paymentsApi = {
         console.error('❌ Failed to confirm Flutterwave payment:', error);
         throw error;
       }
+    },
+
+    // Fast confirmation - immediate response with background processing
+    fastConfirm: async (data: {
+      transaction_id: string;
+      tx_ref: string;
+    }): Promise<ApiResponse<any>> => {
+      try {
+        console.log('⚡ Fast confirming Flutterwave payment:', data);
+        const response = await api.post('/payments/flutterwave/fast-confirm', data, {
+          timeout: 5000 // 5 seconds timeout for fast response
+        });
+        console.log('⚡ Fast confirmation initiated:', response);
+        return response as ApiResponse<any>;
+      } catch (error) {
+        console.error('❌ Failed to fast confirm payment:', error);
+        throw error;
+      }
+    },
+
+    // Get payment status by reference
+    getStatus: async (reference: string): Promise<ApiResponse<any>> => {
+      try {
+        console.log('📊 Getting payment status for:', reference);
+        const response = await api.get(`/payments/status/${reference}`, {
+          timeout: 3000 // 3 seconds timeout for status check
+        });
+        console.log('📊 Payment status retrieved:', response);
+        return response as ApiResponse<any>;
+      } catch (error) {
+        console.error('❌ Failed to get payment status:', error);
+        throw error;
+      }
     }
   }
 }

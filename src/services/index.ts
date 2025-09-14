@@ -37,6 +37,10 @@ export type { BankTransferData, ReceiptData } from './bankTransferApi';
 export { paymentsApi } from './paymentsApi';
 export type { BankTransferInitiateData, BankTransferResponse } from './paymentsApi';
 
+// Fast Payment Service
+export { fastPaymentService, FastPaymentService } from './fastPaymentService';
+export type { FastPaymentResult } from './fastPaymentService';
+
 // Dashboard API
 export { default as dashboardApi } from './dashboardApi';
 export type { 

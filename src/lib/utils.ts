@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { createPlaceholderImage } from '../utils/imageUtils'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -69,7 +70,7 @@ export function validatePhone(phone: string): boolean {
 }
 
 export function getImageUrl(url: string): string {
-  if (!url) return '/api/placeholder/400/400'
+  if (!url) return createPlaceholderImage(400, 400)
   if (url.startsWith('http')) return url
   
   // Use the proxy setup in vite.config.ts - all /api requests are proxied to localhost:3000
@@ -77,7 +78,7 @@ export function getImageUrl(url: string): string {
 }
 
 export function parseProductImage(image: any): string {
-  if (!image) return '/api/placeholder/400/400'
+  if (!image) return createPlaceholderImage(400, 400)
   
   // If it's a string that looks like a JSON object, parse it
   if (typeof image === 'string') {
@@ -89,7 +90,7 @@ export function parseProductImage(image: any): string {
           // Ensure the URL uses the correct API path
           return parsed.url.startsWith('http') ? parsed.url : `/api/v1/uploads/${parsed.url}`
         }
-        return '/api/placeholder/400/400'
+        return createPlaceholderImage(400, 400)
       } catch {
         // If JSON parsing fails, treat as regular URL
         return image.startsWith('http') ? image : `/api/v1/uploads/${image}`
@@ -104,7 +105,7 @@ export function parseProductImage(image: any): string {
     return image.url.startsWith('http') ? image.url : `/api/v1/uploads/${image.url}`
   }
   
-  return '/api/placeholder/400/400'
+  return createPlaceholderImage(400, 400)
 }
 
 export function calculateDiscountPercentage(

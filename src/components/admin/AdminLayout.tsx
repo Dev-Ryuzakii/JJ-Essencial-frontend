@@ -21,6 +21,7 @@ import {
   MessageCircle
 } from 'lucide-react'
 import { useAdminAuth } from '../../hooks/useAdminAuth'
+import LOGO from '../../assets/LOGO.png'
 
 interface AdminLayoutProps {
   children?: ReactNode;
@@ -57,8 +58,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     navigate('/admin/login')
   }
 
-  const isActivePath = (path: string) => {
-    return location.pathname.startsWith(`/admin/${path}`)
+  const isActivePath = (fullPath: string) => {
+    // Handle exact match for dashboard
+    if (fullPath === '/admin/dashboard') {
+      return location.pathname === '/admin/dashboard' || location.pathname === '/admin' || location.pathname === '/admin/'
+    }
+    // For other paths, check if current path starts with the menu path
+    return location.pathname.startsWith(fullPath)
   }
 
   const navigationItems = [
@@ -135,7 +141,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="fixed inset-y-0 left-0 flex flex-col z-40 w-72 max-w-xs bg-white">
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
             <div className="flex items-center">
-              <img src="/logo.svg" alt="JJ Essential" className="h-8 w-auto" />
+              <img src={LOGO} alt="JJ Essential" className="w-10 h-10 rounded-full" />
               <span className="ml-2 text-xl font-semibold text-gray-800">Admin</span>
             </div>
             <button
@@ -152,14 +158,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   key={item.path}
                   to={item.path}
                   className={`flex items-center px-4 py-3 text-sm font-medium rounded-md group ${
-                    isActivePath(item.path.split('/').pop() || '')
+                    isActivePath(item.path)
                       ? 'bg-indigo-50 text-indigo-700'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <item.icon className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                    isActivePath(item.path.split('/').pop() || '')
+                    isActivePath(item.path)
                       ? 'text-indigo-600'
                       : 'text-gray-500 group-hover:text-gray-600'
                   }`} />
@@ -217,7 +223,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
         <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
           <div className="flex items-center h-16 flex-shrink-0 px-6 border-b border-gray-200 bg-white">
-            <img src="/logo.svg" alt="JJ Essential" className="h-8 w-auto" />
+            <img src={LOGO} alt="JJ Essential" className="w-10 h-10 rounded-full" />
             <span className="ml-2 text-xl font-semibold text-gray-800">Admin</span>
           </div>
           <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
@@ -227,13 +233,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   key={item.path}
                   to={item.path}
                   className={`flex items-center px-4 py-3 text-sm font-medium rounded-md group ${
-                    isActivePath(item.path.split('/').pop() || '')
+                    isActivePath(item.path)
                       ? 'bg-indigo-50 text-indigo-700'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   <item.icon className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                    isActivePath(item.path.split('/').pop() || '')
+                    isActivePath(item.path)
                       ? 'text-indigo-600'
                       : 'text-gray-500 group-hover:text-gray-600'
                   }`} />

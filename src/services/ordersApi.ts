@@ -40,6 +40,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  orderNumber?: string;               // ✅ NEW: 6-digit order number (e.g., "123456") - optional for backward compatibility
   userId?: string;                    // ✅ Added userId field from backend
   totalAmount: number;
   status: OrderStatus;
@@ -122,10 +123,11 @@ const formatOrderResponse = (backendOrder: any): Order => {
   // Handle both camelCase frontend and snake_case database fields
   return {
     id: backendOrder.id,
+    orderNumber: backendOrder.orderNumber || backendOrder.order_number || backendOrder.id.slice(-6).toUpperCase(), // ✅ Use backend orderNumber or fallback
     userId: backendOrder.userId || backendOrder.user_id,
     totalAmount: parseFloat((backendOrder.totalAmount || backendOrder.total_amount || 0).toString()),
     status: backendOrder.status,
-    paymentStatus: backendOrder.paymentStatus || backendOrder.payment_status,
+    paymentStatus: backendOrder.paymentStatus || backendOrder.payment_status,  // ✅ Now available from backend
     paymentRef: backendOrder.paymentRef || backendOrder.payment_ref,
     receiptUrl: backendOrder.receiptUrl || backendOrder.receipt_url,
     createdAt: backendOrder.createdAt || backendOrder.created_at,
@@ -133,7 +135,7 @@ const formatOrderResponse = (backendOrder: any): Order => {
     
     // ✅ Add delivery address fields from backend response
     deliveryPhone: backendOrder.deliveryPhone,
-    deliveryAddressText: backendOrder.deliveryAddress,
+    deliveryAddressText: backendOrder.deliveryAddress,  // ✅ Map backend field to frontend expectation
     deliveryCity: backendOrder.deliveryCity,
     deliveryState: backendOrder.deliveryState,
     deliveryPostal: backendOrder.deliveryPostal,
@@ -166,7 +168,7 @@ const formatOrderResponse = (backendOrder: any): Order => {
     })),
     
     user: backendOrder.user,
-    notes: backendOrder.notes,
+    notes: backendOrder.notes,  // ✅ Add missing backend field
     
     // Optional legacy fields
     subtotal: backendOrder.subtotal,
@@ -177,6 +179,27 @@ const formatOrderResponse = (backendOrder: any): Order => {
     estimatedDelivery: backendOrder.estimatedDelivery
   };
 };
+
+// ✅ Updated interfaces to match backend SuccessResponseDto
+interface BackendApiResponse<T> {
+  success: boolean;
+  data: T;
+  message: string;
+  timestamp: string;  // ✅ Backend includes timestamp
+}
+
+// ✅ Backend returns orders in this format
+interface BackendOrdersResponse {
+  orders: any[];  // ✅ Backend returns 'orders' array
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
 
 const ordersApi = {
   /**
@@ -213,7 +236,35 @@ const ordersApi = {
     
     console.log('📦 Order API client: Formatted request data (aligned with backend fixes):', JSON.stringify(formattedData, null, 2));
     
-    const response = await api.post<ApiResponse<any>>('/orders', formattedData);
+    // Enhanced order creation with timeout handling and retry logic
+    const createOrderWithRetry = async (attempt: number = 1): Promise<ApiResponse<any>> => {
+      try {
+        console.log(`📦 Order API client: Attempt ${attempt} - Creating order...`);
+        
+        // Use extended timeout for order creation (90 seconds)
+        const response = await api.post<ApiResponse<any>>('/orders', formattedData, {
+          timeout: 90000 // 90 seconds for order creation
+        });
+        
+        console.log(`✅ Order API client: Order created successfully on attempt ${attempt}`);
+        return response;
+      } catch (error: any) {
+        console.error(`❌ Order API client: Attempt ${attempt} failed:`, error.message);
+        
+        // Check if it's a timeout error and we haven't exceeded max attempts
+        if ((error.code === 'ECONNABORTED' || error.message?.includes('timeout')) && attempt < 3) {
+          console.log(`🔄 Order API client: Retrying order creation (attempt ${attempt + 1}/3)...`);
+          // Exponential backoff: wait 2s, then 4s
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          return createOrderWithRetry(attempt + 1);
+        }
+        
+        // If it's not a timeout or we've exceeded max attempts, throw the error
+        throw error;
+      }
+    };
+    
+    const response = await createOrderWithRetry();
     
     // Format the response to ensure consistent frontend data structure
     if (response.success && response.data) {
@@ -235,31 +286,74 @@ const ordersApi = {
   },
 
   /**
-   * Get all user orders - added to match the component usage in Orders.tsx
+   * Get all user orders - updated to match backend response format
    * GET /orders
    */
   getAll: async (params: OrdersQueryParams = {}): Promise<ApiResponse<Order[]>> => {
     try {
       console.log('🔍 Orders API: Making request to GET /orders with params:', params);
-      const response = await api.get<ApiResponse<Order[] | PaginatedResponse<Order>>>('/orders', { params });
-      console.log('📦 Orders API: Raw response:', response);
+      console.log('🌍 Orders API: Base URL being used:', import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1');
+      console.log('🔑 Orders API: Auth token exists:', !!localStorage.getItem('access_token'));
       
-      // Handle the response format - backend might return paginated data
+      // Debug: Log the actual token being used (first/last 10 chars for security)
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        console.log('🔐 Orders API: Token preview:', token.substring(0, 10) + '...' + token.substring(token.length - 10));
+        console.log('🔐 Orders API: Full token length:', token.length);
+      }
+      
+      // Use the backend response interface
+      const response = await api.get<BackendApiResponse<BackendOrdersResponse>>('/orders', { params });
+      console.log('📦 Orders API: Raw response:', response);
+      console.log('🔍 Orders API: Response data structure:', {
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        hasOrders: response.data && 'orders' in response.data,
+        ordersLength: response.data && response.data.orders ? response.data.orders.length : 'N/A',
+        paginationDetails: response.data && response.data.pagination ? response.data.pagination : null,
+        fullDataObject: response.data
+      });
+      
+      // Compare with your curl test - let's see the exact query parameters being sent
+      console.log('🔍 Orders API: Query params being sent:', params);
+      console.log('🔍 Orders API: Full URL would be:', `https://jj-essencial.onrender.com/api/v1/orders?${new URLSearchParams(params as any).toString()}`);
+      
+      // Debug: Compare token with your working curl token
+      const curlToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0OWU1OGQxMi1hNjFhLTRmYzUtYmRiYS03MjUyNTM5OTBmYjYiLCJlbWFpbCI6ImZhbGFkZXJhc2FxMjJAZ21haWwuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NTc3OTkzNDMsImV4cCI6MTc1ODQwNDE0M30.0Y-lLAE8u5kKaicVhzHg1CABqqe8_UogDocvSilqd1I";
+      const currentToken = localStorage.getItem('access_token');
+      console.log('🔍 Orders API: Token comparison:', {
+        tokensMatch: currentToken === curlToken,
+        currentTokenEnd: currentToken?.substring(currentToken.length - 10),
+        curlTokenEnd: curlToken.substring(curlToken.length - 10)
+      });
+      
+      // Handle the backend SuccessResponseDto format
       if (response.success && response.data) {
-        // Check if response.data is an array or paginated object
-        if (Array.isArray(response.data)) {
-          console.log('✅ Orders API: Got array with', response.data.length, 'orders');
+        // NEW: Handle backend's { orders: [], pagination: {} } format
+        if (response.data.orders && Array.isArray(response.data.orders)) {
+          console.log('✅ Orders API: Got orders array with', response.data.orders.length, 'orders');
+          
+          // If we got 0 orders but expected some, try without parameters
+          if (response.data.orders.length === 0 && Object.keys(params).length > 0) {
+            console.log('🔄 Orders API: Got 0 orders with params, trying without params...');
+            const simpleResponse = await api.get<BackendApiResponse<BackendOrdersResponse>>('/orders');
+            console.log('🔄 Orders API: Simple response (no params):', simpleResponse);
+            
+            if (simpleResponse.success && simpleResponse.data && simpleResponse.data.orders) {
+              console.log('✅ Orders API: Simple request found', simpleResponse.data.orders.length, 'orders');
+              return {
+                success: simpleResponse.success,
+                data: simpleResponse.data.orders.map(formatOrderResponse),
+                message: simpleResponse.message
+              };
+            }
+          }
+          
           return {
-            ...response,
-            data: response.data
-          };
-        } else if (response.data && typeof response.data === 'object' && 'items' in response.data) {
-          // Handle paginated response
-          const paginatedData = response.data as PaginatedResponse<Order>;
-          console.log('✅ Orders API: Got paginated response with', paginatedData.items?.length || 0, 'orders');
-          return {
-            ...response,
-            data: paginatedData.items || []
+            success: response.success,
+            data: response.data.orders.map(formatOrderResponse),  // Transform each order
+            message: response.message
           };
         }
       }
@@ -354,6 +448,39 @@ const ordersApi = {
     } catch (error) {
       console.error(`Error fetching order confirmation for ${orderId}:`, error);
       throw error; // Let the component handle the error
+    }
+  },
+
+  /**
+   * ✅ NEW: Search by order number specifically
+   * GET /orders?search=orderNumber
+   */
+  searchByOrderNumber: async (orderNumber: string): Promise<ApiResponse<Order[]>> => {
+    try {
+      console.log('🔍 Orders API: Searching by order number:', orderNumber);
+      
+      const response = await api.get<BackendApiResponse<BackendOrdersResponse>>(`/orders?search=${orderNumber}`);
+      
+      if (response.success && response.data && response.data.orders) {
+        return {
+          success: response.success,
+          data: response.data.orders.map(formatOrderResponse),
+          message: response.message
+        };
+      }
+      
+      return {
+        success: false,
+        data: [],
+        message: 'No orders found with that order number'
+      };
+    } catch (error) {
+      console.error(`Error searching for order number ${orderNumber}:`, error);
+      return {
+        success: false,
+        data: [],
+        message: 'Failed to search orders'
+      };
     }
   }
 };

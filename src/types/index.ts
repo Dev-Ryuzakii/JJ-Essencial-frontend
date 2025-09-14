@@ -75,6 +75,7 @@ export interface Category {
 // Order types - Updated to match backend schema fixes
 export interface Order {
   id: string
+  orderNumber?: string                // ✅ NEW: 6-digit order number (e.g., "123456") - optional for backward compatibility
   userId?: string                     // ✅ Added userId from backend response
   status: OrderStatus
   totalAmount: string

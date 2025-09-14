@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Filter,
   Search,
@@ -39,6 +39,7 @@ export default function OrderManagement() {
     totalPages: 0
   })
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<AdminOrderFilter>({
     status: undefined,
@@ -51,9 +52,18 @@ export default function OrderManagement() {
     sortOrder: 'DESC'
   })
 
+  // Debounce search term to avoid excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 500) // 500ms debounce delay
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   useEffect(() => {
     fetchOrders()
-  }, [pagination.page, filters, searchTerm])
+  }, [pagination.page, filters, debouncedSearchTerm])
 
   const fetchOrders = async () => {
     try {
@@ -66,9 +76,34 @@ export default function OrderManagement() {
         ...filters
       }
       
-      // Add search term if present
-      if (searchTerm.trim()) {
-        filterParams.search = searchTerm.trim()
+      // Add search term if present and meets minimum length requirements
+      if (debouncedSearchTerm.trim()) {
+        const trimmedSearch = debouncedSearchTerm.trim()
+        
+        // Only search if:
+        // 1. It's at least 3 characters long AND not a partial UUID (to avoid backend 500 errors), OR
+        // 2. It's a complete full UUID (36 characters with hyphens), OR
+        // 3. It's a 6-digit order number
+        const isFullUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedSearch)
+        const isPartialUUID = /^[0-9a-f]{4,}$/i.test(trimmedSearch) && !isFullUUID
+        const isOrderNumber = /^\d{6}$/.test(trimmedSearch)
+        
+        if ((trimmedSearch.length >= 3 && !isPartialUUID) || isFullUUID || isOrderNumber) {
+          filterParams.search = trimmedSearch
+          console.log('🔍 Admin Search: Valid search term:', trimmedSearch, {
+            length: trimmedSearch.length,
+            isFullUUID,
+            isPartialUUID,
+            isOrderNumber,
+            searchType: isFullUUID ? 'Full UUID' : isOrderNumber ? '6-Digit Order Number' : 'Text Search'
+          })
+        } else {
+          console.log('⚠️ Admin Search: Search term blocked (partial UUID causes backend 500):', trimmedSearch, {
+            length: trimmedSearch.length,
+            isPartialUUID
+          })
+          // Don't include search parameter for partial UUIDs that cause backend errors
+        }
       }
       
       console.log('Fetching orders with params:', filterParams)
@@ -86,7 +121,30 @@ export default function OrderManagement() {
       setError(null)
     } catch (err: any) {
       console.error('Error fetching orders:', err)
-      setError('Failed to fetch orders. Please try again.')
+      
+      // Enhanced error handling for search-related issues
+      if (err.response?.status === 500 && debouncedSearchTerm.trim()) {
+        const searchTerm = debouncedSearchTerm.trim()
+        console.error('🚨 Backend search error for term:', searchTerm)
+        
+        // Check if it's likely a partial UUID causing the error
+        const isPartialUUID = /^[0-9a-f]{4,}$/i.test(searchTerm) && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm)
+        
+        if (isPartialUUID) {
+          setError(`Partial order ID "${searchTerm}" is not supported by the backend. Please use the complete order ID with hyphens or search by customer name/email.`)
+          toast.error('Partial order IDs not supported - use complete ID or customer details')
+        } else if (searchTerm.length < 3) {
+          setError(`Search term "${searchTerm}" is too short and caused a server error. Please use at least 3 characters.`)
+          toast.error('Search term too short for backend processing')
+        } else {
+          setError(`Search for "${searchTerm}" failed. The backend may not support this search pattern. Try a different search term.`)
+          toast.error('Search query not supported by backend')
+        }
+      } else {
+        setError('Failed to fetch orders. Please try again.')
+        toast.error('Failed to fetch orders')
+      }
+      
       setOrders([])
     } finally {
       setLoading(false)
@@ -96,6 +154,46 @@ export default function OrderManagement() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPagination(prev => ({ ...prev, page: 1 }))
+    
+    const trimmedSearch = searchTerm.trim()
+    
+    // Enhanced search validation and logging
+    console.log('🔍 Admin Search: Manual search triggered for:', trimmedSearch)
+    
+    if (!trimmedSearch) {
+      toast.error('Please enter a search term')
+      return
+    }
+    
+    if (trimmedSearch.length < 3) {
+      toast.error('Search term must be at least 3 characters long')
+      return
+    }
+    
+    // Check if it's a partial UUID that would cause backend errors
+    const isFullUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedSearch)
+    const isPartialUUID = /^[0-9a-f]{4,}$/i.test(trimmedSearch) && !isFullUUID
+    const isOrderNumber = /^\d{6}$/.test(trimmedSearch) // Check for 6-digit order number
+    
+    if (isPartialUUID) {
+      toast.error('Partial order IDs cause server errors. Please enter the complete order ID, 6-digit order number, or search by customer name/email.')
+      return
+    }
+    
+    // Enhanced feedback for different search types
+    if (isFullUUID) {
+      console.log('🎯 Admin Search: Detected full UUID format, searching for specific order')
+      toast('Searching for specific order by ID...', { icon: '🔍' })
+    } else if (isOrderNumber) {
+      console.log('🔢 Admin Search: Detected 6-digit order number format')
+      toast('Searching for order by number...', { icon: '🔢' })
+    } else {
+      console.log('📝 Admin Search: Text search for customer/email/reference')
+      toast('Searching orders...', { icon: '🔍' })
+    }
+    
+    // Force immediate search by updating debounced term
+    setDebouncedSearchTerm(trimmedSearch)
   }
 
   const handleFilterChange = (name: string, value: string) => {
@@ -195,7 +293,7 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
           <div className="flex justify-between items-center bg-blue-600 text-white px-6 py-4 border-b">
             <h2 className="text-xl font-bold flex items-center">
               <Package className="w-5 h-5 mr-2" /> 
-              Order #{order.orderNumber?.substring(0, 8) || order.id.substring(0, 8)}
+              Order #{order.orderNumber || order.id.slice(-6).toUpperCase()}
             </h2>
             <button onClick={onClose} className="text-white hover:text-blue-100 transition-colors">
               <X className="w-6 h-6" />
@@ -313,7 +411,7 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
                 </div>
                 <div className="bg-gray-50 p-3 rounded-md">
                   <span className="text-gray-500 text-sm block mb-1">Order Number:</span>
-                  <p className="font-medium text-blue-800">{order.orderNumber || order.id.substring(0, 8)}</p>
+                  <p className="font-medium text-blue-800">{order.orderNumber || order.id.slice(-6).toUpperCase()}</p>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-md">
                   <span className="text-gray-500 text-sm block mb-1">Date:</span>
@@ -585,12 +683,44 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search orders by ID, customer name, email..."
+                placeholder="Search by Order ID, Order Number (6 digits), Customer name, Email, Payment reference..."
                 className="w-full px-4 py-2 border rounded-lg pr-10 focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all"
               />
               <button type="submit" className="absolute right-3 top-2.5 text-gray-400 hover:text-blue-500">
                 <Search className="w-5 h-5" />
               </button>
+              
+              {/* Search hints and validation */}
+              {searchTerm.length > 0 && (
+                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-10 p-3">
+                  <div className="text-xs text-gray-600">
+                    {searchTerm.length < 3 ? (
+                      <div className="text-orange-600">
+                        <p className="font-medium mb-1">⚠️ Search term too short</p>
+                        <p>Please enter at least 3 characters to search</p>
+                      </div>
+                    ) : /^[0-9a-f]{4,}$/i.test(searchTerm.trim()) && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm.trim()) ? (
+                      <div className="text-red-600">
+                        <p className="font-medium mb-1">🚫 Partial order IDs not supported</p>
+                        <p>Use complete order ID (with hyphens) or search by customer name/email</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="font-medium mb-1">Search Tips:</p>
+                        <ul className="space-y-1">
+                          <li>• Enter complete Order ID (with hyphens)</li>
+                          <li>• Search by customer name or email</li>
+                          <li>• Use payment reference for quick lookup</li>
+                          <li>• Partial order IDs cause server errors</li>
+                        </ul>
+                        {/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm.trim()) && (
+                          <p className="mt-2 text-green-600 font-medium">✅ Complete order ID detected</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </form>
           
@@ -607,6 +737,23 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
             className="flex items-center px-4 py-2 border rounded-lg text-gray-700 hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition-colors"
           >
             <RefreshCw className="w-5 h-5 mr-2" /> Refresh
+          </button>
+          
+          {/* Quick Order Lookup Button */}
+          <button
+            onClick={() => {
+              const orderId = prompt('Enter Order ID for direct lookup:')
+              if (orderId?.trim()) {
+                console.log('🔗 Admin: Direct order lookup for:', orderId.trim())
+                setSearchTerm(orderId.trim())
+                setPagination(prev => ({ ...prev, page: 1 }))
+                toast('Looking up order...', { icon: '🔍' })
+              }
+            }}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Eye className="w-5 h-5 mr-2" />
+            Quick Lookup
           </button>
         </div>
       </div>
@@ -658,6 +805,7 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
                   sortOrder: 'DESC'
                 })
                 setSearchTerm('')
+                setDebouncedSearchTerm('')
               }}
               className="flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium text-red-600 bg-white hover:bg-red-50 hover:border-red-200 transition-colors mt-auto"
             >
@@ -720,7 +868,7 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
                 <tr key={order.id} className="hover:bg-blue-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-900 font-medium">
-                      #{order.orderNumber?.substring(0, 8) || order.id.substring(0, 8)}
+                      #{order.orderNumber || order.id.slice(-6).toUpperCase()}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -776,7 +924,7 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
               <div className="bg-gray-50 px-4 py-3 flex justify-between items-center border-b">
                 <div>
                   <span className="text-sm font-medium text-blue-800">
-                    #{order.orderNumber?.substring(0, 8) || order.id.substring(0, 8)}
+                    #{order.orderNumber || order.id.slice(-6).toUpperCase()}
                   </span>
                   <span className="text-xs text-gray-500 ml-2">
                     {new Date(order.createdAt).toLocaleDateString()}
@@ -830,6 +978,7 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
                 sortOrder: 'DESC'
               })
               setSearchTerm('')
+              setDebouncedSearchTerm('')
               fetchOrders()
             }}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"

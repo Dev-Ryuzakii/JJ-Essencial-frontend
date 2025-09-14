@@ -315,14 +315,14 @@ export default function CustomerManagement() {
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{customer.fullName || 'Unknown'}</div>
                             <div className="text-sm text-gray-500">{customer.email || 'No email'}</div>
+                            {customer.phone && (
+                              <div className="text-xs text-gray-400">{customer.phone}</div>
+                            )}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{customer.username || 'No username'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {customer.username ? `@${customer.username}` : 'No username'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
