@@ -44,7 +44,7 @@ const OrderDetail: React.FC = () => {
     setIsLoading(true)
     try {
       console.log('🔍 OrderDetail: Loading order details for ID:', orderId)
-      console.log('🔍 OrderDetail: API Base URL:', import.meta.env.VITE_API_BASE_URL || 'https://jj-essencial.onrender.com/api/v1')
+      console.log('🔍 OrderDetail: API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1')
       
       const response = await ordersApi.getById(orderId)
       
@@ -535,15 +535,17 @@ const OrderDetail: React.FC = () => {
                       <div className="flex items-start space-x-3">
                         <MessageCircle className="w-5 h-5 text-blue-600 mt-0.5" />
                         <div>
-                          <h4 className="font-medium text-blue-900 mb-2">Contact Customer Support</h4>
+                          <h4 className="font-medium text-blue-900 mb-2">Get Support for Your Order</h4>
                           <p className="text-blue-800 text-sm mb-4">
-                            Have questions about your order? Our support team is here to help.
+                            Have questions about your order? Create a support ticket and chat with our team.
                           </p>
                           <div className="space-x-3">
-                            <Button variant="outline" size="sm">
-                              <MessageCircle className="w-4 h-4 mr-2" />
-                              Live Chat
-                            </Button>
+                            <Link to="/support">
+                              <Button variant="outline" size="sm">
+                                <MessageCircle className="w-4 h-4 mr-2" />
+                                Get Support
+                              </Button>
+                            </Link>
                             <Button variant="outline" size="sm">
                               <Mail className="w-4 h-4 mr-2" />
                               Email Support
@@ -624,10 +626,12 @@ const OrderDetail: React.FC = () => {
                 </>
               )}
               
-              <Button variant="outline">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Contact Support
-              </Button>
+              <Link to="/support">
+                <Button variant="outline">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Contact Support
+                </Button>
+              </Link>
               
               <Button variant="outline" onClick={handleDownloadInvoice}>
                 <Download className="w-4 h-4 mr-2" />

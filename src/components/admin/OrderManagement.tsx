@@ -76,33 +76,47 @@ export default function OrderManagement() {
         ...filters
       }
       
-      // Add search term if present and meets minimum length requirements
+      // Enhanced search functionality with comprehensive validation
       if (debouncedSearchTerm.trim()) {
         const trimmedSearch = debouncedSearchTerm.trim()
         
-        // Only search if:
-        // 1. It's at least 3 characters long AND not a partial UUID (to avoid backend 500 errors), OR
-        // 2. It's a complete full UUID (36 characters with hyphens), OR
-        // 3. It's a 6-digit order number
+        // Detect search types
         const isFullUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedSearch)
         const isPartialUUID = /^[0-9a-f]{4,}$/i.test(trimmedSearch) && !isFullUUID
-        const isOrderNumber = /^\d{6}$/.test(trimmedSearch)
+        const isOrderNumber = /^\d{6}$/.test(trimmedSearch) // 6-digit order number
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedSearch)
+        const isPhoneNumber = /^\+?[1-9]\d{1,14}$/.test(trimmedSearch.replace(/[\s\-\(\)]/g, ''))
+        const isPaymentRef = /^(PAY|TXN|REF|PY|TX)_?[A-Z0-9]{6,}/i.test(trimmedSearch)
         
-        if ((trimmedSearch.length >= 3 && !isPartialUUID) || isFullUUID || isOrderNumber) {
+        // Apply search validation rules from memory
+        const isValidSearch = (
+          (trimmedSearch.length >= 3 && !isPartialUUID) || // Regular text search (min 3 chars, no partial UUIDs)
+          isFullUUID || // Complete UUIDs are allowed
+          isOrderNumber || // 6-digit order numbers are allowed
+          isEmail || // Email addresses are allowed
+          isPaymentRef // Payment references are allowed
+        )
+        
+        if (isValidSearch) {
           filterParams.search = trimmedSearch
           console.log('🔍 Admin Search: Valid search term:', trimmedSearch, {
             length: trimmedSearch.length,
-            isFullUUID,
-            isPartialUUID,
-            isOrderNumber,
-            searchType: isFullUUID ? 'Full UUID' : isOrderNumber ? '6-Digit Order Number' : 'Text Search'
+            type: {
+              fullUUID: isFullUUID,
+              orderNumber: isOrderNumber,
+              email: isEmail,
+              phoneNumber: isPhoneNumber,
+              paymentRef: isPaymentRef,
+              textSearch: !isFullUUID && !isOrderNumber && !isEmail && !isPaymentRef
+            }
           })
         } else {
-          console.log('⚠️ Admin Search: Search term blocked (partial UUID causes backend 500):', trimmedSearch, {
+          console.log('⚠️ Admin Search: Search term blocked (validation failed):', trimmedSearch, {
             length: trimmedSearch.length,
-            isPartialUUID
+            isPartialUUID,
+            reason: isPartialUUID ? 'Partial UUID causes 500 error' : 'Too short (min 3 chars)'
           })
-          // Don't include search parameter for partial UUIDs that cause backend errors
+          // Don't include search parameter for invalid searches
         }
       }
       
@@ -131,14 +145,14 @@ export default function OrderManagement() {
         const isPartialUUID = /^[0-9a-f]{4,}$/i.test(searchTerm) && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm)
         
         if (isPartialUUID) {
-          setError(`Partial order ID "${searchTerm}" is not supported by the backend. Please use the complete order ID with hyphens or search by customer name/email.`)
+          setError(`Partial order ID "${searchTerm}" is not supported. Please use the complete order ID with hyphens, 6-digit order number, or search by customer name/email.`)
           toast.error('Partial order IDs not supported - use complete ID or customer details')
         } else if (searchTerm.length < 3) {
-          setError(`Search term "${searchTerm}" is too short and caused a server error. Please use at least 3 characters.`)
-          toast.error('Search term too short for backend processing')
+          setError(`Search term "${searchTerm}" is too short. Please use at least 3 characters.`)
+          toast.error('Search term too short (minimum 3 characters)')
         } else {
-          setError(`Search for "${searchTerm}" failed. The backend may not support this search pattern. Try a different search term.`)
-          toast.error('Search query not supported by backend')
+          setError(`Search for "${searchTerm}" failed. Try searching by: Order ID, Order Number, Customer Name, Email, or Payment Reference.`)
+          toast.error('Search query not recognized - try different search term')
         }
       } else {
         setError('Failed to fetch orders. Please try again.')
@@ -165,31 +179,44 @@ export default function OrderManagement() {
       return
     }
     
-    if (trimmedSearch.length < 3) {
-      toast.error('Search term must be at least 3 characters long')
+    // Comprehensive search type detection
+    const isFullUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedSearch)
+    const isPartialUUID = /^[0-9a-f]{4,}$/i.test(trimmedSearch) && !isFullUUID
+    const isOrderNumber = /^\d{6}$/.test(trimmedSearch)
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedSearch)
+    const isPhoneNumber = /^\+?[1-9]\d{1,14}$/.test(trimmedSearch.replace(/[\s\-\(\)]/g, ''))
+    const isPaymentRef = /^(PAY|TXN|REF|PY|TX)_?[A-Z0-9]{6,}/i.test(trimmedSearch)
+    
+    // Validation based on memory specifications
+    if (trimmedSearch.length < 3 && !isOrderNumber && !isFullUUID) {
+      toast.error('Search term must be at least 3 characters (except for Order Numbers and UUIDs)')
       return
     }
     
-    // Check if it's a partial UUID that would cause backend errors
-    const isFullUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedSearch)
-    const isPartialUUID = /^[0-9a-f]{4,}$/i.test(trimmedSearch) && !isFullUUID
-    const isOrderNumber = /^\d{6}$/.test(trimmedSearch) // Check for 6-digit order number
-    
     if (isPartialUUID) {
-      toast.error('Partial order IDs cause server errors. Please enter the complete order ID, 6-digit order number, or search by customer name/email.')
+      toast.error('Partial order IDs cause server errors. Please enter the complete order ID, 6-digit order number, or search by customer details.')
       return
     }
     
     // Enhanced feedback for different search types
     if (isFullUUID) {
-      console.log('🎯 Admin Search: Detected full UUID format, searching for specific order')
-      toast('Searching for specific order by ID...', { icon: '🔍' })
+      console.log('🎯 Admin Search: Detected complete UUID format')
+      toast('Searching for specific order by ID...', { icon: '🎯' })
     } else if (isOrderNumber) {
-      console.log('🔢 Admin Search: Detected 6-digit order number format')
+      console.log('🔢 Admin Search: Detected 6-digit order number')
       toast('Searching for order by number...', { icon: '🔢' })
+    } else if (isEmail) {
+      console.log('📧 Admin Search: Detected email address')
+      toast('Searching orders by customer email...', { icon: '📧' })
+    } else if (isPhoneNumber) {
+      console.log('📞 Admin Search: Detected phone number')
+      toast('Searching orders by phone number...', { icon: '📞' })
+    } else if (isPaymentRef) {
+      console.log('💳 Admin Search: Detected payment reference')
+      toast('Searching orders by payment reference...', { icon: '💳' })
     } else {
-      console.log('📝 Admin Search: Text search for customer/email/reference')
-      toast('Searching orders...', { icon: '🔍' })
+      console.log('📝 Admin Search: General text search (name/details)')
+      toast('Searching orders by customer name...', { icon: '👤' })
     }
     
     // Force immediate search by updating debounced term
@@ -683,39 +710,76 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by Order ID, Order Number (6 digits), Customer name, Email, Payment reference..."
+                placeholder="Search by Order ID (complete), Order Number (6 digits), Customer name, Email, Phone, Payment reference..."
                 className="w-full px-4 py-2 border rounded-lg pr-10 focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all"
               />
               <button type="submit" className="absolute right-3 top-2.5 text-gray-400 hover:text-blue-500">
                 <Search className="w-5 h-5" />
               </button>
               
-              {/* Search hints and validation */}
+              {/* Enhanced search hints and validation */}
               {searchTerm.length > 0 && (
                 <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-10 p-3">
                   <div className="text-xs text-gray-600">
-                    {searchTerm.length < 3 ? (
+                    {searchTerm.length < 3 && !/^\d{6}$/.test(searchTerm.trim()) && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm.trim()) ? (
                       <div className="text-orange-600">
                         <p className="font-medium mb-1">⚠️ Search term too short</p>
-                        <p>Please enter at least 3 characters to search</p>
+                        <p>Please enter at least 3 characters (except for Order Numbers and UUIDs)</p>
                       </div>
                     ) : /^[0-9a-f]{4,}$/i.test(searchTerm.trim()) && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm.trim()) ? (
                       <div className="text-red-600">
-                        <p className="font-medium mb-1">🚫 Partial order IDs not supported</p>
-                        <p>Use complete order ID (with hyphens) or search by customer name/email</p>
+                        <p className="font-medium mb-1">🚫 Partial order IDs cause errors</p>
+                        <p>Use complete order ID (with hyphens), 6-digit order number, or search by customer details</p>
                       </div>
                     ) : (
                       <div>
-                        <p className="font-medium mb-1">Search Tips:</p>
-                        <ul className="space-y-1">
-                          <li>• Enter complete Order ID (with hyphens)</li>
-                          <li>• Search by customer name or email</li>
-                          <li>• Use payment reference for quick lookup</li>
-                          <li>• Partial order IDs cause server errors</li>
-                        </ul>
-                        {/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm.trim()) && (
-                          <p className="mt-2 text-green-600 font-medium">✅ Complete order ID detected</p>
-                        )}
+                        <p className="font-medium mb-2">🔍 Search Types Supported:</p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="font-medium text-blue-600 mb-1">Order Details:</p>
+                            <ul className="space-y-0.5">
+                              <li>• Complete Order ID (UUID)</li>
+                              <li>• 6-digit Order Number</li>
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="font-medium text-green-600 mb-1">Customer Info:</p>
+                            <ul className="space-y-0.5">
+                              <li>• Customer Name</li>
+                              <li>• Email Address</li>
+                              <li>• Phone Number</li>
+                            </ul>
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <p className="font-medium text-purple-600 mb-1">Payment Info:</p>
+                          <p className="text-xs">• Payment Reference (PAY_, TXN_, REF_, etc.)</p>
+                        </div>
+                        
+                        {/* Dynamic feedback based on search term */}
+                        {(() => {
+                          const trimmed = searchTerm.trim()
+                          const isFullUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)
+                          const isOrderNumber = /^\d{6}$/.test(trimmed)
+                          const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
+                          const isPhoneNumber = /^\+?[1-9]\d{1,14}$/.test(trimmed.replace(/[\s\-\(\)]/g, ''))
+                          const isPaymentRef = /^(PAY|TXN|REF|PY|TX)_?[A-Z0-9]{6,}/i.test(trimmed)
+                          
+                          if (isFullUUID) {
+                            return <p className="mt-2 text-green-600 font-medium">✅ Complete Order ID detected</p>
+                          } else if (isOrderNumber) {
+                            return <p className="mt-2 text-green-600 font-medium">✅ 6-digit Order Number detected</p>
+                          } else if (isEmail) {
+                            return <p className="mt-2 text-blue-600 font-medium">📧 Email address detected</p>
+                          } else if (isPhoneNumber) {
+                            return <p className="mt-2 text-blue-600 font-medium">📞 Phone number detected</p>
+                          } else if (isPaymentRef) {
+                            return <p className="mt-2 text-purple-600 font-medium">💳 Payment reference detected</p>
+                          } else if (trimmed.length >= 3) {
+                            return <p className="mt-2 text-gray-600 font-medium">👤 Text search (customer name/details)</p>
+                          }
+                          return null
+                        })()}
                       </div>
                     )}
                   </div>

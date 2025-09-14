@@ -12,7 +12,8 @@ import {
   ChevronRight,
   Users,
   TrendingUp,
-  Gift
+  Gift,
+  MessageCircle
 } from 'lucide-react'
 import { formatCurrency } from '../utils/formatters'
 import { dashboardApi, ordersApi, wishlistApi } from '../services'
@@ -458,15 +459,15 @@ const Dashboard: React.FC = () => {
           </Link>
 
           <Link
-            to="/contact"
+            to="/support"
             className="flex items-center p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow group"
           >
             <div className="bg-orange-100 p-3 rounded-lg mr-4 group-hover:bg-orange-200 transition-colors">
-              <AlertCircle className="w-6 h-6 text-orange-600" />
+              <MessageCircle className="w-6 h-6 text-orange-600" />
             </div>
             <div>
-              <p className="font-medium text-gray-900">Get Help</p>
-              <p className="text-sm text-gray-500">Contact support</p>
+              <p className="font-medium text-gray-900">Get Support</p>
+              <p className="text-sm text-gray-500">Create ticket & chat</p>
             </div>
           </Link>
         </div>

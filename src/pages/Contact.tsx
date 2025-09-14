@@ -176,10 +176,12 @@ const Contact: React.FC = () => {
                   <div className="mt-8 pt-8 border-t border-gray-200">
                     <h3 className="font-semibold text-gray-900 mb-4">Need Quick Help?</h3>
                     <div className="space-y-3">
-                      <Button variant="outline" size="sm" className="w-full justify-start">
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Start Live Chat
-                      </Button>
+                      <a href="/support" className="block">
+                        <Button variant="outline" size="sm" className="w-full justify-start">
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Get Support & Chat
+                        </Button>
+                      </a>
                       <Button variant="outline" size="sm" className="w-full justify-start">
                         <Phone className="w-4 h-4 mr-2" />
                         Request Callback

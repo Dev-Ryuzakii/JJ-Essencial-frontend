@@ -11,7 +11,7 @@ export const Footer: React.FC = () => {
       { name: 'Press', href: '/press' },
     ],
     support: [
-      { name: 'Help Center', href: '/help' },
+      { name: 'Support Center', href: '/support' },
       { name: 'Shipping Info', href: '/shipping' },
       { name: 'Returns', href: '/returns' },
       { name: 'Size Guide', href: '/size-guide' },

@@ -11,7 +11,8 @@ import {
   ShoppingBag,
   Settings,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  MessageCircle
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
@@ -85,11 +86,13 @@ export const Navbar: React.FC = () => {
     { name: 'Trades', href: '/trades', icon: ShoppingBag },
     { name: 'About', href: '/about', icon: ShoppingBag },
     { name: 'Contact', href: '/contact', icon: ShoppingBag },
+    { name: 'Support', href: '/support', icon: MessageCircle },
   ]
 
   const userMenuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Orders', href: '/dashboard/orders', icon: ShoppingBag },
+    { name: 'Support', href: '/support', icon: MessageCircle },
     { name: 'Wishlist', href: '/dashboard/wishlist', icon: Heart },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
@@ -122,6 +125,14 @@ export const Navbar: React.FC = () => {
                   {item.name}
                 </Link>
               ))}
+              {/* Support link for all users */}
+              <Link
+                to="/support"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors flex items-center"
+              >
+                <MessageCircle className="w-4 h-4 mr-1" />
+                Support
+              </Link>
             </div>
 
             {/* Right Actions */}

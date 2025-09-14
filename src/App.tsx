@@ -26,6 +26,8 @@ import About from './pages/About'
 import Contact from './pages/Contact'
 import NotFound from './pages/NotFound'
 import AdminLoginTest from './pages/AdminLoginTest'
+import UserSupport from './pages/UserSupport'
+import SupportDashboard from './pages/SupportDashboard'
 
 // Protected Route Component
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -126,6 +128,19 @@ function App() {
           <Route path="/orders/:id" element={
             <ProtectedRoute>
               <Layout><OrderDetail /></Layout>
+            </ProtectedRoute>
+          } />
+
+          {/* Support Routes */}
+          <Route path="/support" element={
+            <ProtectedRoute>
+              <Layout><UserSupport /></Layout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/support/dashboard" element={
+            <ProtectedRoute>
+              <Layout><SupportDashboard /></Layout>
             </ProtectedRoute>
           } />
 

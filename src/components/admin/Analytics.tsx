@@ -182,11 +182,29 @@ export default function Analytics() {
     }
   }
 
-  const formatCurrency = (amount: string) => {
+  const formatCurrency = (amount: string | number) => {
+    // Handle different input types and ensure we have a valid number
+    let numericAmount: number
+    
+    if (typeof amount === 'number') {
+      numericAmount = amount
+    } else if (typeof amount === 'string') {
+      // Remove any existing currency symbols and formatting
+      const cleanAmount = amount.replace(/[₦,$\s]/g, '')
+      numericAmount = parseFloat(cleanAmount)
+    } else {
+      numericAmount = 0
+    }
+    
+    // Return 0 if we couldn't parse a valid number
+    if (isNaN(numericAmount)) {
+      numericAmount = 0
+    }
+    
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN'
-    }).format(parseFloat(amount))
+    }).format(numericAmount)
   }
 
   const formatPercentage = (value: number) => {
@@ -326,7 +344,7 @@ export default function Analytics() {
                       <p className="text-sm font-medium text-gray-500">Total Revenue</p>
                       <div className="flex items-center justify-between">
                         <p className="text-2xl font-semibold text-gray-900">
-                          {dashboardData?.salesSummary?.totalSales ? formatCurrency(dashboardData.salesSummary.totalSales) : '₦0.00'}
+                          {formatCurrency(dashboardData?.salesSummary?.totalSales || '0')}
                         </p>
                         <div className="flex items-center">
                           {dashboardData?.salesSummary?.comparisonPeriod?.percentChange?.totalSales && getChangeIcon(dashboardData.salesSummary.comparisonPeriod.percentChange.totalSales)}
@@ -420,7 +438,7 @@ export default function Analytics() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-gray-900">{product.totalSold} sold</p>
-                          <p className="text-sm text-gray-500">{formatCurrency(product.revenue)}</p>
+                          <p className="text-sm text-gray-500">{formatCurrency(product.revenue || '0')}</p>
                         </div>
                       </div>
                     )) : (
@@ -448,7 +466,7 @@ export default function Analytics() {
                         </div>
                         <div className="ml-3 flex-1">
                           <p className="text-sm text-gray-900">Order #{order.id} by {order.user.fullName}</p>
-                          <p className="text-xs text-gray-500">{formatDate(order.createdAt)} - {formatCurrency(order.totalAmount)} - {order.status}</p>
+                          <p className="text-xs text-gray-500">{formatDate(order.createdAt)} - {formatCurrency(order.totalAmount || '0')} - {order.status}</p>
                         </div>
                       </div>
                     )) : (
@@ -487,7 +505,7 @@ export default function Analytics() {
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-500">Total Sales</p>
                       <p className="text-2xl font-semibold text-gray-900">
-                        {formatCurrency(salesData.reduce((sum, day) => sum + day.revenue, 0).toString())}
+                        {formatCurrency(salesData.reduce((sum, day) => sum + (day.revenue || 0), 0))}
                       </p>
                     </div>
                   </div>
@@ -507,7 +525,7 @@ export default function Analytics() {
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-500">Average Order</p>
                       <p className="text-2xl font-semibold text-gray-900">
-                        {formatCurrency((salesData.reduce((sum, day) => sum + day.averageOrderValue, 0) / salesData.length).toString())}
+                        {formatCurrency((salesData.reduce((sum, day) => sum + (day.averageOrderValue || 0), 0) / salesData.length) || 0)}
                       </p>
                     </div>
                   </div>
@@ -547,7 +565,7 @@ export default function Analytics() {
                             {formatDate(day.date)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatCurrency(day.revenue.toString())}
+                            {formatCurrency(day.revenue || 0)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {day.orders}
@@ -556,7 +574,7 @@ export default function Analytics() {
                             {day.customers}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatCurrency(day.averageOrderValue.toString())}
+                            {formatCurrency(day.averageOrderValue || 0)}
                           </td>
                         </tr>
                       ))}

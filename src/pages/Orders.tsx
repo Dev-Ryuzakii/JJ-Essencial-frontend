@@ -738,9 +738,11 @@ const Orders: React.FC = () => {
               Have questions about your order? Our customer support team is here to help.
             </p>
             <div className="mt-3 space-x-3">
-              <Button variant="outline" size="sm">
-                Contact Support
-              </Button>
+              <Link to="/support">
+                <Button variant="outline" size="sm">
+                  Contact Support
+                </Button>
+              </Link>
               <Button variant="outline" size="sm">
                 Order FAQ
               </Button>

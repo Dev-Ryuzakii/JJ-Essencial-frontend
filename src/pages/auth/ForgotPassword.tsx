@@ -287,10 +287,10 @@ const ForgotPassword: React.FC = () => {
               <p className="text-center text-sm text-gray-500 mb-4">Need help?</p>
               <div className="text-center">
                 <Link
-                  to="/contact"
+                  to="/support"
                   className="text-sm text-blue-600 hover:text-blue-500 font-medium transition-colors hover:underline"
                 >
-                  Contact Support
+                  Get Support
                 </Link>
               </div>
             </div>
