@@ -44,7 +44,7 @@ const OrderDetail: React.FC = () => {
     setIsLoading(true)
     try {
       console.log('🔍 OrderDetail: Loading order details for ID:', orderId)
-      console.log('🔍 OrderDetail: API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1')
+      console.log('🔍 OrderDetail: API Base URL:', import.meta.env.VITE_API_BASE_URL || 'https://jj-essencial.onrender.com/api/v1')
       
       const response = await ordersApi.getById(orderId)
       

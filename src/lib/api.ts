@@ -2,10 +2,12 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import toast from 'react-hot-toast'
 
-// API Configuration - Use localhost:3000 for local backend development
+// API Configuration - Use environment variable for backend URL
+console.log('🔍 Environment variable VITE_API_URL:', import.meta.env.VITE_API_URL)
+console.log('🔍 All import.meta.env:', import.meta.env)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
 
-console.log('🌍 API Base URL:', API_BASE_URL) // Debug log to confirm URL
+console.log('🌍 API Base URL (final):', API_BASE_URL) // Debug log to confirm URL
 
 class ApiClient {
   private client: AxiosInstance
@@ -13,7 +15,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 30000,
+      timeout: 60000, // Increase timeout to 60 seconds for cold starts
       headers: {
         'Content-Type': 'application/json',
       },
@@ -95,6 +97,8 @@ class ApiClient {
           toast.error('Server error. Please try again later.')
         } else if (error.message === 'Network Error') {
           toast.error('Network error. Please check your connection.')
+        } else if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+          toast.error('Request timed out. The server may be starting up, please wait a moment and try again.')
         }
         return Promise.reject(error)
       }

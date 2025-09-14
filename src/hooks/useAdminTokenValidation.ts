@@ -29,7 +29,7 @@ const useAdminTokenValidation = (token: string | null): UseAdminTokenValidationR
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://jj-Essential.onrender.com/api/v1';
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1';
 
   const validateAdminTokenOnServer = async () => {
     if (!token) {

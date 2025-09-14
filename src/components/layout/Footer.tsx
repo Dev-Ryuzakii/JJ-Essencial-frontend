@@ -90,14 +90,8 @@ const Footer: React.FC = () => {
                   Categories
                 </Link>
               </li>
-              {import.meta.env.VITE_ENABLE_TRADES === 'true' && (
-                <li>
-                  <Link to="/trades" className="text-gray-400 hover:text-white transition-colors">
-                    Trade Products
-                  </Link>
-                </li>
-              )}
-              <li>
+           
+              {/* <li>
                 <Link to="/about" className="text-gray-400 hover:text-white transition-colors">
                   About Us
                 </Link>
@@ -106,7 +100,7 @@ const Footer: React.FC = () => {
                 <Link to="/contact" className="text-gray-400 hover:text-white transition-colors">
                   Contact Us
                 </Link>
-              </li>
+              </li> */}
             </ul>
           </div>
 

@@ -15,8 +15,8 @@ export type ApiError = {
   error: string;
 };
 
-// Base API URL - Use localhost:3000 to match main API configuration
-const API_BASE_URL = 'https://jj-essencial.onrender.com/api/v1';
+// Base API URL - Use environment variable with fallback to live server
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1';
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -85,7 +85,7 @@ apiClient.interceptors.response.use(
       console.error('⏰ Request timeout - Backend may be slow or unavailable');
       return Promise.reject({
         statusCode: 408,
-        message: 'Request timed out. Please check if the backend server is running on localhost:3000',
+        message: 'Request timed out. Please check if the backend server is running.',
         error: 'TIMEOUT'
       });
     }
@@ -95,7 +95,7 @@ apiClient.interceptors.response.use(
       console.error('🌐 Network error - Backend server may not be running');
       return Promise.reject({
         statusCode: 503,
-        message: 'Cannot connect to backend server. Please ensure the backend is running on localhost:3000',
+        message: 'Cannot connect to backend server. Please ensure the backend is running.',
         error: 'NETWORK_ERROR'
       });
     }

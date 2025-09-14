@@ -73,8 +73,9 @@ export function getImageUrl(url: string): string {
   if (!url) return createPlaceholderImage(400, 400)
   if (url.startsWith('http')) return url
   
-  // Use the proxy setup in vite.config.ts - all /api requests are proxied to localhost:3000
-  return `/api/v1/uploads/${url}`
+  // Use the API base URL for uploads
+  const apiBase = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
+  return `${apiBase}/uploads/${url}`
 }
 
 export function parseProductImage(image: any): string {

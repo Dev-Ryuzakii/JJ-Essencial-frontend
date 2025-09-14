@@ -17,6 +17,7 @@ import { parseProductImage } from '../lib/utils'
 import ProductCard from '../components/product/ProductCard'
 import { Button } from '../components/ui/Button'
 import type { Product, Category } from '../types'
+import { withColdStartRetry } from '../utils/apiRetry'
 import Slide1 from '../assets/photo_5800847259238256447_y.jpg'
 import Slide2 from '../assets/photo_5800847259238256568_y.jpg'
 import Slide3 from '../assets/photo_5987733685857799978_x.jpg'
@@ -102,12 +103,14 @@ const Home: React.FC = () => {
       try {
         setIsLoading(true)
         
-        // Load featured products
-        const featuredResponse: any = await productsApi.getAll({
-          page: 1,
-          limit: 8,
-          featured: true
-        })
+        // Load featured products with retry for cold start
+        const featuredResponse: any = await withColdStartRetry(() => 
+          productsApi.getAll({
+            page: 1,
+            limit: 8,
+            featured: true
+          })
+        )
         
         // Handle different response formats and process images
         let featuredData = []
