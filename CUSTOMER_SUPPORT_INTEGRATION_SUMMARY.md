@@ -12,14 +12,14 @@ This document summarizes the complete integration of the customer support system
 
 **Before**:
 ```
-POST https://jj-essencial.onrender.com/api/v1/api/v1/customer-support/chat ❌
-GET https://jj-essencial.onrender.com/api/v1/api/v1/customer-support/my-chats ❌
+POST http://api.jandjessential.org/api/v1/api/v1/customer-support/chat ❌
+GET http://api.jandjessential.org/api/v1/api/v1/customer-support/my-chats ❌
 ```
 
 **After**:
 ```
-POST https://jj-essencial.onrender.com/api/v1/customer-support/chat ✅
-GET https://jj-essencial.onrender.com/api/v1/customer-support/my-chats ✅
+POST http://api.jandjessential.org/api/v1/customer-support/chat ✅
+GET http://api.jandjessential.org/api/v1/customer-support/my-chats ✅
 ```
 
 ### 2. Incorrect Response Handling ✅ FIXED
