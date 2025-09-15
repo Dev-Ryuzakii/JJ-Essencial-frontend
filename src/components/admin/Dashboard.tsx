@@ -359,7 +359,7 @@ export default function Dashboard() {
                   tickLine={{ stroke: '#e5e7eb' }}
                 />
                 <Tooltip 
-                  formatter={(value) => [`$${value}`, 'Sales']}
+                  formatter={(value) => [`₦${value}`, 'Sales']}
                   labelFormatter={(label) => `Period: ${label}`}
                   contentStyle={{ backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}
                 />
