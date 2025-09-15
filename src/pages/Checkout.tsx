@@ -978,9 +978,6 @@ const Checkout = () => {
                 <div className="space-y-4">
                   {[
 
-                    { key: 'standard', name: 'Local Pickup', time: '5-7 business days', price: 0 },
-                    { key: 'express', name: 'Delivery Fee to Park', time: '2-3 business days', price: 500 },
-                    
 
                     { key: 'standard', name: 'Local pick up within Abeokuta', time: '5-7 business days', price: 0 },
                     { key: 'express', name: 'Delivery fee to park', time: '2-3 business days', price: 500 },
