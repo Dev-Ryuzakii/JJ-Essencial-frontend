@@ -74,7 +74,7 @@ export function getImageUrl(url: string): string {
   if (url.startsWith('http')) return url
   
   // Use the API base URL for uploads
-  const apiBase = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
+  const apiBase = import.meta.env.VITE_API_URL || 'http://api.jandjessential.org/api/v1'
   return `${apiBase}/uploads/${url}`
 }
 

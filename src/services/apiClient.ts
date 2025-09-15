@@ -30,7 +30,7 @@ export type PaginatedResponse<T> = {
 
 // Base API URL - Use environment variable or fallback
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://api.jandjessential.org/api/v1';
 
 // Create axios instance with default config
 const apiClient = axios.create({

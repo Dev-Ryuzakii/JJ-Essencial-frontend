@@ -4,8 +4,8 @@
 
 ### 1. Duplicate API Prefix Issue
 **Problem**: The API requests were being sent to URLs with duplicate `/api/v1` prefixes:
-- `https://jj-essencial.onrender.com/api/v1/api/v1/customer-support/my-chats`
-- `https://jj-essencial.onrender.com/api/v1/api/v1/customer-support/chat`
+- `http://api.jandjessential.org/api/v1/api/v1/customer-support/my-chats`
+- `http://api.jandjessential.org/api/v1/api/v1/customer-support/chat`
 
 **Root Cause**: The [apiClient.ts](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/apiClient.ts) file already includes `/api/v1` in the base URL, and we were also adding it in the endpoint paths in [userSupportApi.ts](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/userSupportApi.ts).
 

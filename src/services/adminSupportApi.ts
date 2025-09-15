@@ -183,11 +183,11 @@ const adminSupportApi = {
 
   /**
    * Get support ticket details
-   * GET /api/v1/customer-support/chat/:chatId
+   * GET /api/v1/customer-support/admin/chat/:chatId/full
    */
   getTicket: async (ticketId: string): Promise<AdminSupportTicketDetail> => {
     try {
-      const response = await get<AdminSupportTicketDetail>(`/customer-support/chat/${ticketId}`);
+      const response = await get<AdminSupportTicketDetail>(`/customer-support/admin/chat/${ticketId}/full`);
       
       // Since the apiClient interceptor already returns response.data, we can directly return it
       // Check if it's a success response
@@ -267,11 +267,11 @@ const adminSupportApi = {
 
   /**
    * Send message to support ticket
-   * POST /api/v1/customer-support/chat/:chatId/message
+   * POST /api/v1/customer-support/admin/chat/:chatId/message
    */
   sendMessage: async (ticketId: string, messageData: SendMessageDto): Promise<any> => {
     try {
-      const response = await post<any>(`/customer-support/chat/${ticketId}/message`, messageData);
+      const response = await post<any>(`/customer-support/admin/chat/${ticketId}/message`, messageData);
       
       // Since the apiClient interceptor already returns response.data, we can directly return it
       // Check if it's a success response
