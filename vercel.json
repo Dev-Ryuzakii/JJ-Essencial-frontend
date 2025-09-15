@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/v1/(.*)",
-      "destination": "http://api.jandjessential.org/api/v1  /$1"
+      "destination": "https://jj-essencial.onrender.com/api/v1/$1"
     },
     {
       "source": "/(.*)",

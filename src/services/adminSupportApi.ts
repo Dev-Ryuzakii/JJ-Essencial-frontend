@@ -187,11 +187,13 @@ const adminSupportApi = {
    */
   getTicket: async (ticketId: string): Promise<AdminSupportTicketDetail> => {
     try {
+      console.log('Fetching admin ticket details for ID:', ticketId);
       const response = await get<AdminSupportTicketDetail>(`/customer-support/admin/chat/${ticketId}/full`);
       
       // Since the apiClient interceptor already returns response.data, we can directly return it
       // Check if it's a success response
       if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        console.log('Successfully fetched ticket details');
         return response as unknown as AdminSupportTicketDetail;
       } else {
         throw new Error('Failed to fetch ticket details');
@@ -203,16 +205,41 @@ const adminSupportApi = {
   },
 
   /**
+   * Send message to support ticket
+   * POST /api/v1/customer-support/admin/chat/:chatId/message
+   */
+  sendMessage: async (ticketId: string, messageData: SendMessageDto): Promise<any> => {
+    try {
+      console.log('Sending admin message for ticket ID:', ticketId);
+      const response = await post<any>(`/customer-support/admin/chat/${ticketId}/message`, messageData);
+      
+      // Since the apiClient interceptor already returns response.data, we can directly return it
+      // Check if it's a success response
+      if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        console.log('Successfully sent message');
+        return response;
+      } else {
+        throw new Error('Failed to send message');
+      }
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to send message');
+    }
+  },
+
+  /**
    * Update support ticket status
    * PUT /api/v1/admin/support/tickets/:id/status
    */
   updateTicketStatus: async (ticketId: string, statusData: UpdateTicketStatusDto): Promise<any> => {
     try {
+      console.log('Updating ticket status for ID:', ticketId);
       const response = await put(`/admin/support/tickets/${ticketId}/status`, statusData);
       
       // Since the apiClient interceptor already returns response.data, we can directly return it
       // Check if it's a success response
       if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        console.log('Successfully updated ticket status');
         return response;
       } else {
         throw new Error('Failed to update ticket status');
@@ -229,11 +256,13 @@ const adminSupportApi = {
    */
   assignTicket: async (ticketId: string, assignData: AssignTicketDto): Promise<any> => {
     try {
+      console.log('Assigning ticket for ID:', ticketId);
       const response = await put(`/admin/support/tickets/${ticketId}/assign`, assignData);
       
       // Since the apiClient interceptor already returns response.data, we can directly return it
       // Check if it's a success response
       if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        console.log('Successfully assigned ticket');
         return response;
       } else {
         throw new Error('Failed to assign ticket');
@@ -262,27 +291,6 @@ const adminSupportApi = {
     } catch (error: any) {
       console.error('Error fetching support stats:', error);
       throw new Error(error.response?.data?.message || error.message || 'Failed to fetch support stats');
-    }
-  },
-
-  /**
-   * Send message to support ticket
-   * POST /api/v1/customer-support/admin/chat/:chatId/message
-   */
-  sendMessage: async (ticketId: string, messageData: SendMessageDto): Promise<any> => {
-    try {
-      const response = await post<any>(`/customer-support/admin/chat/${ticketId}/message`, messageData);
-      
-      // Since the apiClient interceptor already returns response.data, we can directly return it
-      // Check if it's a success response
-      if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
-        return response;
-      } else {
-        throw new Error('Failed to send message');
-      }
-    } catch (error: any) {
-      console.error('Error sending message:', error);
-      throw new Error(error.response?.data?.message || error.message || 'Failed to send message');
     }
   }
 };
