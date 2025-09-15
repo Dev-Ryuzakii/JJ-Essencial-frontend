@@ -12,14 +12,14 @@ This document summarizes the complete integration of the customer support system
 
 **Before**:
 ```
-POST http://localhost:3000/api/v1/api/v1/customer-support/chat ❌
-GET http://localhost:3000/api/v1/api/v1/customer-support/my-chats ❌
+POST https://jj-essencial.onrender.com/api/v1/api/v1/customer-support/chat ❌
+GET https://jj-essencial.onrender.com/api/v1/api/v1/customer-support/my-chats ❌
 ```
 
 **After**:
 ```
-POST http://localhost:3000/api/v1/customer-support/chat ✅
-GET http://localhost:3000/api/v1/customer-support/my-chats ✅
+POST https://jj-essencial.onrender.com/api/v1/customer-support/chat ✅
+GET https://jj-essencial.onrender.com/api/v1/customer-support/my-chats ✅
 ```
 
 ### 2. Incorrect Response Handling ✅ FIXED
