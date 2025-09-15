@@ -362,7 +362,7 @@ const Categories: React.FC = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button variant="outline" size="lg" className="text-purple-600 bg-white hover:bg-gray-100" asChild>
-                <Link to="/contact">Contact Us</Link>
+                <Link to="/support">Get Support</Link>
               </Button>
               <Button variant="outline" size="lg" className="text-white border-white hover:bg-white hover:text-purple-600" asChild>
                 <Link to="/products">View All Products</Link>

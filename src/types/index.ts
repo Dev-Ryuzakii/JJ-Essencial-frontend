@@ -51,6 +51,7 @@ export interface Product {
   averageRating: number
   reviewCount: number
   isFeatured?: boolean // Backend field
+  isActive?: boolean // Backend field - product status
   isInWishlist?: boolean // Frontend field
   featured?: boolean // Backend field
   createdAt: string
@@ -71,31 +72,54 @@ export interface Category {
   updatedAt: string
 }
 
-// Order types
+// Order types - Updated to match backend schema fixes
 export interface Order {
   id: string
+  orderNumber?: string                // ✅ NEW: 6-digit order number (e.g., "123456") - optional for backward compatibility
+  userId?: string                     // ✅ Added userId from backend response
   status: OrderStatus
   totalAmount: string
+  paymentStatus?: PaymentStatus       // ✅ Added paymentStatus
+  paymentRef?: string | null         // ✅ Added paymentRef
+  receiptUrl?: string | null         // ✅ Added receiptUrl  
   items: OrderItem[]
   address: Address
   paymentMethod: PaymentMethod
-  paymentStatus: PaymentStatus
   paymentDetails?: PaymentDetails
   tracking?: OrderTracking
-  notes?: string
-  user?: User
+  notes?: string                     // ✅ Added notes field to match backend
+  user?: User                        // ✅ Added user object
   createdAt: string
-  updatedAt: string
+  updatedAt?: string                 // ✅ Added updatedAt
+  // ✅ Delivery address fields from backend response
+  deliveryPhone?: string
+  deliveryAddressText?: string        // ✅ Renamed to avoid conflict
+  deliveryCity?: string
+  deliveryState?: string
+  deliveryPostal?: string
+  deliveryCountry?: string
+  // ✅ Optional shipping address for backward compatibility
+  shippingAddress?: {
+    fullName?: string
+    addressLine1?: string
+    addressLine2?: string
+    city?: string
+    state?: string
+    postalCode?: string
+    country?: string
+    phone?: string
+  }
 }
 
 export interface OrderItem {
   id: string
-  productId: string
+  productId: string                   // ✅ Consistent with backend schema
   productName: string
   quantity: number
   unitPrice: string
   totalPrice: string
-  product?: Product
+  price?: number                      // ✅ Added price field to match backend
+  product?: Product                   // ✅ Added product object to match backend response
 }
 
 export type OrderStatus = 
@@ -147,6 +171,20 @@ export interface BankAccount {
   bankName: string
   accountNumber: string
   accountName: string
+  currency?: string
+  sortCode?: string
+  swiftCode?: string
+}
+
+// New API structure for bank accounts
+export interface BankAccountDto {
+  id: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  isActive?: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface PaymentReceipt {
@@ -356,7 +394,29 @@ export interface PaginationMeta {
   currentPage: number
 }
 
-export interface ApiResponse<T = any> {
+// New API Response structure based on documentation
+export interface SuccessResponseDto<T = any> {
+  success: true
+  data: T
+  message: string
+  timestamp: string
+}
+
+export interface ErrorResponseDto {
+  success: false
+  error: {
+    code: string
+    message: string
+    details?: any
+  }
+  timestamp: string
+}
+
+// Union type for API responses
+export type ApiResponse<T = any> = SuccessResponseDto<T> | ErrorResponseDto
+
+// Legacy response structure for backward compatibility
+export interface LegacyApiResponse<T = any> {
   success: boolean
   data?: T
   message: string

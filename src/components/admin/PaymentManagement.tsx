@@ -378,7 +378,12 @@ export default function PaymentManagement() {
                     <tr key={payment.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-mono text-gray-900">{payment.reference}</div>
-                        <div className="text-sm text-gray-500">#{payment.orderId.slice(0, 8)}...</div>
+                        <div className="text-sm text-gray-500 flex items-center">
+                          <span className="mr-1">#</span>
+                          <span className="bg-blue-50 px-2 py-1 rounded text-xs font-medium text-blue-700">
+                            Order: {payment.orderId.slice(0, 8)}...
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{payment.order.user.fullName}</div>
@@ -533,17 +538,35 @@ export default function PaymentManagement() {
                 </div>
 
                 {/* Order Info */}
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-3">Order Information</h4>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="text-lg font-medium text-blue-900 mb-3 flex items-center">
+                    <CreditCard className="mr-2 h-5 w-5" />
+                    Order Information
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-500">Order ID</label>
-                      <p className="mt-1 text-sm font-mono text-gray-900">{selectedPayment.order.id}</p>
+                      <label className="block text-sm font-medium text-blue-700">Order ID</label>
+                      <p className="mt-1 text-sm font-mono text-blue-900 bg-white p-2 rounded">{selectedPayment.order.id}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-500">Order Status</label>
-                      <p className="mt-1 text-sm text-gray-900">{selectedPayment.order.status}</p>
+                      <label className="block text-sm font-medium text-blue-700">Order Status</label>
+                      <div className="mt-1">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {selectedPayment.order.status}
+                        </span>
+                      </div>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-700">Order Total</label>
+                      <p className="mt-1 text-lg font-semibold text-blue-900">{formatCurrency(selectedPayment.order.totalAmount || selectedPayment.amount)}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-700">Payment Gateway</label>
+                      <p className="mt-1 text-sm text-blue-900">{selectedPayment.gateway}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-xs text-blue-600">
+                    💡 This payment is connected to the order above. Updating payment status will affect order processing.
                   </div>
                 </div>
 

@@ -1,10 +1,20 @@
-// UPDATED VERSION - CACHE BREAKER 2025-08-22
 import { post, get, patch } from './apiClient';
+import type { SuccessResponseDto, ErrorResponseDto } from '../types';
 
 // Make sure we're using the correct apiClient and not importing anything from Supabase
 console.log('authApi.ts: Loaded - using backend API client only, NO SUPABASE');
 
-// User profile response structure - Updated to match NestJS backend
+
+// Utility function to handle API response types safely
+const handleApiResponse = <T>(response: any): T => {
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error(response.error?.message || 'API request failed');
+};
+
+// User profile response structure
+// User profile response structure - Updated to match NestJS backe
 export interface UserProfile {
   id: string;
   email: string;
@@ -45,31 +55,32 @@ export interface ProfileUpdateData {
 
 // Admin-specific auth functions - Uses dedicated admin endpoints with /api/v1
 export const adminAuthApi = {
-  /**
-   * Admin signin using dedicated admin signin endpoint - Updated for NestJS backend
-   */
+
   signin: async (data: SignInData): Promise<AuthResponse> => {
     console.log('Admin signin: Using /auth/admin-signin endpoint');
     
     try {
+
+      // Use the dedicated admin signin endpoint
+      const response = await post<{access_token: string; user: UserProfile}>('/auth/admin/signin', data);
+
       // Use the NestJS admin signin endpoint
       const response = await post<AuthResponse>('/auth/admin-signin', data);
       console.log('Admin signin: Backend response received:', { success: true });
+
       
-      const { access_token, user } = response.data;
+      // Handle successful response using utility function
+      const { access_token, user } = handleApiResponse<{access_token: string; user: UserProfile}>(response);
 
-      // Check if user has admin role
-      if (user.role !== 'ADMIN') {
-        throw new Error('Access denied. Admin privileges required.');
-      }
-
-      // Store admin authentication data
+      // Store in admin-specific localStorage
       localStorage.setItem('adminToken', access_token);
       localStorage.setItem('adminUser', JSON.stringify(user));
-
-      return response.data;
+      
+      console.log('Admin signin: Authentication successful');
+      
+      return { access_token, user };
     } catch (error) {
-      console.error('Admin signin: Backend error:', error);
+      console.error('Admin signin failed:', error);
       throw error;
     }
   },
@@ -137,7 +148,7 @@ export const adminAuthApi = {
       currentPassword,
       newPassword
     });
-    return response.data;
+    return handleApiResponse<{ message: string }>(response);
   }
 };
 
@@ -151,7 +162,7 @@ const authApi = {
       const response = await post<AuthResponse>('/auth/signup', data);
       console.log('authApi.signup: Server response:', response);
       
-      const { access_token, user } = response.data;
+      const { access_token, user } = handleApiResponse<AuthResponse>(response);
 
       // Store authentication data
       localStorage.setItem('token', access_token);
@@ -163,7 +174,7 @@ const authApi = {
         localStorage.setItem('adminUser', JSON.stringify(user));
       }
 
-      return response.data;
+      return { access_token, user };
     } catch (error: any) {
       // Check if the error is a 409 conflict (email already exists)
       if (error.statusCode === 409 || error.status === 409) {
@@ -217,16 +228,26 @@ const authApi = {
    * Get current user profile - Updated for NestJS backend
    */
   getProfile: async (): Promise<UserProfile> => {
+
+    const response = await get<UserProfile>('/users/profile');
+    return handleApiResponse<UserProfile>(response);
+
     const response = await get<UserProfile>('/auth/profile');
     return response.data;
+
   },
 
   /**
    * Update user profile - Updated for NestJS backend
    */
   updateProfile: async (data: ProfileUpdateData): Promise<UserProfile> => {
+
+    const response = await patch<UserProfile>('/users/profile', data);
+    return handleApiResponse<UserProfile>(response);
+
     const response = await patch<UserProfile>('/auth/profile', data);
     return response.data;
+
   },
 
   /**
@@ -234,7 +255,18 @@ const authApi = {
    */
   resetPassword: async (email: string): Promise<{ message: string }> => {
     const response = await post<{ message: string }>('/auth/reset-password', { email });
-    return response.data;
+    return handleApiResponse<{ message: string }>(response);
+  },
+
+  /**
+   * Confirm password reset with token
+   */
+  confirmResetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await post<{ message: string }>('/auth/confirm-reset-password', {
+      token,
+      newPassword
+    });
+    return handleApiResponse<{ message: string }>(response);
   },
 
   /**
@@ -258,6 +290,34 @@ const authApi = {
     } catch {
       return null;
     }
+
+  },
+
+  /**
+   * Sign in user (regular user endpoint) - Fixed to use correct response structure
+   */
+  signin: async (data: SignInData): Promise<AuthResponse> => {
+    const response = await post<{access_token: string; user: UserProfile}>('/auth/signin', data);
+    
+    // ✅ CORRECT: Extract using handleApiResponse utility
+    const { access_token, user } = handleApiResponse<{access_token: string; user: UserProfile}>(response);
+
+    if (!access_token || !user) {
+      throw new Error('Invalid response structure from server');
+    }
+
+    // Store authentication data - use access_token as key (matches backend)
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('user', JSON.stringify(user));
+
+    // If user is admin, also store in admin-specific storage
+    if (user.role === 'ADMIN') {
+      localStorage.setItem('adminToken', access_token);
+      localStorage.setItem('adminUser', JSON.stringify(user));
+    }
+
+    return { access_token, user };
+
   }
 }
 

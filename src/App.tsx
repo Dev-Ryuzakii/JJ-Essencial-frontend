@@ -12,9 +12,13 @@ import Checkout from './pages/Checkout'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 import Profile from './pages/Profile'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
+import OrderConfirmation from './pages/OrderConfirmation'
+import BankTransferCheckoutPage from './pages/BankTransferCheckoutPage'
 import Wishlist from './pages/Wishlist'
 import Categories from './pages/Categories'
 import Search from './pages/Search'
@@ -22,6 +26,8 @@ import About from './pages/About'
 import Contact from './pages/Contact'
 import NotFound from './pages/NotFound'
 import AdminLoginTest from './pages/AdminLoginTest'
+import UserSupport from './pages/UserSupport'
+import SupportDashboard from './pages/SupportDashboard'
 
 // Protected Route Component
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -76,6 +82,8 @@ function App() {
           {/* Auth Routes */}
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Cart Routes (accessible to all) */}
           <Route path="/cart" element={<Layout><Cart /></Layout>} />
@@ -84,6 +92,12 @@ function App() {
           <Route path="/checkout" element={
             <ProtectedRoute>
               <Layout><Checkout /></Layout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/checkout/payment" element={
+            <ProtectedRoute>
+              <Layout><BankTransferCheckoutPage /></Layout>
             </ProtectedRoute>
           } />
           
@@ -105,9 +119,28 @@ function App() {
             </ProtectedRoute>
           } />
           
+          <Route path="/orders/confirmation" element={
+            <ProtectedRoute>
+              <Layout><OrderConfirmation /></Layout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/orders/:id" element={
             <ProtectedRoute>
               <Layout><OrderDetail /></Layout>
+            </ProtectedRoute>
+          } />
+
+          {/* Support Routes */}
+          <Route path="/support" element={
+            <ProtectedRoute>
+              <Layout><UserSupport /></Layout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/support/dashboard" element={
+            <ProtectedRoute>
+              <Layout><SupportDashboard /></Layout>
             </ProtectedRoute>
           } />
 

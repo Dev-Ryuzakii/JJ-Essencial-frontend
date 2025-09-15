@@ -2,8 +2,12 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import toast from 'react-hot-toast'
 
-// API Configuration - Use environment variable or production fallback
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1'
+// API Configuration - Use environment variable for backend URL
+console.log('🔍 Environment variable VITE_API_URL:', import.meta.env.VITE_API_URL)
+console.log('🔍 All import.meta.env:', import.meta.env)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+
+console.log('🌍 API Base URL (final):', API_BASE_URL) // Debug log to confirm URL
 
 class ApiClient {
   private client: AxiosInstance
@@ -11,7 +15,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 30000,
+      timeout: 60000, // Increase timeout to 60 seconds for cold starts
       headers: {
         'Content-Type': 'application/json',
       },
@@ -21,13 +25,25 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor
+    // Request interceptor - Use correct token key
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('auth_token')
+        const token = localStorage.getItem('access_token') // ✅ Matches auth service
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
+        
+        // 🚨 DEBUG: Log bank account requests
+        if (config.url?.includes('bank-account')) {
+          console.log('🌐 API Client - Making bank account request:', {
+            method: config.method?.toUpperCase(),
+            url: config.url,
+            baseURL: config.baseURL,
+            fullURL: `${config.baseURL}${config.url}`,
+            hasAuth: !!config.headers.Authorization
+          });
+        }
+        
         return config
       },
       (error) => {
@@ -38,11 +54,33 @@ class ApiClient {
   // Response interceptor
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
+        // 🚨 DEBUG: Log bank account responses
+        if (response.config.url?.includes('bank-account')) {
+          console.log('📨 API Client - Bank account response received:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: response.config.url,
+            dataType: typeof response.data,
+            dataKeys: response.data ? Object.keys(response.data) : [],
+            dataLength: Array.isArray(response.data) ? response.data.length : 
+                       response.data?.data?.length || 'not array',
+            fullResponse: response.data
+          });
+        }
+        
         return response
       },
       (error) => {
+        console.error('API Error:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message
+        });
+        
         if (error.response?.status === 401) {
-          localStorage.removeItem('auth_token')
+          localStorage.removeItem('access_token')
           localStorage.removeItem('user')
           window.location.href = '/login'
           toast.error('Session expired. Please login again.')
@@ -52,10 +90,15 @@ class ApiClient {
                           error.response?.data?.message ||
                           'Bad request. Please check your input.'
           toast.error(errorMsg)
+        } else if (error.response?.status === 404) {
+          // Log 404 errors but don't show toast - handled by components
+          console.warn('Resource not found:', error.config?.url);
         } else if (error.response?.status >= 500) {
           toast.error('Server error. Please try again later.')
         } else if (error.message === 'Network Error') {
           toast.error('Network error. Please check your connection.')
+        } else if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+          toast.error('Request timed out. The server may be starting up, please wait a moment and try again.')
         }
         return Promise.reject(error)
       }
@@ -145,9 +188,9 @@ export interface PaginatedResponse<T> {
 
 // Auth API
 export const authApi = {
-  // Sign in user
+  // Sign in user - Fixed to extract token from correct location
   login: (credentials: { email: string; password: string }) =>
-    api.post<ApiResponse<any>>('/auth/signin', credentials),
+    api.post<ApiResponse<{access_token: string; user: any}>>('/auth/signin', credentials),
   
   // Register a new user
   register: (userData: {
@@ -206,6 +249,10 @@ export const authApi = {
   // Request password reset
   resetPassword: (email: string) =>
     api.post<ApiResponse<any>>('/auth/reset-password', { email }),
+
+  // Confirm password reset
+  confirmResetPassword: (data: { token: string; newPassword: string }) =>
+    api.post<ApiResponse<any>>('/auth/confirm-reset-password', data),
   
   // Admin sign in
   adminSignIn: (credentials: { email: string; password: string }) =>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingCartIcon, HeartIcon, UserIcon, SearchIcon, MenuIcon, XIcon } from 'lucide-react'
 import { useAuth, useCart } from '../../hooks'
@@ -6,6 +6,7 @@ import { useUIStore } from '../../store'
 import { categoriesCache } from '../../lib/categoriesCache'
 import { cn, formatCurrency } from '../../lib/utils'
 import type { Category } from '../../types'
+import LOGO from '../../assets/LOGO.png'
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate()
@@ -22,6 +23,9 @@ const Navbar: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([])
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
 
   // Fetch categories on mount with delay to prevent rate limiting
   useEffect(() => {
@@ -39,6 +43,23 @@ const Navbar: React.FC = () => {
     
     fetchCategories()
   }, [])
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false)
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        closeMobileMenu()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [closeMobileMenu])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,11 +104,9 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">JJ</span>
-            </div>
+            <img src={LOGO} alt="JJ Essential" className="w-10 h-10 rounded-full" />
             <span className="text-xl font-bold text-gray-900">
-              {import.meta.env.VITE_APP_NAME}
+              {import.meta.env.VITE_APP_NAME || 'JJ Essential'}
             </span>
           </Link>
 
@@ -105,7 +124,7 @@ const Navbar: React.FC = () => {
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Search
                 </button>
@@ -117,13 +136,13 @@ const Navbar: React.FC = () => {
           <div className="hidden md:flex items-center space-x-6">
             {/* Wishlist */}
             {import.meta.env.VITE_ENABLE_WISHLIST === 'true' && isAuthenticated && (
-              <Link to="/wishlist" className="relative hover:text-blue-600">
+              <Link to="/wishlist" className="relative hover:text-blue-600 transition-colors">
                 <HeartIcon className="w-6 h-6" />
               </Link>
             )}
 
             {/* Cart */}
-            <Link to="/cart" className="relative hover:text-blue-600">
+            <Link to="/cart" className="relative hover:text-blue-600 transition-colors">
               <ShoppingCartIcon className="w-6 h-6" />
               {totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -133,10 +152,10 @@ const Navbar: React.FC = () => {
             </Link>
 
             {/* User Menu */}
-            <div className="relative">
+            <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center space-x-2 hover:text-blue-600"
+                className="flex items-center space-x-2 hover:text-blue-600 transition-colors"
               >
                 <UserIcon className="w-6 h-6" />
                 {isAuthenticated && user && (
@@ -146,33 +165,33 @@ const Navbar: React.FC = () => {
 
               {/* User Dropdown */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
                   {isAuthenticated ? (
                     <>
                       <Link
                         to="/dashboard"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         Dashboard
                       </Link>
                       <Link
                         to="/orders"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         My Orders
                       </Link>
                       <Link
                         to="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         Profile Settings
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                       >
                         Sign Out
                       </button>
@@ -181,14 +200,14 @@ const Navbar: React.FC = () => {
                     <>
                       <Link
                         to="/auth/login"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         Sign In
                       </Link>
                       <Link
                         to="/auth/register"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         Sign Up
@@ -204,12 +223,12 @@ const Navbar: React.FC = () => {
           <div className="md:hidden flex items-center space-x-4">
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="hover:text-blue-600"
+              className="hover:text-blue-600 transition-colors"
             >
               <SearchIcon className="w-6 h-6" />
             </button>
             
-            <Link to="/cart" className="relative hover:text-blue-600">
+            <Link to="/cart" className="relative hover:text-blue-600 transition-colors">
               <ShoppingCartIcon className="w-6 h-6" />
               {totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -220,7 +239,7 @@ const Navbar: React.FC = () => {
 
             <button
               onClick={toggleMobileMenu}
-              className="hover:text-blue-600"
+              className="hover:text-blue-600 transition-colors"
             >
               {isMobileMenuOpen ? (
                 <XIcon className="w-6 h-6" />
@@ -246,7 +265,7 @@ const Navbar: React.FC = () => {
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Search
                 </button>
@@ -272,7 +291,7 @@ const Navbar: React.FC = () => {
             ))}
             <Link
               to="/categories"
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
             >
               View All →
             </Link>
@@ -282,7 +301,7 @@ const Navbar: React.FC = () => {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white border-t">
+        <div className="md:hidden bg-white border-t shadow-lg" ref={mobileMenuRef}>
           <div className="px-4 py-2 space-y-2">
             {/* Categories */}
             <div className="py-2">
@@ -292,7 +311,7 @@ const Navbar: React.FC = () => {
                   <Link
                     key={category.id}
                     to={`/products?category=${category.id}`}
-                    className="block text-gray-600 hover:text-blue-600 py-1"
+                    className="block text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                     onClick={closeMobileMenu}
                   >
                     {category.name}
@@ -306,49 +325,49 @@ const Navbar: React.FC = () => {
               {import.meta.env.VITE_ENABLE_WISHLIST === 'true' && isAuthenticated && (
                 <Link
                   to="/wishlist"
-                  className="block text-gray-600 hover:text-blue-600 py-2"
+                  className="block text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                   onClick={closeMobileMenu}
                 >
                   Wishlist
                 </Link>
               )}
               
-              {import.meta.env.VITE_ENABLE_TRADES === 'true' && (
+              {/* {import.meta.env.VITE_ENABLE_TRADES === 'true' && (
                 <Link
                   to="/trades"
-                  className="block text-gray-600 hover:text-blue-600 py-2"
+                  className="block text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                   onClick={closeMobileMenu}
                 >
                   Trade Products
                 </Link>
-              )}
+              )} */}
 
               {isAuthenticated ? (
                 <>
                   <Link
                     to="/dashboard"
-                    className="block text-gray-600 hover:text-blue-600 py-2"
+                    className="block text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                     onClick={closeMobileMenu}
                   >
                     Dashboard
                   </Link>
                   <Link
                     to="/orders"
-                    className="block text-gray-600 hover:text-blue-600 py-2"
+                    className="block text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                     onClick={closeMobileMenu}
                   >
                     My Orders
                   </Link>
                   <Link
                     to="/profile"
-                    className="block text-gray-600 hover:text-blue-600 py-2"
+                    className="block text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                     onClick={closeMobileMenu}
                   >
                     Profile Settings
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left text-gray-600 hover:text-blue-600 py-2"
+                    className="block w-full text-left text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                   >
                     Sign Out
                   </button>
@@ -357,14 +376,14 @@ const Navbar: React.FC = () => {
                 <>
                   <Link
                     to="/auth/login"
-                    className="block text-gray-600 hover:text-blue-600 py-2"
+                    className="block text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                     onClick={closeMobileMenu}
                   >
                     Sign In
                   </Link>
                   <Link
                     to="/auth/register"
-                    className="block text-gray-600 hover:text-blue-600 py-2"
+                    className="block text-gray-600 hover:text-blue-600 hover:bg-gray-50 py-2 px-2 rounded-md transition-colors"
                     onClick={closeMobileMenu}
                   >
                     Sign Up
@@ -374,17 +393,6 @@ const Navbar: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Click outside to close dropdowns */}
-      {(isUserMenuOpen || isMobileMenuOpen) && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => {
-            setIsUserMenuOpen(false)
-            closeMobileMenu()
-          }} 
-        />
       )}
     </nav>
   )

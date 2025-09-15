@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { createPlaceholderImage } from '../utils/imageUtils'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -69,9 +70,43 @@ export function validatePhone(phone: string): boolean {
 }
 
 export function getImageUrl(url: string): string {
-  if (!url) return '/placeholder-image.jpg'
+  if (!url) return createPlaceholderImage(400, 400)
   if (url.startsWith('http')) return url
-  return `${import.meta.env.VITE_API_URL}/uploads/${url}`
+  
+  // Use the API base URL for uploads
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+  return `${apiBase}/uploads/${url}`
+}
+
+export function parseProductImage(image: any): string {
+  if (!image) return createPlaceholderImage(400, 400)
+  
+  // If it's a string that looks like a JSON object, parse it
+  if (typeof image === 'string') {
+    // Try to parse as JSON first (this handles the URL-encoded JSON objects)
+    if (image.startsWith('{') && image.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(image)
+        if (parsed.url) {
+          // Ensure the URL uses the correct API path
+          return parsed.url.startsWith('http') ? parsed.url : `/api/v1/uploads/${parsed.url}`
+        }
+        return createPlaceholderImage(400, 400)
+      } catch {
+        // If JSON parsing fails, treat as regular URL
+        return image.startsWith('http') ? image : `/api/v1/uploads/${image}`
+      }
+    }
+    // Regular string URL
+    return image.startsWith('http') ? image : `/api/v1/uploads/${image}`
+  }
+  
+  // If it's an object with url property
+  if (typeof image === 'object' && image.url) {
+    return image.url.startsWith('http') ? image.url : `/api/v1/uploads/${image.url}`
+  }
+  
+  return createPlaceholderImage(400, 400)
 }
 
 export function calculateDiscountPercentage(

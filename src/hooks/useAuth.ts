@@ -168,6 +168,26 @@ export const useAuth = () => {
     }
   }
 
+  /**
+   * Handle password reset confirmation
+   * Aligns with /api/v1/auth/confirm-reset-password endpoint
+   */
+  const handleConfirmResetPassword = async (token: string, newPassword: string) => {
+    try {
+      setLoading(true)
+      await authApi.confirmResetPassword(token, newPassword)
+      
+      toast.success('Password has been reset successfully! You can now login with your new password.')
+      return { success: true }
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to reset password. The reset link may have expired.'
+      toast.error(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Check if user has admin role
   const isAdmin = user?.role === 'ADMIN'
   const isUser = user?.role === 'USER'
@@ -183,6 +203,7 @@ export const useAuth = () => {
     register: handleRegister,
     logout: handleLogout,
     resetPassword: handleResetPassword,
+    confirmResetPassword: handleConfirmResetPassword,
   }
 }
 

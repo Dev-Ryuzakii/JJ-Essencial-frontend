@@ -33,6 +33,7 @@ export interface Review {
 
 export interface ProductDetails extends Product {
   reviews: Review[];
+  isActive?: boolean; // Add isActive field for frontend use
 }
 
 export interface ProductsQueryParams {
@@ -66,7 +67,28 @@ const productsApi = {
    */
   getById: async (id: string): Promise<ProductDetails> => {
     const response = await get<ProductDetails>(`/products/${id}`);
-    return response.data;
+    const product = response.data;
+    
+    // Ensure both camelCase and snake_case fields are available for backend compatibility
+    const rawProduct = product as any;
+    
+    // If backend sends isActive but not is_active, add is_active
+    if (typeof rawProduct.isActive !== 'undefined' && typeof rawProduct.is_active === 'undefined') {
+      rawProduct.is_active = rawProduct.isActive;
+    }
+    
+    // If backend sends is_active but not isActive, add isActive  
+    if (typeof rawProduct.is_active !== 'undefined' && typeof rawProduct.isActive === 'undefined') {
+      rawProduct.isActive = rawProduct.is_active;
+    }
+    
+    // If neither field exists, default both to true
+    if (typeof rawProduct.isActive === 'undefined' && typeof rawProduct.is_active === 'undefined') {
+      rawProduct.isActive = true;
+      rawProduct.is_active = true;
+    }
+    
+    return product;
   },
 
   /**

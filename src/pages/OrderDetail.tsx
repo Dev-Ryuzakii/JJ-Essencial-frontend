@@ -16,9 +16,9 @@ import {
   Mail,
   CreditCard,
   Calendar,
-  Copy,
   ExternalLink,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
@@ -43,20 +43,51 @@ const OrderDetail: React.FC = () => {
   const loadOrderDetail = async (orderId: string) => {
     setIsLoading(true)
     try {
+      console.log('🔍 OrderDetail: Loading order details for ID:', orderId)
+      console.log('🔍 OrderDetail: API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1')
+      
       const response = await ordersApi.getById(orderId)
+      
+      console.log('📦 OrderDetail: API response:', response)
+      
       if (response.success) {
+        console.log('✅ OrderDetail: Successfully loaded order details')
         setOrder(response.data)
       } else {
+        console.warn('⚠️ OrderDetail: API returned unsuccessful response:', response)
         toast.error('Order not found')
         navigate('/orders')
       }
     } catch (error: any) {
-      console.error('Failed to load order:', error)
-      const errorMessage = error.response?.status === 404 
-        ? 'Order not found'
-        : 'Failed to load order details'
+      console.error('❌ OrderDetail: Failed to load order:', error)
+      
+      // Add more detailed error logging to diagnose API issues
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      })
+      
+      let errorMessage = 'Failed to load order details. Please try again later.'
+      
+      if (error.response?.status === 404) {
+        errorMessage = 'Order not found. This order may not exist or you may not have permission to view it.'
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Please log in to view order details.'
+      } else if (error.response?.status === 403) {
+        errorMessage = 'You do not have permission to view this order.'
+      }
+      
       toast.error(errorMessage)
-      navigate('/orders')
+      
+      // Don't immediately navigate away, give user a chance to try again
+      setTimeout(() => {
+        navigate('/orders')
+      }, 3000)
     } finally {
       setIsLoading(false)
     }
@@ -165,7 +196,9 @@ const OrderDetail: React.FC = () => {
 
   const copyOrderNumber = () => {
     if (order) {
-      navigator.clipboard.writeText(`ORD-${order.id.slice(0, 8).toUpperCase()}`)
+      // ✅ Use backend orderNumber with fallback per memory specification
+      const displayOrderNumber = order.orderNumber || order.id.slice(-6).toUpperCase()
+      navigator.clipboard.writeText(displayOrderNumber)
       toast.success('Order number copied!')
     }
   }
@@ -194,14 +227,33 @@ const OrderDetail: React.FC = () => {
         <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Order not found</h1>
         <p className="text-gray-600 mb-8">The order you're looking for doesn't exist or you don't have permission to view it.</p>
-        <Button asChild>
-          <Link to="/orders">Back to Orders</Link>
-        </Button>
+        <div className="space-y-4">
+          <div className="flex justify-center space-x-4">
+            <Button asChild>
+              <Link to="/orders">Back to Orders</Link>
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                if (id) {
+                  console.log('🔄 OrderDetail: Retry loading order:', id)
+                  loadOrderDetail(id)
+                }
+              }}
+            >
+              Try Again
+            </Button>
+          </div>
+          <p className="text-sm text-gray-500">
+            Order ID: {id || 'Unknown'}
+          </p>
+        </div>
       </div>
     )
   }
 
-  const orderNumber = `ORD-${order.id.slice(0, 8).toUpperCase()}`
+  // ✅ Use backend orderNumber with fallback per memory specification
+  const displayOrderNumber = order.orderNumber || order.id.slice(-6).toUpperCase()
   const trackingSteps = getTrackingSteps(order.status)
 
   return (
@@ -217,7 +269,7 @@ const OrderDetail: React.FC = () => {
               </Button>
               <div>
                 <div className="flex items-center space-x-3">
-                  <h1 className="text-3xl font-bold text-gray-900">Order {orderNumber}</h1>
+                  <h1 className="text-3xl font-bold text-gray-900">Order #{displayOrderNumber}</h1>
                   <button
                     onClick={copyOrderNumber}
                     className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -239,7 +291,7 @@ const OrderDetail: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Badge variant={getStatusColor(order.status)} size="lg">
+              <Badge variant={getStatusColor(order.status)} size="md">
                 <span className="flex items-center space-x-2">
                   {getStatusIcon(order.status)}
                   <span className="capitalize">{order.status.toLowerCase()}</span>
@@ -290,12 +342,12 @@ const OrderDetail: React.FC = () => {
                       {order.items.map((item) => (
                         <div key={item.id} className="flex items-center space-x-6 pb-6 border-b border-gray-200 last:border-b-0">
                           <img
-                            src={item.product.image || '/api/placeholder/80/80'}
+                            src={item.product?.images?.[0] || 'https://via.placeholder.com/80/80?text=No+Image'}
                             alt={item.product.name}
                             className="w-20 h-20 object-cover rounded-lg"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
-                              target.src = '/api/placeholder/80/80'
+                              target.src = 'https://via.placeholder.com/80/80?text=No+Image'
                             }}
                           />
                           <div className="flex-1">
@@ -362,18 +414,20 @@ const OrderDetail: React.FC = () => {
                           <div className="flex items-start space-x-3">
                             <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                             <div className="text-sm text-gray-600">
-                              <p className="font-medium text-gray-900 mb-1">{order.shippingAddress.fullName}</p>
-                              <p>{order.shippingAddress.addressLine1}</p>
-                              {order.shippingAddress.addressLine2 && (
+                              <p className="font-medium text-gray-900 mb-1">
+                                {order.shippingAddress?.fullName || 'Customer'}
+                              </p>
+                              <p>{order.shippingAddress?.addressLine1 || order.deliveryAddressText || 'Address not available'}</p>
+                              {order.shippingAddress?.addressLine2 && (
                                 <p>{order.shippingAddress.addressLine2}</p>
                               )}
                               <p>
-                                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                                {order.shippingAddress?.city || order.deliveryCity || 'City'}, {order.shippingAddress?.state || order.deliveryState || 'State'} {order.shippingAddress?.postalCode || order.deliveryPostal || ''}
                               </p>
-                              <p>{order.shippingAddress.country}</p>
+                              <p>{order.shippingAddress?.country || order.deliveryCountry || 'Country'}</p>
                               <div className="flex items-center space-x-2 mt-2">
                                 <Phone className="w-4 h-4" />
-                                <span>{order.shippingAddress.phone}</span>
+                                <span>{order.shippingAddress?.phone || order.deliveryPhone || 'Phone not available'}</span>
                               </div>
                             </div>
                           </div>
@@ -481,15 +535,17 @@ const OrderDetail: React.FC = () => {
                       <div className="flex items-start space-x-3">
                         <MessageCircle className="w-5 h-5 text-blue-600 mt-0.5" />
                         <div>
-                          <h4 className="font-medium text-blue-900 mb-2">Contact Customer Support</h4>
+                          <h4 className="font-medium text-blue-900 mb-2">Get Support for Your Order</h4>
                           <p className="text-blue-800 text-sm mb-4">
-                            Have questions about your order? Our support team is here to help.
+                            Have questions about your order? Create a support ticket and chat with our team.
                           </p>
                           <div className="space-x-3">
-                            <Button variant="outline" size="sm">
-                              <MessageCircle className="w-4 h-4 mr-2" />
-                              Live Chat
-                            </Button>
+                            <Link to="/support">
+                              <Button variant="outline" size="sm">
+                                <MessageCircle className="w-4 h-4 mr-2" />
+                                Get Support
+                              </Button>
+                            </Link>
                             <Button variant="outline" size="sm">
                               <Mail className="w-4 h-4 mr-2" />
                               Email Support
@@ -517,7 +573,7 @@ const OrderDetail: React.FC = () => {
                       </Button>
                       
                       <div className="text-sm text-gray-500">
-                        <p>Invoice #: INV-{orderNumber}</p>
+                        <p>Invoice #: INV-{displayOrderNumber}</p>
                         <p>Date: {new Date(order.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>
@@ -570,10 +626,12 @@ const OrderDetail: React.FC = () => {
                 </>
               )}
               
-              <Button variant="outline">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Contact Support
-              </Button>
+              <Link to="/support">
+                <Button variant="outline">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Contact Support
+                </Button>
+              </Link>
               
               <Button variant="outline" onClick={handleDownloadInvoice}>
                 <Download className="w-4 h-4 mr-2" />

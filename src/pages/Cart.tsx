@@ -15,7 +15,7 @@ import {
 import { useCart, useAuth } from '../hooks'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, parseProductImage } from '../lib/utils'
 import { RecommendedProducts } from '../components/product'
 import toast from 'react-hot-toast'
 
@@ -35,7 +35,7 @@ const Cart: React.FC = () => {
   const subtotal = getSubtotal()
   const savings = subtotal - getFinalAmount()
   const finalAmount = getFinalAmount()
-  const shipping = finalAmount > 50000 ? 0 : 5000
+  // Removed shipping fee - now always free
 
   const handleQuantityUpdate = (productId: string, newQuantity: number) => {
     updateQuantity(productId, newQuantity)
@@ -138,8 +138,12 @@ const Cart: React.FC = () => {
                       <div className="flex-shrink-0">
                         <img
                           className="w-20 h-20 rounded-md object-cover"
-                          src={item.image || '/api/placeholder/120/120'}
+                          src={parseProductImage(item.image)}
                           alt={item.name}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/api/placeholder/120/120';
+                          }}
                         />
                       </div>
 
@@ -232,7 +236,7 @@ const Cart: React.FC = () => {
                 <h2 className="text-lg font-medium text-gray-900 mb-6">Order Summary</h2>
 
                 {/* Coupon Section */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                {/* <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-2 mb-3">
                     <Tag className="w-5 h-5 text-gray-600" />
                     <span className="font-medium text-gray-900">Promo Code</span>
@@ -270,7 +274,7 @@ const Cart: React.FC = () => {
                       </Button>
                     </div>
                   )}
-                </div>
+                </div> */}
 
                 {/* Price Breakdown */}
                 <div className="space-y-3 mb-6">
@@ -288,9 +292,7 @@ const Cart: React.FC = () => {
                   
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Shipping</span>
-                    <span className="font-medium">
-                      {shipping === 0 ? 'Free' : formatCurrency(shipping)}
-                    </span>
+                    <span className="font-medium">Free</span>
                   </div>
                   
                   <hr className="border-gray-200" />
@@ -298,13 +300,13 @@ const Cart: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-base font-medium text-gray-900">Total</span>
                     <span className="text-lg font-bold text-gray-900">
-                      {formatCurrency(finalAmount + shipping)}
+                      {formatCurrency(finalAmount)}
                     </span>
                   </div>
                 </div>
 
                 {/* Free Shipping Progress */}
-                {shipping > 0 && (
+                {/* {shipping > 0 && (
                   <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                     <div className="flex items-center space-x-2 mb-2">
                       <Truck className="w-5 h-5 text-blue-600" />
@@ -320,7 +322,7 @@ const Cart: React.FC = () => {
                       />
                     </div>
                   </div>
-                )}
+                )} */}
 
                 {/* Trust Signals */}
                 <div className="grid grid-cols-3 gap-4 mb-6 pt-4 border-t border-gray-200">

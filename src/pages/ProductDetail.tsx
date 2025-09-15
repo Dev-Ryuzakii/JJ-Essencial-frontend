@@ -28,7 +28,7 @@ import { useCart, useAuth } from '../hooks'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import ProductCard from '../components/product/ProductCard'
-import { formatCurrency, cn } from '../lib/utils'
+import { formatCurrency, cn, parseProductImage } from '../lib/utils'
 import { productsApi, reviewsApi } from '../lib/api'
 import toast from 'react-hot-toast'
 import type { Product, Review } from '../types'
@@ -67,17 +67,7 @@ const ProductDetail: React.FC = () => {
         let processedProduct = { ...productResponse.data }
         
         if (processedProduct.images && Array.isArray(processedProduct.images)) {
-          processedProduct.images = processedProduct.images.map((img: any) => {
-            if (typeof img === 'string') {
-              try {
-                const parsed = JSON.parse(img)
-                return parsed.url || img
-              } catch {
-                return img
-              }
-            }
-            return img.url || img
-          })
+          processedProduct.images = processedProduct.images.map((img: any) => parseProductImage(img))
         } else {
           processedProduct.images = ['/api/placeholder/600/600']
         }
@@ -486,7 +476,7 @@ const ProductDetail: React.FC = () => {
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-gray-200">
+          {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-gray-200">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <Truck className="w-5 h-5 text-blue-600" />
@@ -516,7 +506,7 @@ const ProductDetail: React.FC = () => {
                 <p className="text-sm text-gray-600">1-year warranty</p>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 

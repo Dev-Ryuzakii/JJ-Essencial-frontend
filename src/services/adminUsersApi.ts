@@ -1,5 +1,5 @@
 import { get, post, put, patch, del } from './apiClient';
-import type { PaginatedResponse } from './apiClient';
+import type { PaginatedResponse, PaginationMeta, ApiResponse, SuccessResponseDto } from '../types';
 
 // Admin-specific user interfaces
 export interface AdminUser {
@@ -62,6 +62,14 @@ export interface UserAnalytics {
   }[];
 }
 
+// Helper function to extract data from ApiResponse
+const extractData = <T>(response: ApiResponse<T>): T => {
+  if ('success' in response && response.success) {
+    return (response as SuccessResponseDto<T>).data;
+  }
+  throw new Error('API request failed');
+};
+
 const adminUsersApi = {
   /**
    * Get all users (Admin only)
@@ -72,37 +80,64 @@ const adminUsersApi = {
     
     console.log('AdminUsersApi: Raw response:', response);
     
-    // The response from the backend has this structure:
-    // { success: true, data: AdminUser[], pagination: {...} }
-    // But the apiClient returns { data: { success: true, data: AdminUser[], pagination: {...} } }
+    // Handle different possible response structures from the backend
+    let userData: any[] = [];
+    let paginationMeta: any = {};
     
-    if (response.data && Array.isArray(response.data)) {
-      // Direct array - no pagination info
-      return {
-        data: response.data,
-        meta: {
-          total: response.data.length,
-          page: 1,
-          lastPage: 1,
-          hasNextPage: false
-        }
-      };
-    } else if (response.data && response.data.data) {
-      // Nested structure with pagination
-      const backendData = response.data;
-      return {
-        data: backendData.data,
-        meta: {
-          total: backendData.pagination?.total || backendData.data.length,
-          page: backendData.pagination?.page || 1,
-          lastPage: backendData.pagination?.pages || Math.ceil((backendData.pagination?.total || backendData.data.length) / (filters?.limit || 10)),
-          hasNextPage: backendData.pagination?.hasNext || false
-        }
-      };
-    } else {
-      // Fallback - return the response as-is if it matches our expected structure
-      return response.data;
+    // Type guard to check if response is SuccessResponseDto
+    if ('success' in response && response.success) {
+      const successResponse = response as SuccessResponseDto<any>;
+      if (Array.isArray(successResponse.data)) {
+        userData = successResponse.data;
+      } else if (successResponse.data && Array.isArray(successResponse.data.items)) {
+        userData = successResponse.data.items;
+        paginationMeta = successResponse.data.meta || {};
+      } else if (successResponse.data && Array.isArray(successResponse.data.data)) {
+        userData = successResponse.data.data;
+        paginationMeta = successResponse.data.pagination || successResponse.data.meta || {};
+      }
     }
+    // Handle direct array response (legacy)
+    else if (Array.isArray(response)) {
+      userData = response;
+    }
+    // Handle any other structure
+    else if ((response as any).data && Array.isArray((response as any).data)) {
+      userData = (response as any).data;
+      paginationMeta = (response as any).pagination || (response as any).meta || {};
+    }
+    
+    // Transform user data to ensure consistency
+    const transformedUsers: AdminUser[] = userData.map((user: any) => ({
+      id: user.id,
+      email: user.email,
+      username: user.username || user.email?.split('@')[0] || '',
+      fullName: user.fullName || user.full_name || user.name || 'Unknown',
+      phone: user.phone || user.phone_number || '',
+      avatar: user.avatar || user.avatar_url || '',
+      dateOfBirth: user.dateOfBirth || user.date_of_birth || '',
+      role: user.role || 'USER',
+      isActive: user.isActive !== undefined ? user.isActive : (user.is_active !== undefined ? user.is_active : true),
+      emailVerified: user.emailVerified !== undefined ? user.emailVerified : (user.email_verified !== undefined ? user.email_verified : false),
+      lastLoginAt: user.lastLoginAt || user.last_login_at || '',
+      totalOrders: user.totalOrders || user.total_orders || 0,
+      totalSpent: user.totalSpent || user.total_spent || 0,
+      createdAt: user.createdAt || user.created_at || new Date().toISOString(),
+      updatedAt: user.updatedAt || user.updated_at || new Date().toISOString()
+    }));
+    
+    console.log('AdminUsersApi: Transformed users sample:', transformedUsers.slice(0, 2));
+    
+    return {
+      items: transformedUsers,
+      meta: {
+        totalItems: paginationMeta.total || paginationMeta.totalItems || transformedUsers.length,
+        itemCount: transformedUsers.length,
+        itemsPerPage: paginationMeta.limit || paginationMeta.itemsPerPage || filters?.limit || 10,
+        totalPages: paginationMeta.pages || paginationMeta.totalPages || Math.ceil((paginationMeta.total || paginationMeta.totalItems || transformedUsers.length) / (filters?.limit || 10)),
+        currentPage: paginationMeta.page || paginationMeta.currentPage || filters?.page || 1
+      }
+    };
   },
 
   /**
@@ -111,7 +146,7 @@ const adminUsersApi = {
    */
   getUser: async (id: string): Promise<AdminUser> => {
     const response = await get<AdminUser>(`/admin/users/${id}`);
-    return response.data;
+    return extractData(response);
   },
 
   /**
@@ -120,7 +155,7 @@ const adminUsersApi = {
    */
   updateUserStatus: async (id: string, data: UpdateUserStatusDto): Promise<AdminUser> => {
     const response = await patch<AdminUser>(`/admin/users/${id}/status`, data);
-    return response.data;
+    return extractData(response);
   },
 
   /**
@@ -139,7 +174,7 @@ const adminUsersApi = {
     const response = await get<UserAnalytics>('/admin/users/analytics', { 
       params: { period } 
     });
-    return response.data;
+    return extractData(response);
   },
 
   /**
@@ -164,7 +199,7 @@ const adminUsersApi = {
     template?: string;
   }): Promise<{ success: boolean; message: string }> => {
     const response = await post<{ success: boolean; message: string }>(`/admin/users/${id}/send-email`, data);
-    return response.data;
+    return extractData(response);
   },
 
   /**
@@ -180,7 +215,7 @@ const adminUsersApi = {
       userIds,
       ...data
     });
-    return response.data;
+    return extractData(response);
   },
 
   /**
@@ -208,7 +243,7 @@ const adminUsersApi = {
       userAgent?: string;
       createdAt: string;
     }>>(`/admin/users/${id}/activity`, { params });
-    return response.data;
+    return extractData(response);
   },
 
   /**
@@ -219,7 +254,7 @@ const adminUsersApi = {
     const response = await get<AdminUser[]>('/admin/users/search', { 
       params: { q: query, limit } 
     });
-    return response.data;
+    return extractData(response);
   }
 };
 

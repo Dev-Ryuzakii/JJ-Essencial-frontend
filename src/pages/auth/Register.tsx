@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Sparkles, UserPlus } from 'lucide-react'
 import { useAuth } from '../../hooks'
 import { Button } from '../../components/ui/Button'
+import LOGO from '../../assets/LOGO.png'
 
 
 // Phone number regex pattern for validation
@@ -75,9 +76,7 @@ const Register: React.FC = () => {
         {/* Floating Brand Elements */}
         <div className={`absolute top-8 left-8 z-30 transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
+            <img src={LOGO} alt="JJ Essential" className="w-12 h-12 rounded-full" />
             <span className="text-white font-bold text-xl">JJ Essential</span>
           </div>
         </div>
@@ -102,9 +101,7 @@ const Register: React.FC = () => {
           {/* Mobile Brand Header */}
           <div className="lg:hidden mb-8 text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
+              <img src={LOGO} alt="JJ Essential" className="w-12 h-12 rounded-full" />
               <span className="text-gray-900 font-bold text-2xl">JJ Essential</span>
             </div>
           </div>

@@ -1,13 +1,5 @@
 import { get, post, patch } from './apiClient';
-import type { ApiResponse } from './apiClient';
-
-export interface BankAccount {
-  id: string;
-  bank_name: string;
-  account_name: string;
-  account_number: string;
-  currency: string;
-}
+import type { ApiResponse, BankAccount } from '../types';
 
 export interface BankTransferData {
   reference: string;
@@ -21,6 +13,7 @@ export interface BankTransferData {
     currency: string;
   }>;
   instructions: string[];
+  expiresAt?: string; // ISO date string when this payment request expires
 }
 
 export interface ReceiptData {
@@ -30,68 +23,111 @@ export interface ReceiptData {
   receiptUrl: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   uploadedAt: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
 }
+
+export type BankTransferStatus = 
+  | 'pending' 
+  | 'awaiting_verification' 
+  | 'verified' 
+  | 'rejected'
+  | 'expired';
 
 const bankTransferApi = {
   /**
    * Get bank accounts for manual transfers (Public)
-   * GET /api/v1/payments/bank-accounts
+   * GET /payments/bank-transfer/bank-accounts
    */
   getBankAccounts: async (): Promise<ApiResponse<BankAccount[]>> => {
-    const response = await get<ApiResponse<BankAccount[]>>('/api/v1/payments/bank-accounts');
-    return response.data;
+    return await get<BankAccount[]>('/payments/bank-transfer/bank-accounts');
   },
 
   /**
    * Initiate bank transfer payment
-   * POST /api/v1/payments/bank-transfer/initiate
+   * POST /payments/bank-transfer/initiate
+   * @param orderId Order ID for the payment
+   * @param options Optional parameters (bankId for preferred bank account)
    */
-  initiateTransfer: async (orderId: string): Promise<ApiResponse<BankTransferData>> => {
-    const response = await post<ApiResponse<BankTransferData>>('/api/v1/payments/bank-transfer/initiate', { orderId });
-    return response.data;
+  initiateTransfer: async (
+    orderId: string, 
+    options?: { bankId?: string }
+  ): Promise<ApiResponse<BankTransferData>> => {
+    return await post<BankTransferData>(
+      '/payments/bank-transfer/initiate', 
+      { orderId, ...(options || {}) }
+    );
   },
 
   /**
    * Upload payment receipt
-   * POST /api/v1/payments/receipt/upload
+   * POST /payments/receipt/upload
    */
   uploadReceipt: async (reference: string, file: File): Promise<ApiResponse<ReceiptData>> => {
     const formData = new FormData();
     formData.append('reference', reference);
     formData.append('file', file);
 
-    const response = await post<ApiResponse<ReceiptData>>('/api/v1/payments/receipt/upload', formData, {
+    return await post<ReceiptData>('/payments/receipt/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
-    
-    return response.data;
   },
 
   /**
+   * Check payment status by reference
+   * GET /payments/bank-transfer/status/:reference
+   */
+  checkPaymentStatus: async (reference: string): Promise<ApiResponse<{
+    status: BankTransferStatus;
+    receipt?: ReceiptData;
+    message?: string;
+  }>> => {
+    return await get<{
+      status: BankTransferStatus;
+      receipt?: ReceiptData;
+      message?: string;
+    }>(`/payments/bank-transfer/status/${reference}`);
+  },
+
+  /**
+   * Get payment details by reference
+   * GET /payments/bank-transfer/:reference
+   */
+  getPaymentDetails: async (reference: string): Promise<ApiResponse<BankTransferData>> => {
+    return await get<BankTransferData>(`/payments/bank-transfer/${reference}`);
+  },
+
+  /**
+   * Get receipt by reference
+   * GET /payments/receipt/:reference
+   */
+  getReceipt: async (reference: string): Promise<ApiResponse<ReceiptData>> => {
+    return await get<ReceiptData>(`/payments/receipt/${reference}`);
+  },
+  
+  /**
    * Get pending receipts for verification (Admin only)
-   * GET /api/v1/payments/receipts/pending
+   * GET /payments/receipts/pending
    */
   getPendingReceipts: async (): Promise<ApiResponse<ReceiptData[]>> => {
-    const response = await get<ApiResponse<ReceiptData[]>>('/api/v1/payments/receipts/pending');
-    return response.data;
+    return await get<ReceiptData[]>('/payments/receipts/pending');
   },
 
   /**
    * Verify payment receipt (Admin only)
-   * PATCH /api/v1/payments/receipt/:receiptId/verify
+   * PATCH /payments/receipt/:receiptId/verify
    */
   verifyReceipt: async (
     receiptId: string, 
     status: 'APPROVED' | 'REJECTED', 
     adminNote?: string
   ): Promise<ApiResponse<any>> => {
-    const response = await patch<ApiResponse<any>>(
-      `/api/v1/payments/receipt/${receiptId}/verify`, 
+    return await patch<any>(
+      `/payments/receipt/${receiptId}/verify`, 
       { status, adminNote }
     );
-    return response.data;
   }
 };
 

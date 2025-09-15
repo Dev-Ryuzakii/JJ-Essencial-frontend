@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
-import { formatCurrency, cn } from '../lib/utils'
+import { formatCurrency, cn, parseProductImage } from '../lib/utils'
 import ordersApi, { type Order as ApiOrder, type OrderStatus } from '../services/ordersApi'
 import toast from 'react-hot-toast'
 
@@ -82,6 +82,14 @@ const Orders: React.FC = () => {
   const loadOrders = async () => {
     setIsLoading(true)
     try {
+      // Debug: Check if user is authenticated
+      const token = localStorage.getItem('access_token')
+      console.log('🔑 Orders Page: Auth token exists:', !!token)
+      if (token) {
+        console.log('🔑 Orders Page: Token length:', token.length)
+      }
+      
+      console.log('📋 Orders Page: Loading orders...')
       const response = await ordersApi.getAll({
         page: 1,
         limit: 50, // Get more orders for better UX
@@ -89,47 +97,63 @@ const Orders: React.FC = () => {
         sortOrder: 'desc'
       })
       
+      console.log('📦 Orders Page: API response:', response)
+      console.log('🔍 Orders Page: Individual order IDs:', response.data.map((order: any) => ({ id: order.id, status: order.status })))
+      
       // Transform API response to match our interface
-      const transformedOrders: Order[] = response.data.map((apiOrder: ApiOrder) => ({
-        id: apiOrder.id,
-        orderNumber: `ORD-${apiOrder.id.slice(0, 8).toUpperCase()}`,
-        status: apiOrder.status,
-        createdAt: apiOrder.createdAt,
-        items: apiOrder.items.map(item => ({
-          id: item.id,
-          product: {
-            id: item.product.id,
-            name: item.product.name,
-            image: item.product.image,
-            sku: item.product.sku,
-            attributes: item.product.attributes
+      const transformedOrders: Order[] = response.data.map((apiOrder: ApiOrder) => {
+        // ✅ Use backend orderNumber with fallback for existing orders per memory specification
+        const displayOrderNumber = apiOrder.orderNumber || apiOrder.id.slice(-6).toUpperCase();
+        
+        return {
+          id: apiOrder.id,
+          orderNumber: displayOrderNumber, // ✅ Use backend orderNumber or generate fallback
+          status: apiOrder.status,
+          createdAt: apiOrder.createdAt,
+          items: (apiOrder.items || apiOrder.orderItems || []).map(item => ({
+            id: item.id,
+            product: {
+              id: item.product?.id || '',
+              name: item.product?.name || 'Unknown Product',
+              image: item.product?.images?.[0] || '', // Use first image from array
+              sku: item.product?.sku || '',
+              attributes: item.product?.attributes || {}
+            },
+            quantity: item.quantity,
+            price: item.price,
+            finalPrice: item.finalPrice || item.price
+          })),
+          subtotal: apiOrder.subtotal || 0,
+          shippingCost: apiOrder.shippingCost || 0,
+          tax: apiOrder.tax || 0,
+          totalAmount: apiOrder.totalAmount,
+          shippingAddress: {
+            fullName: apiOrder.shippingAddress?.fullName || apiOrder.user?.fullName || 'N/A',
+            addressLine1: apiOrder.shippingAddress?.addressLine1 || apiOrder.deliveryAddressText || 'N/A',
+            addressLine2: apiOrder.shippingAddress?.addressLine2 || '',
+            city: apiOrder.shippingAddress?.city || apiOrder.deliveryCity || 'N/A',
+            state: apiOrder.shippingAddress?.state || apiOrder.deliveryState || 'N/A',
+            postalCode: apiOrder.shippingAddress?.postalCode || apiOrder.deliveryPostal || 'N/A',
+            country: apiOrder.shippingAddress?.country || apiOrder.deliveryCountry || 'N/A',
+            phone: apiOrder.shippingAddress?.phone || apiOrder.deliveryPhone || 'N/A'
           },
-          quantity: item.quantity,
-          price: item.price,
-          finalPrice: item.finalPrice
-        })),
-        subtotal: apiOrder.subtotal,
-        shippingCost: apiOrder.shippingCost,
-        tax: apiOrder.tax,
-        totalAmount: apiOrder.totalAmount,
-        shippingAddress: {
-          fullName: apiOrder.shippingAddress.fullName,
-          addressLine1: apiOrder.shippingAddress.addressLine1,
-          addressLine2: apiOrder.shippingAddress.addressLine2,
-          city: apiOrder.shippingAddress.city,
-          state: apiOrder.shippingAddress.state,
-          postalCode: apiOrder.shippingAddress.postalCode,
-          country: apiOrder.shippingAddress.country,
-          phone: apiOrder.shippingAddress.phone
-        },
-        paymentMethod: apiOrder.paymentMethod,
-        trackingNumber: apiOrder.trackingNumber,
-        estimatedDelivery: apiOrder.estimatedDelivery
-      }))
+          paymentMethod: apiOrder.paymentMethod || 'N/A',
+          trackingNumber: apiOrder.trackingNumber,
+          estimatedDelivery: apiOrder.estimatedDelivery
+        };
+      })
+      
+      console.log('✅ Orders Page: Successfully transformed', transformedOrders.length, 'orders')
+      
+      // If no orders found, provide helpful information
+      if (transformedOrders.length === 0) {
+        console.log('ℹ️ Orders Page: No orders found for this user')
+        toast('No orders found. Start shopping to see your orders here!', { icon: '🛒' })
+      }
       
       setOrders(transformedOrders)
     } catch (error: any) {
-      console.error('Failed to load orders:', error)
+      console.error('❌ Orders Page: Failed to load orders:', error)
       const errorMessage = error.response?.data?.message || 'Failed to load orders'
       toast.error(errorMessage)
     } finally {
@@ -253,6 +277,53 @@ const Orders: React.FC = () => {
     }
   }
 
+  const handleCreateTestOrder = async () => {
+    try {
+      console.log('🗺️ Creating test order for debugging...')
+      
+      // Create a test order using the orders API
+      const testOrderData = {
+        items: [
+          {
+            productId: 'test-product-1',
+            quantity: 1
+          }
+        ],
+        deliveryAddress: {
+          phone: '+1234567890',
+          address: '123 Test Street',
+          city: 'Test City',
+          state: 'Test State',
+          postalCode: '12345',
+          country: 'Nigeria'
+        },
+        orderNotes: 'Test order created for debugging'
+      }
+      
+      const response = await ordersApi.create(testOrderData)
+      console.log('✅ Test order created:', response)
+      
+      toast.success('Test order created! Refreshing orders...')
+      
+      // Reload orders
+      loadOrders()
+    } catch (error) {
+      console.error('❌ Failed to create test order:', error)
+      toast.error('Failed to create test order. Check console for details.')
+    }
+  }
+
+  const handleUseWorkingToken = () => {
+    // Use the working token from your curl test
+    const workingToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0OWU1OGQxMi1hNjFhLTRmYzUtYmRiYS03MjUyNTM5OTBmYjYiLCJlbWFpbCI6ImZhbGFkZXJhc2FxMjJAZ21haWwuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NTc3OTkzNDMsImV4cCI6MTc1ODQwNDE0M30.0Y-lLAE8u5kKaicVhzHg1CABqqe8_UogDocvSilqd1I"
+    
+    localStorage.setItem('access_token', workingToken)
+    toast.success('Token updated! Refreshing orders...')
+    
+    // Reload orders with new token
+    loadOrders()
+  }
+
   const handleTrackOrder = (order: Order) => {
     if (order.trackingNumber) {
       // Open tracking page or modal
@@ -291,10 +362,31 @@ const Orders: React.FC = () => {
             Track and manage your orders
           </p>
         </div>
-        <Button variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Export Orders
-        </Button>
+        <div className="flex items-center space-x-3">
+          {/* Debug Test Order Button - Only show in development */}
+          {import.meta.env.DEV && (
+            <>
+              {/* <Button 
+                variant="outline" 
+                onClick={handleUseWorkingToken}
+                className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+              >
+                🔑 Use Working Token
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleCreateTestOrder}
+                className="bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+              >
+                🧪 Create Test Order
+              </Button> */}
+            </>
+          )}
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export Orders
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -426,15 +518,24 @@ const Orders: React.FC = () => {
                 <div className="flex items-center space-x-4 mb-4">
                   {order.items.slice(0, 3).map((item, index) => (
                     <div key={item.id} className="flex items-center space-x-3">
-                      <img
-                        src={item.product.image || '/api/placeholder/60/60'}
-                        alt={item.product.name}
-                        className="w-12 h-12 object-cover rounded-lg"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = '/api/placeholder/60/60'
-                        }}
-                      />
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        <img
+                          src={parseProductImage(item.product.image)}
+                          alt={item.product.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            const parent = target.parentElement!
+                            parent.innerHTML = `
+                              <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"></path>
+                                </svg>
+                              </div>
+                            `
+                          }}
+                        />
+                      </div>
                       {index === 2 && order.items.length > 3 && (
                         <span className="text-sm text-gray-500">
                           +{order.items.length - 3} more
@@ -469,7 +570,16 @@ const Orders: React.FC = () => {
 
                   <div className="flex items-center space-x-2">
                     <Button variant="outline" size="sm" asChild>
-                      <Link to={`/orders/${order.id}`}>
+                      <Link 
+                        to={`/orders/${order.id}`}
+                        onClick={() => {
+                          console.log('🔗 Orders Page: Navigating to order detail:', {
+                            orderId: order.id,
+                            orderNumber: order.orderNumber,
+                            status: order.status
+                          })
+                        }}
+                      >
                         <Eye className="w-4 h-4 mr-2" />
                         View Details
                       </Link>
@@ -495,15 +605,24 @@ const Orders: React.FC = () => {
                       <div className="space-y-4">
                         {order.items.map((item) => (
                           <div key={item.id} className="flex items-center space-x-4">
-                            <img
-                              src={item.product.image || '/api/placeholder/60/60'}
-                              alt={item.product.name}
-                              className="w-16 h-16 object-cover rounded-lg"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = '/api/placeholder/60/60'
-                              }}
-                            />
+                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                              <img
+                                src={parseProductImage(item.product.image)}
+                                alt={item.product.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  const parent = target.parentElement!
+                                  parent.innerHTML = `
+                                    <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                      <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"></path>
+                                      </svg>
+                                    </div>
+                                  `
+                                }}
+                              />
+                            </div>
                             <div className="flex-1">
                               <h5 className="font-medium text-gray-900">{item.product.name}</h5>
                               <div className="text-sm text-gray-600">
@@ -619,9 +738,11 @@ const Orders: React.FC = () => {
               Have questions about your order? Our customer support team is here to help.
             </p>
             <div className="mt-3 space-x-3">
-              <Button variant="outline" size="sm">
-                Contact Support
-              </Button>
+              <Link to="/support">
+                <Button variant="outline" size="sm">
+                  Contact Support
+                </Button>
+              </Link>
               <Button variant="outline" size="sm">
                 Order FAQ
               </Button>

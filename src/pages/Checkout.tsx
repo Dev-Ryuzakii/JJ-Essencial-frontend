@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   CreditCard,
@@ -13,12 +13,18 @@ import {
   Calendar,
   Shield,
   Gift,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  RefreshCw,
+  Copy
 } from 'lucide-react'
+
 import { useCart, useAuth } from '../hooks'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, parseProductImage } from '../lib/utils'
+import { ordersApi, productsApi, paymentsApi } from '../services'
+import FlutterwavePayment from '../components/payment/FlutterwavePayment'
 import toast from 'react-hot-toast'
 
 interface CheckoutForm {
@@ -29,10 +35,11 @@ interface CheckoutForm {
   city: string
   state: string
   zipCode: string
+  postalCode: string
   country: string
   phone: string
   shippingMethod: 'standard' | 'express' | 'overnight'
-  paymentMethod: 'card' | 'paypal' | 'apple_pay'
+  paymentMethod: 'card' | 'paypal' | 'apple_pay' | 'bank_transfer' | 'flutterwave'
   cardNumber: string
   expiryDate: string
   cvv: string
@@ -42,25 +49,41 @@ interface CheckoutForm {
   specialInstructions: string
 }
 
-const Checkout: React.FC = () => {
+interface BankAccount {
+  bankName: string
+  accountName: string
+  accountNumber: string
+  sortCode?: string
+  swiftCode?: string
+  currency: string
+}
+
+const Checkout = () => {
   const navigate = useNavigate()
-  const { items, getFinalAmount, getSubtotal } = useCart()
+  const { items, clearCart, removeFromCart, getSubtotal, getFinalAmount } = useCart()
   const { isAuthenticated, user } = useAuth()
   
   const [step, setStep] = useState<'shipping' | 'payment' | 'review'>('shipping')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [loadingBankAccounts, setLoadingBankAccounts] = useState(false)
+  const [paymentReceipt, setPaymentReceipt] = useState<File | null>(null)
+  const [uploadingReceipt, setUploadingReceipt] = useState(false)
+  const [orderResponse, setOrderResponse] = useState<any>(null)
+  
   const [formData, setFormData] = useState<CheckoutForm>({
     email: user?.email || '',
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: user?.fullName?.split(' ')[0] || '',
+    lastName: user?.fullName?.split(' ').slice(1).join(' ') || '',
     address: '',
     city: '',
     state: '',
     zipCode: '',
+    postalCode: '',
     country: 'Nigeria',
     phone: user?.phone || '',
     shippingMethod: 'standard',
-    paymentMethod: 'card',
+    paymentMethod: 'bank_transfer',
     cardNumber: '',
     expiryDate: '',
     cvv: '',
@@ -72,19 +95,337 @@ const Checkout: React.FC = () => {
 
   const subtotal = getSubtotal()
   const total = getFinalAmount()
-  const tax = total * 0.1
+  const tax = 0 // Remove tax for Nigerian context
   
   const shippingCosts = {
     standard: 0,
-    express: 15.99,
-    overnight: 29.99
+    express: 1500, // ₦1,500 for express delivery
+    overnight: 3000 // ₦3,000 for overnight delivery
   }
   
   const shipping = shippingCosts[formData.shippingMethod]
+
+  // Function to copy account number to clipboard
+  const copyToClipboard = async (text: string, type: string = 'Account number') => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success(`${type} copied to clipboard!`)
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error)
+      toast.error('Failed to copy to clipboard')
+    }
+  }
+
+  // Fetch bank accounts on component mount
+  useEffect(() => {
+    const fetchBankAccounts = async () => {
+      console.log('🧪 Fetching bank accounts using new API structure...\n');
+      setLoadingBankAccounts(true)
+      try {
+        console.log('🔍 Making API request to: /api/v1/payments/bank-accounts');
+        const response = await paymentsApi.getBankAccounts()
+        
+        console.log('📊 API Response structure:', {
+          success: response.success,
+          hasData: !!(response as any).data,
+          dataLength: (response as any).data?.length || 0
+        });
+        
+        // 🚨 DETAILED DEBUGGING: Full response analysis
+        console.log('🔬 FULL API RESPONSE ANALYSIS:');
+        console.log('Response object keys:', Object.keys(response));
+        console.log('Response.data type:', typeof (response as any).data);
+        console.log('Response.data is Array:', Array.isArray((response as any).data));
+        console.log('Full raw response:', JSON.stringify(response, null, 2));
+        
+        // Check if API is filtering results
+        if ((response as any).data && (response as any).data.length === 1) {
+          console.log('⚠️ ONLY 1 ACCOUNT RETURNED - POSSIBLE CAUSES:');
+          console.log('   1. Backend API filtering by is_active=true');
+          console.log('   2. Query limit set to 1');
+          console.log('   3. User permission restricting access');
+          console.log('   4. Database query issue');
+          console.log('   5. API endpoint implementation problem');
+        }
+        
+        if (response.success && (response as any).data) {
+          console.log(`✅ Successfully loaded ${(response as any).data.length} bank account(s)`);
+          
+          // Transform snake_case API response to camelCase for UI
+          const transformedAccounts = (response as any).data.map((account: any) => ({
+            bankName: account.bank_name || account.bankName,
+            accountName: account.account_name || account.accountName,
+            accountNumber: account.account_number || account.accountNumber,
+            currency: account.currency || 'NGN',
+            sortCode: account.sort_code || account.sortCode,
+            swiftCode: account.swift_code || account.swiftCode
+          }));
+          
+          const validAccounts = transformedAccounts.filter((account: any) => {
+            const isValid = account.bankName && account.accountName && account.accountNumber;
+            if (!isValid) {
+              console.warn('⚠️ Invalid account found:', account);
+              console.warn('Raw account data:', (response as any).data.find((raw: any) => 
+                (raw.bank_name || raw.bankName) === account.bankName
+              ));
+            }
+            return isValid;
+          });
+
+          console.log('💳 Bank accounts ready for display:');
+          validAccounts.forEach((account: any, index: number) => {
+            console.log(`   ${index + 1}. ${account.bankName}`);
+            console.log(`      Account Name: ${account.accountName}`);
+            console.log(`      Account Number: ${account.accountNumber}`);
+            console.log(`      Currency: ${account.currency || 'NGN'}`);
+            if (account.sortCode) console.log(`      Sort Code: ${account.sortCode}`);
+            if (account.swiftCode) console.log(`      Swift Code: ${account.swiftCode}`);
+            console.log('');
+          });
+          
+          setBankAccounts(validAccounts);
+          console.log('🎉 Bank accounts loaded successfully into state!');
+        } else {
+          console.error('❌ API response indicates failure:', {
+            success: response.success,
+            message: (response as any).message || 'No message provided',
+            data: (response as any).data
+          });
+          toast.error((response as any).message || 'Failed to load bank account details');
+        }
+      } catch (error: any) {
+        console.error('❌ Failed to fetch bank accounts:', error);
+        console.error('Full error context:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          responseData: error.response?.data,
+          url: error.config?.url
+        });
+        
+        // More specific error messages based on the new API structure
+        let errorMessage = 'Failed to load bank account details';
+        if (error.response?.status === 401) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (error.response?.status === 403) {
+          errorMessage = 'Access denied. Insufficient permissions.';
+        } else if (error.response?.status === 404) {
+          errorMessage = 'Bank accounts service not found. Please try again later.';
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
+        toast.error(errorMessage);
+      } finally {
+        setLoadingBankAccounts(false)
+      }
+    }
+
+    fetchBankAccounts()
+  }, [])
+
+  const validateCartProducts = async () => {
+    console.log('Validating cart products...');
+    const invalidItems: string[] = [];
+    const validationResults: Array<{id: string, name: string, status: string}> = [];
+    
+    for (const item of items) {
+      try {
+        // Ensure we're using the right ID for validation - cart uses productId
+        const productId = item.productId || item.id;
+        console.log(`Checking product ${productId} (${item.name})...`);
+        
+        // Explicitly log the raw API request to ensure correct endpoint
+        console.log(`🔍 Making API request to: /products/${productId}`);
+        
+        const product = await productsApi.getById(productId);
+        
+        if (!product) {
+          console.log(`Product ${productId} (${item.name}) not found`);
+          invalidItems.push(productId);
+          validationResults.push({id: productId, name: item.name, status: 'NOT_FOUND'});
+        } else {
+          // Enhanced validation with more robust checking and detailed logging
+          
+          // First, log all relevant fields from the product response
+          console.log(`🔍 Raw product fields:`, {
+            id: product.id,
+            name: product.name,
+            isActive: product.isActive,
+            is_active: (product as any).is_active,
+            active: (product as any).active,
+            status: (product as any).status,
+            stock: product.stock
+          });
+          
+          // Handle both camelCase and snake_case field names, with robust fallback
+          const isActive = product.isActive !== undefined ? product.isActive : 
+                          (product as any).is_active !== undefined ? (product as any).is_active : 
+                          (product as any).active !== undefined ? (product as any).active :
+                          (product as any).status === 'active' ? true :
+                          true; // Default to true if field is missing (assumes product is active if field not provided)
+          
+          console.log(`Product ${productId} field debug:`, {
+            isActive: product.isActive,
+            is_active: (product as any).is_active,
+            calculated: isActive
+          });
+          
+          if (isActive === false) {
+            console.log(`Product ${productId} (${item.name}) is inactive`);
+            invalidItems.push(productId);
+            validationResults.push({id: productId, name: item.name, status: 'INACTIVE'});
+          } else if (product.stock <= 0) {
+            console.log(`Product ${productId} (${item.name}) is out of stock`);
+            invalidItems.push(productId);
+            validationResults.push({id: productId, name: item.name, status: 'OUT_OF_STOCK'});
+          } else {
+            console.log(`Product ${productId} (${item.name}) is valid`);
+            validationResults.push({id: productId, name: item.name, status: 'VALID'});
+          }
+        }
+      } catch (error) {
+        console.log(`Error validating product ${item.productId || item.id} (${item.name}):`, error);
+        invalidItems.push(item.productId || item.id);
+        validationResults.push({id: item.productId || item.id, name: item.name, status: 'ERROR'});
+      }
+    }
+    
+    console.log('Validation results:', validationResults);
+    return { invalidItems, validationResults };
+  };
+
+  const handleClearCart = () => {
+    if (items.length === 0) {
+      toast.error('Cart is already empty');
+      return;
+    }
+    
+    const itemCount = items.length;
+    clearCart();
+    toast.success(`Cart cleared successfully. Removed ${itemCount} item(s). Please add fresh products to continue.`, {
+      duration: 5000,
+    });
+    console.log(`🗑️ Cart cleared: removed ${itemCount} items`);
+  };
+
+  const refreshCartFromBackend = async () => {
+    console.log('🔄 Refreshing cart items from backend...');
+    toast.loading('Refreshing cart...', { id: 'refresh' });
+    
+    try {
+      let updatedCount = 0;
+      let removedCount = 0;
+      
+      for (const item of items) {
+        try {
+          const response = await productsApi.getById(item.productId || item.id);
+          
+          // Handle the new API response structure
+          let product;
+          let isValidResponse = false;
+          
+          if (response && typeof response === 'object') {
+            // Check if it's a SuccessResponseDto structure
+            if ('success' in response && 'data' in response && response.success) {
+              product = response.data;
+              isValidResponse = true;
+            } else if ('id' in response) {
+              // Direct product object
+              product = response;
+              isValidResponse = true;
+            }
+          }
+          
+          if (!isValidResponse || !product) {
+            console.log(`❌ Product ${item.productId || item.id} (${item.name}) - Invalid API response`);
+            removeFromCart(item.productId || item.id);
+            removedCount++;
+            continue;
+          }
+          
+          // Check if product is active using the new API structure
+          const isActive = product.isActive !== undefined ? product.isActive : true;
+          
+          if (isActive && product.stockQuantity > 0) {
+            console.log(`✅ Refreshed: ${item.name}`);
+            updatedCount++;
+          } else {
+            console.log(`❌ Removing unavailable product: ${item.name} (Active: ${isActive}, Stock: ${product.stockQuantity})`);
+            removeFromCart(item.productId || item.id);
+            removedCount++;
+          }
+        } catch (error) {
+          console.log(`❌ Error checking ${item.name}, removing from cart:`, error);
+          removeFromCart(item.productId || item.id);
+          removedCount++;
+        }
+      }
+      
+      toast.success(
+        `Cart refreshed! Updated: ${updatedCount}, Removed: ${removedCount}`,
+        { id: 'refresh', duration: 4000 }
+      );
+    } catch (error) {
+      console.error('Failed to refresh cart:', error);
+      toast.error('Failed to refresh cart. Please try clearing and re-adding items.', {
+        id: 'refresh',
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleRemoveInvalidItems = async () => {
+    const { invalidItems, validationResults } = await validateCartProducts();
+    
+    console.log('Cart validation complete:', validationResults);
+    
+    if (invalidItems.length > 0) {
+      invalidItems.forEach(productId => {
+        removeFromCart(productId);
+      });
+      
+      const invalidDetails = validationResults
+        .filter(result => result.status !== 'VALID')
+        .map(result => `${result.name} (${result.status})`)
+        .join(', ');
+      
+      toast.success(`Removed ${invalidItems.length} invalid item(s): ${invalidDetails}`);
+    } else {
+      toast.success('All items in cart are valid and ready for checkout');
+    }
+  };
   const finalTotal = total + tax + shipping
 
   const handleInputChange = (field: keyof CheckoutForm, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleReceiptUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Please upload a valid file (JPG, PNG, or PDF)')
+        return
+      }
+      
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (file.size > maxSize) {
+        toast.error('File size should be less than 5MB')
+        return
+      }
+      
+      setPaymentReceipt(file)
+      toast.success('Payment receipt selected successfully')
+    }
+  }
+
+  const removeReceipt = () => {
+    setPaymentReceipt(null)
+    toast.success('Payment receipt removed')
   }
 
   const validateStep = (currentStep: string): boolean => {
@@ -101,15 +442,20 @@ const Checkout: React.FC = () => {
           formData.phone
         )
       case 'payment':
-        if (formData.paymentMethod === 'card') {
-          return !!(
-            formData.cardNumber &&
-            formData.expiryDate &&
-            formData.cvv &&
-            formData.nameOnCard
-          )
+        // For bank transfer, require receipt upload
+        if (formData.paymentMethod === 'bank_transfer') {
+          if (!paymentReceipt) {
+            toast.error('Please upload your payment receipt for bank transfers');
+            return false;
+          }
+          return true;
         }
-        return true
+        // For Flutterwave, no additional validation needed at this stage
+        else if (formData.paymentMethod === 'flutterwave') {
+          return true;
+        }
+        // For other payment methods, no additional validation needed at this stage
+        return true;
       default:
         return true
     }
@@ -141,18 +487,268 @@ const Checkout: React.FC = () => {
       toast.error('Please check your payment information')
       return
     }
+    
+    // Validate receipt upload for bank transfers
+    if (formData.paymentMethod === 'bank_transfer' && !paymentReceipt) {
+      toast.error('Please upload your payment receipt for bank transfers')
+      return
+    }
 
     setIsProcessing(true)
     try {
-      // Simulate order processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Log cart items for debugging
+      console.log('Cart items for order:', items.map(item => ({
+        id: item.id,
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        finalProductId: item.productId || item.id, // This is what we'll send
+        fullItem: item
+      })));
+
+      // Validate cart products before creating order
+      console.log('Pre-order validation...');
+      const { invalidItems, validationResults } = await validateCartProducts();
       
-      toast.success('Order placed successfully!')
-      navigate('/orders/confirmation')
-    } catch (error) {
-      toast.error('Failed to place order. Please try again.')
+      if (invalidItems.length > 0) {
+        const invalidDetails = validationResults
+          .filter(result => result.status !== 'VALID')
+          .map(result => `${result.name} (${result.status})`)
+          .join(', ');
+        
+        toast.error(`Cannot proceed: Invalid items found - ${invalidDetails}. Please use "Validate Cart" to remove them.`);
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log('All products validated successfully, proceeding with order creation...');
+
+      // Create the order with proper structure matching backend DTO
+      const orderData = {
+        items: items.map(item => ({
+          productId: item.productId || item.id,    // ✅ Use productId from cart, fallback to id
+          quantity: item.quantity                  // ✅ Removed price field
+        })),
+        deliveryAddress: {
+          phone: formData.phone || "+234XXXXXXXXX",     // ✅ Added required phone field
+          address: formData.address,                     // ✅ Changed from street to address
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.zipCode || '100001',      // ✅ Changed from zipCode to postalCode
+          country: formData.country
+          // ✅ Removed fullName field
+        },
+        orderNotes: formData.specialInstructions,        // ✅ Changed from specialInstructions to orderNotes
+        paymentMethod: formData.paymentMethod            // ✅ Added payment method field
+        // ✅ Removed shippingMethod (handle separately)
+      };
+
+      console.log('Sending order data:', JSON.stringify(orderData, null, 2));
+      
+      // Show enhanced progress message for potentially long operation
+      let progressToast: string | undefined;
+      progressToast = toast.loading('Creating your order... This may take up to 2 minutes.', {
+        duration: 120000 // Show for up to 2 minutes
+      });
+      
+      try {
+        // Create the order first with enhanced timeout handling
+        const orderResponse = await ordersApi.create(orderData);
+        
+        // Dismiss the progress toast on success
+        toast.dismiss(progressToast);
+        
+        if (orderResponse.success && orderResponse.data) {
+          const orderId = orderResponse.data.id;
+          console.log('Order created successfully:', orderId);
+        
+        // Store the order response for later use
+        setOrderResponse(orderResponse);
+        
+        // Handle payment method separately after order creation
+        if (formData.paymentMethod === 'bank_transfer') {
+          console.log('Initiating bank transfer payment...');
+          
+          try {
+            // Call the bank transfer initiation API
+            const paymentResponse = await paymentsApi.initiateBankTransfer({
+              orderId: orderId
+            });
+            
+            if (paymentResponse.success && paymentResponse.data) {
+              console.log('Bank transfer initiated successfully');
+              
+              // If user uploaded a receipt, upload it now
+              if (paymentReceipt) {
+                setUploadingReceipt(true);
+                try {
+                  console.log('Uploading payment receipt...');
+                  await paymentsApi.uploadReceipt(paymentReceipt, paymentResponse.data.reference);
+                  toast.success('Payment receipt uploaded successfully!');
+                  console.log('Receipt uploaded successfully');
+                } catch (receiptError: any) {
+                  console.error('Failed to upload receipt:', receiptError);
+                  
+                  // Handle specific error cases
+                  if (receiptError.response?.status === 404) {
+                    console.log('Payment reference not found - this is expected for new transfers');
+                    toast.success('Order created successfully! You can upload your receipt after making the payment.');
+                  } else {
+                    toast.error('Order created but failed to upload receipt. You can upload it later from the order details.');
+                  }
+                } finally {
+                  setUploadingReceipt(false);
+                }
+              }
+              
+              // Clear cart after successful bank transfer order creation
+              clearCart();
+              
+              // Navigate to bank transfer payment page with the payment details
+              const paymentData = encodeURIComponent(JSON.stringify(paymentResponse.data));
+              navigate(`/checkout/bank-transfer?orderId=${orderId}&paymentData=${paymentData}`);
+            } else {
+              console.error('Bank transfer initiation failed:', paymentResponse);
+              toast.error('Failed to initiate bank transfer. Please try again.');
+              // Clear cart even if bank transfer initiation failed, as order was created
+              clearCart();
+              navigate(`/orders/${orderId}`); // Fallback to order page
+            }
+          } catch (paymentError) {
+            console.error('Bank transfer initiation error:', paymentError);
+            toast.error('Order created successfully! Bank transfer details will be available in your order.');
+            // Clear cart as order was successfully created
+            clearCart();
+            navigate(`/orders/${orderId}`); // Fallback to order page
+          }
+        } else if (formData.paymentMethod === 'flutterwave') {
+          // Store the order response for later use in the review step
+          // Don't clear cart yet - wait for successful payment
+          
+          // Proceed to review step with Flutterwave payment
+          toast.success('Order created successfully! Please complete your payment.');
+          
+          // Set step to review with Flutterwave payment
+          if (step !== 'review') {
+            setStep('review');
+          }
+        } else {
+          // Handle other payment methods separately
+          clearCart();
+          toast.success('Order placed successfully!');
+          navigate(`/orders/confirmation?orderId=${orderId}`);
+        }
+      } else {
+        console.error('Order creation failed:', orderResponse);
+        toast.error(orderResponse.message || 'Failed to place order');
+      }
+      } catch (orderCreationError: any) {
+        // Dismiss the progress toast on error
+        toast.dismiss(progressToast);
+        
+        console.error('Order creation error:', orderCreationError);
+        
+        // Handle order creation specific errors
+        if (orderCreationError.code === 'ECONNABORTED' || orderCreationError.message?.includes('timeout')) {
+          console.log('⏰ Order creation timeout detected');
+          toast.error('⏰ Order creation is taking longer than expected. We\'re still processing your order in the background. Please check your orders page in a few minutes or contact support if the order doesn\'t appear.', {
+            duration: 12000,
+          });
+          
+          // Navigate to orders page where they can check if order was created
+          setTimeout(() => {
+            navigate('/orders');
+          }, 3000);
+          
+          return; // Exit early to avoid further error processing
+        }
+        
+        // Re-throw for outer catch to handle
+        throw orderCreationError;
+      }
+    } catch (error: any) {
+      console.error('Order creation error:', error);
+      
+      // Debug: Log the full error response for investigation
+      if (error.response) {
+        console.error('Full error response:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+        
+        // CRITICAL DEBUG: Log the exact backend error structure
+        console.error('🔥 BACKEND ERROR DETAILS:', JSON.stringify(error.response.data, null, 2));
+      }
+      
+      // Extract specific error message from API response  
+      let errorMessage = 'Failed to place order. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+        console.log('API Error Message:', errorMessage);
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // ✅ Enhanced timeout error handling
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        console.log('⏰ Order creation timeout detected');
+        toast.error('⏰ Order creation is taking longer than expected. We\'re still processing your order in the background. Please check your orders page in a few minutes or contact support if the order doesn\'t appear.', {
+          duration: 12000,
+        });
+        
+        // Navigate to orders page where they can check if order was created
+        setTimeout(() => {
+          navigate('/orders');
+        }, 3000);
+        
+        return; // Exit early to avoid further error processing
+      }
+      
+      // Show specific error to user with actionable solutions based on backend fixes
+      if (errorMessage.includes('products not found') || errorMessage.includes('inactive')) {
+        // ✅ Enhanced error handling for backend product validation
+        toast.error('⚠️ Some products in your cart are no longer available or have changed. Please validate or refresh your cart.', {
+          duration: 8000,
+        });
+        console.log('Backend validation failed - suggests products have changed since being added to cart');
+        console.log('User should use the Validate Cart or Clear Cart buttons to resolve this');
+      } else if (errorMessage.includes('field') && errorMessage.includes('required')) {
+        // ✅ Handle backend field validation errors
+        toast.error('Missing required information. Please check all form fields and try again.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('status') && errorMessage.includes('PENDING')) {
+        // ✅ Handle backend status validation
+        toast.error('Order processing error. Please contact support if this persists.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('database') || errorMessage.includes('constraint')) {
+        // ✅ Handle database constraint errors from backend
+        toast.error('System error occurred. Please try again or contact support.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('stock')) {
+        toast.error('Some items in your cart are out of stock. Please update quantities or remove them.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('address') || errorMessage.includes('delivery')) {
+        toast.error('Please check your delivery address information and try again.', {
+          duration: 6000,
+        });
+      } else if (errorMessage.includes('phone')) {
+        // ✅ Handle phone validation errors
+        toast.error('Please provide a valid phone number for delivery.', {
+          duration: 6000,
+        });
+      } else {
+        toast.error(`Order failed: ${errorMessage}`, {
+          duration: 6000,
+        });
+      }
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
   }
 
@@ -381,8 +977,14 @@ const Checkout: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Method</h3>
                 <div className="space-y-4">
                   {[
+
+                    { key: 'standard', name: 'Local Pickup', time: '5-7 business days', price: 0 },
+                    { key: 'express', name: 'Delivery Fee to Park', time: '2-3 business days', price: 500 },
+                    
+
                     { key: 'standard', name: 'Local pick up within Abeokuta', time: '5-7 business days', price: 0 },
                     { key: 'express', name: 'Delivery fee to park', time: '2-3 business days', price: 500 },
+
                   ].map((method) => (
                     <label key={method.key} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
                       <input
@@ -426,97 +1028,209 @@ const Checkout: React.FC = () => {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Payment Method</h3>
                 <div className="space-y-3">
-                  {[
-                    { key: 'card', name: 'Credit/Debit Card', icon: CreditCard },
-                    { key: 'paypal', name: 'PayPal', icon: CreditCard },
-                    { key: 'apple_pay', name: 'Apple Pay', icon: CreditCard }
-                  ].map((method) => (
-                    <label key={method.key} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value={method.key}
-                        checked={formData.paymentMethod === method.key}
-                        onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <method.icon className="ml-3 w-5 h-5 text-gray-400" />
-                      <span className="ml-3 font-medium text-gray-900">{method.name}</span>
-                    </label>
-                  ))}
+                  <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="flutterwave"
+                      checked={formData.paymentMethod === 'flutterwave'}
+                      onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <div className="ml-3 w-5 h-5 flex items-center justify-center">
+                      <svg width="20" height="20" viewBox="0 0 220 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M32.6 0L0 18.6V36.1L32.6 54L65.3 36.1V18.6L32.6 0Z" fill="#F5A623"/>
+                        <path d="M120 17.2H132.4C142.4 17.2 148.1 23.1 148.1 31.8C148.1 40.5 142.4 46.4 132.4 46.4H120V17.2ZM132.3 41.1C139.2 41.1 142.7 37.4 142.7 31.8C142.7 26.2 139.2 22.5 132.3 22.5H125.4V41.1H132.3Z" fill="#10122B"/>
+                        <path d="M186.1 17.2H191.5V46.4H186.4V26.7L180.3 43.1H176.4L170.3 26.7V46.4H165.2V17.2H170.6L178.4 35.1L186.1 17.2Z" fill="#10122B"/>
+                        <path d="M73.3 46.4H69L82.1 17.2H86.7L99.8 46.4H95.4L91.9 38.5H76.8L73.3 46.4ZM78.6 33.2H90.1L84.3 19.2L78.6 33.2Z" fill="#10122B"/>
+                        <path d="M205 25.3V46.4H199.5V17.2H204.5L217.6 38.2V17.2H223.1V46.4H218.1L205 25.3Z" fill="#10122B"/>
+                      </svg>
+                    </div>
+                    <span className="ml-3 font-medium text-gray-900">Flutterwave</span>
+                    <span className="ml-auto text-sm text-gray-500">Credit/Debit Card, Bank Transfer, USSD, etc.</span>
+                  </label>
+                  
+                  <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="bank_transfer"
+                      checked={formData.paymentMethod === 'bank_transfer'}
+                      onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <CreditCard className="ml-3 w-5 h-5 text-blue-600" />
+                    <span className="ml-3 font-medium text-gray-900">Bank Transfer</span>
+                  </label>
                 </div>
+                
+             
+
+                {/* Show Bank Accounts Preview */}
+                {bankAccounts.length > 0 ? (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Available Bank Accounts Preview</h4>
+                    <div className="space-y-2">
+                      {bankAccounts.slice(0, 2).map((account, index) => (
+                        <div key={`${account.bankName}-${index}`} className="p-3 bg-gray-50 rounded-lg text-sm">
+                          <div className="font-medium text-gray-900">{account.bankName}</div>
+                          <div className="text-gray-600">{account.accountName}</div>
+                          <div className="flex items-center justify-between group">
+                            <span className="text-gray-600">Account: {account.accountNumber}</span>
+                            <button
+                              onClick={() => copyToClipboard(account.accountNumber, 'Account number')}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-200 rounded"
+                              title="Copy account number"
+                            >
+                              <Copy className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                            </button>
+                          </div>
+                          {account.sortCode && (
+                            <div className="flex items-center justify-between group">
+                              <span className="text-gray-600">Sort Code: {account.sortCode}</span>
+                              <button
+                                onClick={() => copyToClipboard(account.sortCode, 'Sort code')}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-200 rounded"
+                                title="Copy sort code"
+                              >
+                                <Copy className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                              </button>
+                            </div>
+                          )}
+                          {account.swiftCode && (
+                            <div className="flex items-center justify-between group">
+                              <span className="text-gray-600">Swift Code: {account.swiftCode}</span>
+                              <button
+                                onClick={() => copyToClipboard(account.swiftCode, 'Swift code')}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-200 rounded"
+                                title="Copy swift code"
+                              >
+                                <Copy className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                              </button>
+                            </div>
+                          )}
+                          <div className="text-gray-500 text-xs">Currency: {account.currency}</div>
+                        </div>
+                      ))}
+                      {bankAccounts.length > 2 && (
+                        <div className="text-sm text-gray-500 pl-3">
+                          +{bankAccounts.length - 2} more account(s) available
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : !loadingBankAccounts ? (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 text-yellow-600" />
+                      <span className="text-yellow-800">No bank accounts available. Bank details will be provided after order creation.</span>
+                    </div>
+                  </div>
+                ) : null}
+
+                {loadingBankAccounts && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                    Loading bank account details...
+                  </div>
+                )}
               </div>
 
-              {/* Card Details */}
-              {formData.paymentMethod === 'card' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Card Number *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cardNumber}
-                      onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="1234 5678 9012 3456"
-                    />
-                  </div>
+              {/* Order Notes */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order Notes (Optional)
+                </label>
+                <textarea
+                  value={formData.specialInstructions}
+                  onChange={(e) => handleInputChange('specialInstructions', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={4}
+                  placeholder="Add any special instructions or notes for your order..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  You can include delivery preferences, gift messages, or any other special requests.
+                </p>
+              </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Expiry Date *
-                      </label>
+              {/* Payment Receipt Upload */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Receipt (Optional)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  {!paymentReceipt ? (
+                    <div className="text-center">
                       <input
-                        type="text"
-                        value={formData.expiryDate}
-                        onChange={(e) => handleInputChange('expiryDate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="MM/YY"
+                        type="file"
+                        id="receipt-upload"
+                        accept="image/*,.pdf"
+                        onChange={handleReceiptUpload}
+                        className="hidden"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        CVV *
+                      <label
+                        htmlFor="receipt-upload"
+                        className="cursor-pointer flex flex-col items-center space-y-2"
+                      >
+                        <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                          <CreditCard className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-600 hover:text-blue-500">
+                            Click to upload payment receipt
+                          </span>
+                          <p className="text-gray-500 mt-1">or drag and drop</p>
+                        </div>
+                        <p className="text-xs text-gray-400">
+                          JPG, PNG or PDF (max 5MB)
+                        </p>
                       </label>
-                      <input
-                        type="text"
-                        value={formData.cvv}
-                        onChange={(e) => handleInputChange('cvv', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="123"
-                      />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-green-900">{paymentReceipt.name}</p>
+                          <p className="text-xs text-green-700">
+                            {(paymentReceipt.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={removeReceipt}
+                        className="text-red-600 hover:text-red-800 p-1"
+                        title="Remove receipt"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {formData.paymentMethod === 'bank_transfer' ? (
+                    <span className="text-red-600 font-medium">
+                      Payment receipt upload is mandatory for bank transfers. Your order cannot be processed without proof of payment.
+                    </span>
+                  ) : (
+                    "Upload your payment receipt for faster order processing. You can also upload it later from your order details."
+                  )}
+                </p>
+              </div>
 
+              {/* Confirmation Note */}
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Name on Card *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.nameOnCard}
-                      onChange={(e) => handleInputChange('nameOnCard', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="John Doe"
-                    />
-                  </div>
-
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.saveCard}
-                      onChange={(e) => handleInputChange('saveCard', e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <label className="ml-2 text-sm text-gray-700">
-                      Save this card for future purchases
-                    </label>
+                    <h4 className="text-sm font-medium text-green-800 mb-2">Ready for Bank Transfer</h4>
+                    <p className="text-sm text-green-700">
+                      Your order will be processed using bank transfer. Complete payment details will be provided after order confirmation.
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="mt-8 flex items-center justify-between">
                 <Button variant="outline" onClick={handleBack}>
@@ -534,6 +1248,47 @@ const Checkout: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Review Your Order</h2>
               
+              {/* Cart Management */}
+              {/* <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-yellow-800 mb-1">Cart Management</h3>
+                    <p className="text-xs text-yellow-700">
+                      Having issues with your order? Validate, refresh, or clear your cart
+                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshCartFromBackend}
+                      className="text-blue-700 border-blue-300 hover:bg-blue-100 flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Refresh
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveInvalidItems}
+                      className="text-yellow-700 border-yellow-300 hover:bg-yellow-100 flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Validate
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearCart}
+                      className="text-red-700 border-red-300 hover:bg-red-100 flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Clear Cart
+                    </Button>
+                  </div>
+                </div>
+              </div> */}
+              
               {/* Order Items */}
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Order Items</h3>
@@ -544,15 +1299,16 @@ const Checkout: React.FC = () => {
                     }
                     
                     return (
-                      <div key={item.id || item.productId || 'unknown'} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                      <div key={item.productId || item.id || 'unknown'} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                         <img
-                          src={typeof item.image === 'string' ? item.image : '/api/placeholder/60/60'}
+                          src={parseProductImage(item.image)}
                           alt={item.name || 'Product'}
                           className="w-12 h-12 object-cover rounded"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = '/api/placeholder/60/60';
                           }}
+                          
                         />
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{item.name || 'Unknown Product'}</p>
@@ -578,6 +1334,102 @@ const Checkout: React.FC = () => {
                 </p>
               </div>
 
+              {/* Payment Information */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Payment Information</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Payment Method:</span>
+                    <span className="text-gray-900 font-medium">
+                      {formData.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 
+                       formData.paymentMethod === 'flutterwave' ? 'Flutterwave' : 
+                       formData.paymentMethod}
+                    </span>
+                  </div>
+                  
+                  {formData.paymentMethod === 'bank_transfer' && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Payment Receipt:</span>
+                      <span className={`font-medium ${paymentReceipt ? 'text-green-600' : 'text-gray-500'}`}>
+                        {paymentReceipt ? (
+                          <div className="flex items-center space-x-1">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Uploaded</span>
+                          </div>
+                        ) : (
+                          'Not uploaded'
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {formData.paymentMethod === 'flutterwave' && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Status:</span>
+                      <span className="text-purple-600 font-medium">Ready for payment</span>
+                    </div>
+                  )}
+                  
+                  {formData.specialInstructions && (
+                    <div className="pt-2 border-t border-gray-200">
+                      <span className="text-gray-600">Special Instructions:</span>
+                      <p className="text-gray-900 mt-1">{formData.specialInstructions}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Flutterwave Payment Button */}
+              {step === 'review' && formData.paymentMethod === 'flutterwave' && orderResponse?.data?.id && (
+                <div className="mb-6">
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg mb-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <svg width="24" height="24" viewBox="0 0 220 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M32.6 0L0 18.6V36.1L32.6 54L65.3 36.1V18.6L32.6 0Z" fill="#F5A623"/>
+                          <path d="M120 17.2H132.4C142.4 17.2 148.1 23.1 148.1 31.8C148.1 40.5 142.4 46.4 132.4 46.4H120V17.2ZM132.3 41.1C139.2 41.1 142.7 37.4 142.7 31.8C142.7 26.2 139.2 22.5 132.3 22.5H125.4V41.1H132.3Z" fill="#10122B"/>
+                          <path d="M186.1 17.2H191.5V46.4H186.4V26.7L180.3 43.1H176.4L170.3 26.7V46.4H165.2V17.2H170.6L178.4 35.1L186.1 17.2Z" fill="#10122B"/>
+                          <path d="M73.3 46.4H69L82.1 17.2H86.7L99.8 46.4H95.4L91.9 38.5H76.8L73.3 46.4ZM78.6 33.2H90.1L84.3 19.2L78.6 33.2Z" fill="#10122B"/>
+                          <path d="M205 25.3V46.4H199.5V17.2H204.5L217.6 38.2V17.2H223.1V46.4H218.1L205 25.3Z" fill="#10122B"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-purple-800">Ready to Complete Your Payment</h4>
+                        <p className="text-sm text-purple-700 mt-1">
+                          Click the button below to proceed with your payment via Flutterwave's secure gateway.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <FlutterwavePayment
+                    amount={finalTotal}
+                    email={formData.email}
+                    name={`${formData.firstName} ${formData.lastName}`}
+                    phone={formData.phone}
+                    orderId={orderResponse.data.id}
+                    onSuccess={(transactionId, txRef) => {
+                      clearCart(); // Clear cart after successful payment
+                      toast.success('🎉 Payment successful! Thank you for your order!');
+                      console.log('💳 Payment completed successfully:', { transactionId, txRef, orderId: orderResponse?.data?.id });
+                      
+                      // Optional: You can also navigate to order confirmation instead of home
+                      // navigate(`/orders/confirmation?orderId=${orderResponse?.data?.id}`);
+                    }}
+                    onFailure={(error) => {
+                      console.error('🚨 Flutterwave payment error:', error);
+                      
+                      // More specific error messages
+                      if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+                        toast.error('⚠️ Payment completed but verification timed out. Please check your order status or contact support.');
+                      } else {
+                        toast.error('Payment failed. Please try again or use another payment method.');
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Security Notice */}
               <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-start space-x-3">
@@ -585,7 +1437,7 @@ const Checkout: React.FC = () => {
                   <div>
                     <h4 className="text-sm font-medium text-blue-800">Secure Checkout</h4>
                     <p className="text-sm text-blue-700 mt-1">
-                      Your payment information is encrypted and secure. We never store your card details.
+                      Your order information is encrypted and secure. Bank transfer details will be provided securely.
                     </p>
                   </div>
                 </div>
@@ -595,13 +1447,15 @@ const Checkout: React.FC = () => {
                 <Button variant="outline" onClick={handleBack}>
                   Back to Payment
                 </Button>
-                <Button 
-                  onClick={handlePlaceOrder} 
-                  disabled={isProcessing}
-                  className="min-w-[150px]"
-                >
-                  {isProcessing ? 'Processing...' : `Place Order • ${formatCurrency(finalTotal)}`}
-                </Button>
+                {formData.paymentMethod !== 'flutterwave' || !orderResponse ? (
+                  <Button 
+                    onClick={handlePlaceOrder} 
+                    disabled={isProcessing}
+                    className="min-w-[150px]"
+                  >
+                    {isProcessing ? 'Processing...' : `Place Order • ${formatCurrency(finalTotal)}`}
+                  </Button>
+                ) : null}
               </div>
             </div>
           )}
@@ -621,7 +1475,7 @@ const Checkout: React.FC = () => {
                   }
                   
                   return (
-                    <div key={item.id || item.productId || 'unknown'} className="flex items-center justify-between text-sm">
+                    <div key={item.productId || item.id || 'unknown'} className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-2">
                         <span className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs">
                           {item.quantity || 1}
@@ -650,10 +1504,12 @@ const Checkout: React.FC = () => {
                     {shipping === 0 ? 'Free' : formatCurrency(shipping)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="text-gray-900">{formatCurrency(tax)}</span>
-                </div>
+                {tax > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tax</span>
+                    <span className="text-gray-900">{formatCurrency(tax)}</span>
+                  </div>
+                )}
                 <hr className="my-2" />
                 <div className="flex justify-between text-lg font-semibold">
                   <span className="text-gray-900">Total</span>
@@ -665,15 +1521,15 @@ const Checkout: React.FC = () => {
               <div className="mt-6 space-y-3">
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Shield className="w-4 h-4 text-green-600" />
-                  <span>SSL Encrypted Checkout</span>
+                  <span>Secure Bank Transfer</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Truck className="w-4 h-4 text-blue-600" />
                   <span>Free Returns within 30 days</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Gift className="w-4 h-4 text-purple-600" />
-                  <span>Gift wrapping available</span>
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>Fast Payment Verification</span>
                 </div>
               </div>
             </div>
