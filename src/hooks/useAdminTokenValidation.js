@@ -9,7 +9,7 @@ const useAdminTokenValidation = (token) => {
   const [adminUser, setAdminUser] = useState(null);
   const [error, setError] = useState(null);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1  ';
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1  ';
 
   const validateAdminTokenOnServer = async () => {
     if (!token) {

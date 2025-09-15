@@ -1,49 +1,48 @@
-import { get, patch } from './apiClient';
-import type { PaginatedResponse } from './apiClient';
+import { get, put, post } from './apiClient';
 
-// Support ticket types for admin interface based on API documentation
 export interface AdminSupportTicket {
   id: string;
   subject: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
+  assignedTo?: string | null;
   user: {
-    id?: string;
-    fullName: string;
-    email: string;
-    phone?: string | null;
-  };
-  messages?: Array<{
     id: string;
-    content: string;
-    isFromCustomer: boolean;
+    email: string;
+    fullName: string;
+    phone?: string;
+  };
+  messages: Array<{
+    id: string;
+    message: string;
+    isAdmin: boolean;
     createdAt: string;
-    author: {
-      name: string;
+    sender: {
+      id: string;
       email: string;
+      fullName: string;
     };
   }>;
-  assignedTo?: string | null;
+  _count: {
+    messages: number;
+  };
 }
 
 export interface AdminSupportTicketDetail {
-  chat: {
+  id: string;
+  subject: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  createdAt: string;
+  updatedAt: string;
+  assignedTo?: string | null;
+  user: {
     id: string;
-    userId: string;
-    assignedTo: string | null;
-    subject: string;
-    status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
-    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-    createdAt: string;
-    updatedAt: string;
-    user: {
-      id: string;
-      fullName: string;
-      email: string;
-      phone: string | null;
-    };
+    email: string;
+    fullName: string;
+    phone?: string;
   };
   messages: Array<{
     id: string;
@@ -53,57 +52,128 @@ export interface AdminSupportTicketDetail {
     isAdmin: boolean;
     createdAt: string;
     sender: {
+      id: string;
+      email: string;
       fullName: string;
     };
   }>;
-  relatedOrders: Array<{
-    id: string;
-    totalAmount: string;
-    status: string;
-    createdAt: string;
-  }>;
 }
 
-export interface UpdateSupportTicketStatusDto {
+export interface UpdateTicketStatusDto {
   status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
-  assignedTo?: string;
-  addMessage?: string;
+  notes?: string;
 }
 
-export interface ReplySupportTicketDto {
+export interface AssignTicketDto {
+  supportUserId: string;
+}
+
+export interface SendMessageDto {
   message: string;
-  updateStatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 }
 
-export interface AdminSupportFilters {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  status?: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
-  assignedTo?: string;
+export interface SupportStats {
+  totalChats: number;
+  openChats: number;
+  inProgressChats: number;
+  closedChats: number;
+  highPriorityChats: number;
+  chatsByPriority: {
+    LOW: number;
+    MEDIUM: number;
+    HIGH: number;
+  };
 }
 
 const adminSupportApi = {
   /**
-   * Get all support tickets with admin view
-   * GET /admin/support/tickets
+   * Get all support tickets with filtering and pagination
+   * GET /api/v1/admin/support/tickets
    */
-  getTickets: async (filters?: AdminSupportFilters): Promise<PaginatedResponse<AdminSupportTicket>> => {
+  getTickets: async (
+    page: number = 1,
+    limit: number = 20,
+    status?: string,
+    priority?: string
+  ): Promise<{ 
+    chats: AdminSupportTicket[]; 
+    pagination: { 
+      page: number; 
+      limit: number; 
+      total: number; 
+      totalPages: number; 
+    } 
+  }> => {
     try {
-      const response = await get<PaginatedResponse<AdminSupportTicket>>('/admin/support/tickets', {
-        params: filters
-      });
+      // Build query parameters correctly
+      const params: Record<string, any> = {
+        page: page.toString(),
+        limit: limit.toString()
+      };
       
-      console.log('AdminSupportApi: Raw response:', response.data);
+      if (status) params.status = status;
+      if (priority) params.priority = priority;
+
+      const url = `/admin/support/tickets`;
+      const response = await get<{ 
+        chats: AdminSupportTicket[]; 
+        pagination: { 
+          page: number; 
+          limit: number; 
+          total: number; 
+          totalPages: number; 
+        } 
+      }>(url, { params });
+
+      // Debug the response
+      console.log('Raw API response:', response);
       
-      if (response.data) {
-        return response.data;
+      // Since the apiClient interceptor already returns response.data, we need to check the actual structure
+      // The API returns a SuccessResponseDto with { success: true, message: string, data: { chats: ..., pagination: ... }, timestamp: string }
+      if (response && typeof response === 'object' && 'success' in response && response.success === true && 'data' in response) {
+        // Extract the actual data from the response
+        const responseData = response.data;
+        
+        // Check if the data has the expected structure
+        if (responseData && typeof responseData === 'object' && 'chats' in responseData && 'pagination' in responseData) {
+          return responseData as unknown as { 
+            chats: AdminSupportTicket[]; 
+            pagination: { 
+              page: number; 
+              limit: number; 
+              total: number; 
+              totalPages: number; 
+            } 
+          };
+        } else {
+          throw new Error('Unexpected data structure in response');
+        }
+      } else if (response && typeof response === 'object' && 'chats' in response && 'pagination' in response) {
+        // Handle case where response is already the data object (legacy format)
+        return response as unknown as { 
+          chats: AdminSupportTicket[]; 
+          pagination: { 
+            page: number; 
+            limit: number; 
+            total: number; 
+            totalPages: number; 
+          } 
+        };
       } else {
-        throw new Error('No data received from server');
+        // Handle case where response.data is the actual chats array directly
+        // This might happen if the API structure has changed
+        if (Array.isArray(response)) {
+          return {
+            chats: response as unknown as AdminSupportTicket[],
+            pagination: {
+              page: 1,
+              limit: response.length,
+              total: response.length,
+              totalPages: 1
+            }
+          };
+        }
+        throw new Error('Unexpected response structure from server');
       }
     } catch (error: any) {
       console.error('Error fetching support tickets:', error);
@@ -112,34 +182,38 @@ const adminSupportApi = {
   },
 
   /**
-   * Get support ticket by ID
-   * GET /admin/support/tickets/:id
+   * Get support ticket details
+   * GET /api/v1/customer-support/chat/:chatId
    */
-  getTicketById: async (id: string): Promise<AdminSupportTicketDetail> => {
+  getTicket: async (ticketId: string): Promise<AdminSupportTicketDetail> => {
     try {
-      const response = await get<AdminSupportTicketDetail>(`/admin/support/tickets/${id}`);
+      const response = await get<AdminSupportTicketDetail>(`/customer-support/chat/${ticketId}`);
       
-      if (response.data) {
-        return response.data;
+      // Since the apiClient interceptor already returns response.data, we can directly return it
+      // Check if it's a success response
+      if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        return response as unknown as AdminSupportTicketDetail;
       } else {
-        throw new Error('Failed to fetch support ticket');
+        throw new Error('Failed to fetch ticket details');
       }
     } catch (error: any) {
-      console.error('Error fetching support ticket:', error);
-      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch support ticket');
+      console.error('Error fetching ticket details:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch ticket details');
     }
   },
 
   /**
    * Update support ticket status
-   * PUT /admin/support/tickets/:id/status
+   * PUT /api/v1/admin/support/tickets/:id/status
    */
-  updateTicketStatus: async (id: string, data: UpdateSupportTicketStatusDto): Promise<AdminSupportTicket> => {
+  updateTicketStatus: async (ticketId: string, statusData: UpdateTicketStatusDto): Promise<any> => {
     try {
-      const response = await patch<AdminSupportTicket>(`/admin/support/tickets/${id}/status`, data);
+      const response = await put(`/admin/support/tickets/${ticketId}/status`, statusData);
       
-      if (response.data) {
-        return response.data;
+      // Since the apiClient interceptor already returns response.data, we can directly return it
+      // Check if it's a success response
+      if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        return response;
       } else {
         throw new Error('Failed to update ticket status');
       }
@@ -151,14 +225,16 @@ const adminSupportApi = {
 
   /**
    * Assign ticket to support staff
-   * PUT /admin/support/tickets/:id/assign
+   * PUT /api/v1/admin/support/tickets/:id/assign
    */
-  assignTicket: async (id: string, assignedTo: string): Promise<AdminSupportTicket> => {
+  assignTicket: async (ticketId: string, assignData: AssignTicketDto): Promise<any> => {
     try {
-      const response = await patch<AdminSupportTicket>(`/admin/support/tickets/${id}/assign`, { assignedTo });
+      const response = await put(`/admin/support/tickets/${ticketId}/assign`, assignData);
       
-      if (response.data) {
-        return response.data;
+      // Since the apiClient interceptor already returns response.data, we can directly return it
+      // Check if it's a success response
+      if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        return response;
       } else {
         throw new Error('Failed to assign ticket');
       }
@@ -170,68 +246,43 @@ const adminSupportApi = {
 
   /**
    * Get support statistics
-   * GET /admin/support/stats
+   * GET /api/v1/admin/support/stats
    */
-  getStats: async (): Promise<{
-    total: number;
-    open: number;
-    inProgress: number;
-    resolved: number;
-    urgent: number;
-  }> => {
+  getStats: async (): Promise<SupportStats> => {
     try {
-      const response = await get<{
-        total: number;
-        open: number;
-        inProgress: number;
-        resolved: number;
-        urgent: number;
-      }>('/admin/support/stats');
+      const response = await get<SupportStats>('/admin/support/stats');
       
-      if (response.data) {
-        return response.data;
+      // Since the apiClient interceptor already returns response.data, we can directly return it
+      // Check if it's a success response
+      if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        return response as unknown as SupportStats;
       } else {
-        // Fallback to calculating stats from tickets
-        return adminSupportApi.getTicketStats();
+        throw new Error('Failed to fetch support stats');
       }
     } catch (error: any) {
       console.error('Error fetching support stats:', error);
-      // Fallback to calculating stats from tickets
-      return adminSupportApi.getTicketStats();
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch support stats');
     }
   },
 
   /**
-   * Get support ticket statistics
+   * Send message to support ticket
+   * POST /api/v1/customer-support/chat/:chatId/message
    */
-  getTicketStats: async (): Promise<{
-    total: number;
-    open: number;
-    inProgress: number;
-    resolved: number;
-    urgent: number;
-  }> => {
+  sendMessage: async (ticketId: string, messageData: SendMessageDto): Promise<any> => {
     try {
-      // Fetch all tickets to calculate stats
-      const response = await adminSupportApi.getTickets({ limit: 1000 });
-      const tickets = response.data || [];
-
-      return {
-        total: tickets.length,
-        open: tickets.filter(t => t.status === 'OPEN').length,
-        inProgress: tickets.filter(t => t.status === 'IN_PROGRESS').length,
-        resolved: tickets.filter(t => t.status === 'CLOSED').length,
-        urgent: tickets.filter(t => t.priority === 'HIGH').length,
-      };
+      const response = await post<any>(`/customer-support/chat/${ticketId}/message`, messageData);
+      
+      // Since the apiClient interceptor already returns response.data, we can directly return it
+      // Check if it's a success response
+      if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        return response;
+      } else {
+        throw new Error('Failed to send message');
+      }
     } catch (error: any) {
-      console.error('Error fetching ticket stats:', error);
-      return {
-        total: 0,
-        open: 0,
-        inProgress: 0,
-        resolved: 0,
-        urgent: 0,
-      };
+      console.error('Error sending message:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to send message');
     }
   }
 };

@@ -29,18 +29,13 @@ const Wishlist: React.FC = () => {
     removeFromWishlist 
   } = useWishlist()
 
+  // Debug function for development
+  const debugRefetch = () => {
+    console.log('Manual debug refetch triggered')
+    loadWishlist(true) // Force reload for debugging
+  }
+
   useEffect(() => {
-
-    // The useWishlist hook already handles loading on authentication change
-    // No need to duplicate the call here
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Wishlist component mounted')
-      console.log('Debug refetch function available via window.debugWishlist')
-      // @ts-ignore - Adding to window for debugging
-      window.debugWishlist = () => {
-        console.log('Manual debug refetch triggered')
-        loadWishlist(true) // Force reload for debugging
-
     if (isAuthenticated) {
       console.log('Wishlist component mounted, fetching wishlist...')
       loadWishlist()
@@ -50,13 +45,9 @@ const Wishlist: React.FC = () => {
         console.log('Debug refetch function available via window.debugWishlist')
         // @ts-ignore - Adding to window for debugging
         window.debugWishlist = debugRefetch
-
       }
     }
-
-  }, []) // Empty dependency array to run only on mount
-
-  }, [isAuthenticated, loadWishlist]) // Remove debugRefetch from dependency array
+  }, [isAuthenticated, loadWishlist])
 
   const handleRemoveItem = async (itemId: string) => {
     setRemovingItems(prev => new Set(prev).add(itemId))

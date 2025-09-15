@@ -53,7 +53,7 @@ const SupportTicketChat: React.FC<SupportTicketChatProps> = ({ ticketId, onBack 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || newMessage.length > 1000) return;
 
     try {
       setSendingMessage(true);
@@ -123,13 +123,23 @@ const SupportTicketChat: React.FC<SupportTicketChatProps> = ({ ticketId, onBack 
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffInDays = diffInHours / 24;
     
-    if (diffInHours < 24) {
+    if (diffInDays < 1) {
+      // Today - show time only
       return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit'
       });
+    } else if (diffInDays < 7) {
+      // This week - show day and time
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     } else {
+      // Older - show date and time
       return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -263,33 +273,60 @@ const SupportTicketChat: React.FC<SupportTicketChatProps> = ({ ticketId, onBack 
       {/* Messages */}
       <div className="flex-1 px-4 py-5 sm:p-6 overflow-y-auto min-h-0" style={{ maxHeight: '400px' }}>
         <div className="space-y-4">
-          {ticket.messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isAdmin ? 'justify-start' : 'justify-end'}`}
-            >
-              <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
-                message.isAdmin 
-                  ? 'bg-gray-100 text-gray-900' 
-                  : 'bg-indigo-600 text-white'
-              }`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  {message.isAdmin ? (
-                    <Headphones className="h-4 w-4" />
-                  ) : (
-                    <User className="h-4 w-4" />
+          {ticket.messages.map((message, index) => (
+            <React.Fragment key={message.id}>
+              <div
+                className={`flex ${message.isAdmin ? 'justify-start' : 'justify-end'}`}
+              >
+                <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+                  message.isAdmin 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'bg-indigo-600 text-white'
+                }`}>
+                  <div className="flex items-center space-x-2 mb-2">
+                    {message.isAdmin ? (
+                      <Headphones className="h-4 w-4" />
+                    ) : (
+                      <User className="h-4 w-4" />
+                    )}
+                    <span className="text-xs font-medium">
+                      {message.isAdmin ? 'Support Team' : 'You'}
+                    </span>
+                    <span className={`text-xs ${message.isAdmin ? 'text-gray-500' : 'text-indigo-200'}`}>
+                      {formatMessageTime(message.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                  {message.isAdmin && (
+                    <div className="mt-2 text-xs text-gray-500 flex items-center">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Verified Support Staff
+                    </div>
                   )}
-                  <span className="text-xs font-medium">
-                    {message.isAdmin ? 'Support Team' : 'You'}
-                  </span>
-                  <span className={`text-xs ${message.isAdmin ? 'text-gray-500' : 'text-indigo-200'}`}>
-                    {formatMessageTime(message.createdAt)}
-                  </span>
                 </div>
-                <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+              </div>
+              {/* Add a visual separator between messages from different senders */}
+              {index < ticket.messages.length - 1 && 
+               ticket.messages[index + 1].isAdmin !== message.isAdmin && (
+                <div className="flex justify-center">
+                  <div className="h-px bg-gray-200 w-full my-2"></div>
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+          {/* Show a "sending" indicator when a message is being sent */}
+          {sendingMessage && newMessage.trim() && (
+            <div className="flex justify-end">
+              <div className="max-w-xs lg:max-w-md px-4 py-3 rounded-lg bg-indigo-600 text-white opacity-70">
+                <div className="flex items-center space-x-2 mb-2">
+                  <User className="h-4 w-4" />
+                  <span className="text-xs font-medium">You</span>
+                  <span className="text-xs text-indigo-200">Sending...</span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{newMessage}</p>
               </div>
             </div>
-          ))}
+          )}
         </div>
         <div ref={messagesEndRef} />
       </div>
@@ -313,13 +350,18 @@ const SupportTicketChat: React.FC<SupportTicketChatProps> = ({ ticketId, onBack 
                   }
                 }}
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Press Enter to send, Shift+Enter for new line
-              </p>
+              <div className="flex justify-between mt-1">
+                <p className="text-xs text-gray-500">
+                  Press Enter to send, Shift+Enter for new line
+                </p>
+                <p className="text-xs text-gray-500">
+                  {newMessage.length}/1000
+                </p>
+              </div>
             </div>
             <button
               type="submit"
-              disabled={sendingMessage || !newMessage.trim()}
+              disabled={sendingMessage || !newMessage.trim() || newMessage.length > 1000}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {sendingMessage ? (

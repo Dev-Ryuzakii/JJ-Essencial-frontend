@@ -1,20 +1,10 @@
 import { post, get, patch } from './apiClient';
-import type { SuccessResponseDto, ErrorResponseDto } from '../types';
+import type { SuccessResponseDto, ErrorResponseDto, ApiResponse } from '../types';
 
 // Make sure we're using the correct apiClient and not importing anything from Supabase
 console.log('authApi.ts: Loaded - using backend API client only, NO SUPABASE');
 
-
-// Utility function to handle API response types safely
-const handleApiResponse = <T>(response: any): T => {
-  if (response.success && response.data) {
-    return response.data;
-  }
-  throw new Error(response.error?.message || 'API request failed');
-};
-
 // User profile response structure
-// User profile response structure - Updated to match NestJS backe
 export interface UserProfile {
   id: string;
   email: string;
@@ -53,24 +43,29 @@ export interface ProfileUpdateData {
   fullName: string;
 }
 
+// Utility function to handle API response types safely
+const handleApiResponse = <T>(response: ApiResponse<T>): T => {
+  if ('success' in response && response.success && 'data' in response) {
+    return response.data;
+  }
+  throw new Error('API request failed');
+};
+
 // Admin-specific auth functions - Uses dedicated admin endpoints with /api/v1
 export const adminAuthApi = {
-
+  /**
+   * Admin signin - Updated for NestJS backend
+   */
   signin: async (data: SignInData): Promise<AuthResponse> => {
-    console.log('Admin signin: Using /auth/admin-signin endpoint');
+    console.log('Admin signin: Using /auth/admin/signin endpoint');
     
     try {
-
-      // Use the dedicated admin signin endpoint
-      const response = await post<{access_token: string; user: UserProfile}>('/auth/admin/signin', data);
-
       // Use the NestJS admin signin endpoint
-      const response = await post<AuthResponse>('/auth/admin-signin', data);
+      const response = await post<AuthResponse>('/auth/admin/signin', data);
       console.log('Admin signin: Backend response received:', { success: true });
 
-      
       // Handle successful response using utility function
-      const { access_token, user } = handleApiResponse<{access_token: string; user: UserProfile}>(response);
+      const { access_token, user } = handleApiResponse<AuthResponse>(response);
 
       // Store in admin-specific localStorage
       localStorage.setItem('adminToken', access_token);
@@ -142,7 +137,7 @@ export const adminAuthApi = {
    * Change admin password using admin change password endpoint
    */
   changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
-    console.log('Admin change password: Using /api/v1/auth/admin/change-password endpoint');
+    console.log('Admin change password: Using /auth/admin/change-password endpoint');
     
     const response = await post<{ message: string }>('/auth/admin/change-password', {
       currentPassword,
@@ -165,7 +160,7 @@ const authApi = {
       const { access_token, user } = handleApiResponse<AuthResponse>(response);
 
       // Store authentication data
-      localStorage.setItem('token', access_token);
+      localStorage.setItem('access_token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
 
       // If user is admin, also store in admin-specific storage
@@ -197,10 +192,10 @@ const authApi = {
       const response = await post<AuthResponse>('/auth/signin', data);
       console.log('authApi.signin: Server response:', response);
       
-      const { access_token, user } = response.data;
+      const { access_token, user } = handleApiResponse<AuthResponse>(response);
 
       // Store authentication data
-      localStorage.setItem('token', access_token);
+      localStorage.setItem('access_token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
 
       // If user is admin, also store in admin-specific storage
@@ -209,7 +204,7 @@ const authApi = {
         localStorage.setItem('adminUser', JSON.stringify(user));
       }
 
-      return response.data;
+      return { access_token, user };
     } catch (error: any) {
       console.error('Login error in authApi.signin:', error);
       throw error;
@@ -220,7 +215,7 @@ const authApi = {
    * Sign out user
    */
   signout: async (): Promise<void> => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
     localStorage.removeItem('user');
   },
 
@@ -228,26 +223,16 @@ const authApi = {
    * Get current user profile - Updated for NestJS backend
    */
   getProfile: async (): Promise<UserProfile> => {
-
-    const response = await get<UserProfile>('/users/profile');
-    return handleApiResponse<UserProfile>(response);
-
     const response = await get<UserProfile>('/auth/profile');
-    return response.data;
-
+    return handleApiResponse<UserProfile>(response);
   },
 
   /**
    * Update user profile - Updated for NestJS backend
    */
   updateProfile: async (data: ProfileUpdateData): Promise<UserProfile> => {
-
-    const response = await patch<UserProfile>('/users/profile', data);
-    return handleApiResponse<UserProfile>(response);
-
     const response = await patch<UserProfile>('/auth/profile', data);
-    return response.data;
-
+    return handleApiResponse<UserProfile>(response);
   },
 
   /**
@@ -290,35 +275,7 @@ const authApi = {
     } catch {
       return null;
     }
-
-  },
-
-  /**
-   * Sign in user (regular user endpoint) - Fixed to use correct response structure
-   */
-  signin: async (data: SignInData): Promise<AuthResponse> => {
-    const response = await post<{access_token: string; user: UserProfile}>('/auth/signin', data);
-    
-    // ✅ CORRECT: Extract using handleApiResponse utility
-    const { access_token, user } = handleApiResponse<{access_token: string; user: UserProfile}>(response);
-
-    if (!access_token || !user) {
-      throw new Error('Invalid response structure from server');
-    }
-
-    // Store authentication data - use access_token as key (matches backend)
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('user', JSON.stringify(user));
-
-    // If user is admin, also store in admin-specific storage
-    if (user.role === 'ADMIN') {
-      localStorage.setItem('adminToken', access_token);
-      localStorage.setItem('adminUser', JSON.stringify(user));
-    }
-
-    return { access_token, user };
-
   }
-}
+};
 
-export default authApi
+export default authApi;

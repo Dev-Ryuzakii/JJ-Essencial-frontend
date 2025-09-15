@@ -23,7 +23,7 @@ export const testAdminTokenValidation = async (): Promise<boolean> => {
 
   // Server-side validation
   try {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1  ';
+    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.onrender.com/api/v1  ';
     const response = await axios.get(`${API_URL}/auth/me`, {
       headers: {
         'Authorization': `Bearer ${token}`,
