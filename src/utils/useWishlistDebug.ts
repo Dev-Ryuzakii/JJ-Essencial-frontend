@@ -6,6 +6,13 @@ export const useWishlistDebug = () => {
       if (process.env.NODE_ENV === 'development') {
         console.log(`[Wishlist Debug] ${message}`, data);
       }
+    },
+    debugRefetch: () => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Wishlist Debug] Debug refetch called');
+        // This could trigger a manual refetch in the future
+        return Promise.resolve();
+      }
     }
   };
 };

@@ -4,6 +4,7 @@ import type { SuccessResponseDto, ErrorResponseDto } from '../types';
 // Make sure we're using the correct apiClient and not importing anything from Supabase
 console.log('authApi.ts: Loaded - using backend API client only, NO SUPABASE');
 
+
 // Utility function to handle API response types safely
 const handleApiResponse = <T>(response: any): T => {
   if (response.success && response.data) {
@@ -13,19 +14,25 @@ const handleApiResponse = <T>(response: any): T => {
 };
 
 // User profile response structure
+// User profile response structure - Updated to match NestJS backe
 export interface UserProfile {
   id: string;
   email: string;
   fullName: string;
   role: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Authentication response structure
+// Authentication response structure - Updated to match NestJS backend
 export interface AuthResponse {
   access_token: string;
-  user: UserProfile;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: string;
+  };
 }
 
 // Registration data
@@ -48,15 +55,19 @@ export interface ProfileUpdateData {
 
 // Admin-specific auth functions - Uses dedicated admin endpoints with /api/v1
 export const adminAuthApi = {
-  /**
-   * Admin signin using dedicated admin signin endpoint - Fixed response handling
-   */
+
   signin: async (data: SignInData): Promise<AuthResponse> => {
-    console.log('Admin signin: Using /api/v1/auth/admin/signin endpoint');
+    console.log('Admin signin: Using /auth/admin-signin endpoint');
     
     try {
+
       // Use the dedicated admin signin endpoint
       const response = await post<{access_token: string; user: UserProfile}>('/auth/admin/signin', data);
+
+      // Use the NestJS admin signin endpoint
+      const response = await post<AuthResponse>('/auth/admin-signin', data);
+      console.log('Admin signin: Backend response received:', { success: true });
+
       
       // Handle successful response using utility function
       const { access_token, user } = handleApiResponse<{access_token: string; user: UserProfile}>(response);
@@ -143,7 +154,7 @@ export const adminAuthApi = {
 
 const authApi = {
   /**
-   * Sign up new user (regular user endpoint)
+   * Sign up new user - Updated for NestJS backend
    */
   signup: async (data: SignUpData): Promise<AuthResponse> => {
     console.log('authApi.signup: Making request to /auth/signup endpoint');
@@ -178,6 +189,34 @@ const authApi = {
   },
 
   /**
+   * Sign in user - Updated for NestJS backend
+   */
+  signin: async (data: SignInData): Promise<AuthResponse> => {
+    console.log('authApi.signin: Making request to /auth/signin endpoint');
+    try {
+      const response = await post<AuthResponse>('/auth/signin', data);
+      console.log('authApi.signin: Server response:', response);
+      
+      const { access_token, user } = response.data;
+
+      // Store authentication data
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // If user is admin, also store in admin-specific storage
+      if (user.role === 'ADMIN') {
+        localStorage.setItem('adminToken', access_token);
+        localStorage.setItem('adminUser', JSON.stringify(user));
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Login error in authApi.signin:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Sign out user
    */
   signout: async (): Promise<void> => {
@@ -186,23 +225,33 @@ const authApi = {
   },
 
   /**
-   * Get current user profile
+   * Get current user profile - Updated for NestJS backend
    */
   getProfile: async (): Promise<UserProfile> => {
+
     const response = await get<UserProfile>('/users/profile');
     return handleApiResponse<UserProfile>(response);
+
+    const response = await get<UserProfile>('/auth/profile');
+    return response.data;
+
   },
 
   /**
-   * Update user profile
+   * Update user profile - Updated for NestJS backend
    */
   updateProfile: async (data: ProfileUpdateData): Promise<UserProfile> => {
+
     const response = await patch<UserProfile>('/users/profile', data);
     return handleApiResponse<UserProfile>(response);
+
+    const response = await patch<UserProfile>('/auth/profile', data);
+    return response.data;
+
   },
 
   /**
-   * Reset password
+   * Reset password - Updated for NestJS backend
    */
   resetPassword: async (email: string): Promise<{ message: string }> => {
     const response = await post<{ message: string }>('/auth/reset-password', { email });
@@ -241,6 +290,7 @@ const authApi = {
     } catch {
       return null;
     }
+
   },
 
   /**
@@ -267,6 +317,7 @@ const authApi = {
     }
 
     return { access_token, user };
+
   }
 }
 
