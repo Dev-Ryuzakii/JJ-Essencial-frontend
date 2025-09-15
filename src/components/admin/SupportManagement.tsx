@@ -236,12 +236,30 @@ export default function SupportManagement() {
     try {
       setModalLoading(true)
       console.log('Fetching ticket details for ID:', ticketId)
+      
+      // Check if admin token exists
+      const adminToken = localStorage.getItem('adminToken');
+      console.log('Admin token present:', !!adminToken);
+      
+      if (!adminToken) {
+        setError('Admin authentication required. Please log in again.');
+        return;
+      }
+      
       const ticketDetails = await adminSupportApi.getTicket(ticketId)
       setSelectedTicket(ticketDetails)
       setShowModal(true)
     } catch (err) {
       console.error('Error fetching ticket details:', err)
-      setError('Failed to load ticket details: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError('Failed to load ticket details: ' + errorMessage);
+      
+      // If it's an auth error, redirect to login
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        window.location.href = '/admin/login';
+      }
     } finally {
       setModalLoading(false)
     }
@@ -269,7 +287,15 @@ export default function SupportManagement() {
       fetchTickets()
     } catch (err) {
       console.error('Error sending message:', err)
-      setError('Failed to send message: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError('Failed to send message: ' + errorMessage)
+      
+      // If it's an auth error, redirect to login
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        window.location.href = '/admin/login';
+      }
     } finally {
       setIsSending(false)
     }

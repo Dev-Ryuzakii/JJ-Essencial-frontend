@@ -16,21 +16,13 @@ export type ApiError = {
 };
 
 
-// Base API URL - Use environment variable with fallback to live serve
-// Paginated response structure
-export type PaginatedResponse<T> = {
-  data: T[];
-  meta: {
-    total: number;
-    page: number;
-    lastPage: number;
-    hasNextPage: boolean;
-  };
-};
-
 // Base API URL - Use environment variable or fallback
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+                     (import.meta.env.PROD ? 'https://jj-essencial.onrender.com/api/v1' : '/api/v1');
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://api.jandjessential.org/api/v1';
+console.log('🔍 Environment variable VITE_API_URL:', import.meta.env.VITE_API_URL);
+console.log('🔍 All import.meta.env:', import.meta.env);
+console.log('🌍 API Base URL (final):', API_BASE_URL);
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -39,6 +31,8 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000, // ✅ Increased to 30 seconds for slower connections
+  // Add withCredentials for proper cookie handling in production
+  withCredentials: true
 });
 
 // Request interceptor - Smart token selection with enhanced logging
@@ -115,6 +109,16 @@ apiClient.interceptors.response.use(
       });
     }
 
+    // Handle server errors (500)
+    if (error.response?.status === 500) {
+      console.error('🔥 Server error (500) - Backend may be misconfigured or down');
+      return Promise.reject({
+        statusCode: 500,
+        message: 'Server error. The backend service may be temporarily unavailable. Please try again later.',
+        error: 'SERVER_ERROR'
+      });
+    }
+
     // Handle auth errors (401)
     if (error.response?.status === 401) {
       // Check if this is an admin route
@@ -140,12 +144,36 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Helper function for regular GET requests
+// Helper function for regular GET requests with retry logic
 export const get = async <T>(
   url: string, 
   config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> => {
-  return await apiClient.get<any, ApiResponse<T>>(url, config);
+  let lastError: any;
+  
+  // Retry up to 3 times for 500 errors
+  for (let i = 0; i < 3; i++) {
+    try {
+      const response = await apiClient.get<any, ApiResponse<T>>(url, config);
+      return response;
+    } catch (error: any) {
+      lastError = error;
+      
+      // Don't retry for auth errors or client errors
+      if (error.response?.status < 500) {
+        throw error;
+      }
+      
+      // Wait before retrying (exponential backoff)
+      if (i < 2) {
+        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+        console.log(`API call failed (attempt ${i + 1}/3), retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError;
 };
 
 // Helper function for POST requests
