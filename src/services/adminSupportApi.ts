@@ -1,4 +1,4 @@
-import { get, put } from './apiClient';
+import { get, put, post } from './apiClient';
 
 export interface AdminSupportTicket {
   id: string;
@@ -12,6 +12,7 @@ export interface AdminSupportTicket {
     id: string;
     email: string;
     fullName: string;
+    phone?: string;
   };
   messages: Array<{
     id: string;
@@ -41,6 +42,7 @@ export interface AdminSupportTicketDetail {
     id: string;
     email: string;
     fullName: string;
+    phone?: string;
   };
   messages: Array<{
     id: string;
@@ -64,6 +66,10 @@ export interface UpdateTicketStatusDto {
 
 export interface AssignTicketDto {
   supportUserId: string;
+}
+
+export interface SendMessageDto {
+  message: string;
 }
 
 export interface SupportStats {
@@ -154,6 +160,19 @@ const adminSupportApi = {
           } 
         };
       } else {
+        // Handle case where response.data is the actual chats array directly
+        // This might happen if the API structure has changed
+        if (Array.isArray(response)) {
+          return {
+            chats: response as unknown as AdminSupportTicket[],
+            pagination: {
+              page: 1,
+              limit: response.length,
+              total: response.length,
+              totalPages: 1
+            }
+          };
+        }
         throw new Error('Unexpected response structure from server');
       }
     } catch (error: any) {
@@ -173,28 +192,7 @@ const adminSupportApi = {
       // Since the apiClient interceptor already returns response.data, we can directly return it
       // Check if it's a success response
       if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
-        // Handle snake_case to camelCase conversion for date properties
-        const convertedResponse = {
-          ...response,
-          createdAt: (response as any).created_at || response.createdAt,
-          updatedAt: (response as any).updated_at || response.updatedAt,
-          assignedTo: (response as any).assigned_to || response.assignedTo,
-          user: {
-            ...response.user,
-            fullName: (response.user as any).full_name || response.user.fullName
-          },
-          messages: response.messages?.map((message: any) => ({
-            ...message,
-            createdAt: (message as any).created_at || message.createdAt,
-            isAdmin: (message as any).is_admin || message.isAdmin,
-            sender: {
-              ...message.sender,
-              fullName: (message.sender as any).full_name || message.sender.fullName
-            }
-          })) || []
-        };
-        
-        return convertedResponse as unknown as AdminSupportTicketDetail;
+        return response as unknown as AdminSupportTicketDetail;
       } else {
         throw new Error('Failed to fetch ticket details');
       }
@@ -264,6 +262,27 @@ const adminSupportApi = {
     } catch (error: any) {
       console.error('Error fetching support stats:', error);
       throw new Error(error.response?.data?.message || error.message || 'Failed to fetch support stats');
+    }
+  },
+
+  /**
+   * Send message to support ticket
+   * POST /api/v1/customer-support/chat/:chatId/message
+   */
+  sendMessage: async (ticketId: string, messageData: SendMessageDto): Promise<any> => {
+    try {
+      const response = await post<any>(`/customer-support/chat/${ticketId}/message`, messageData);
+      
+      // Since the apiClient interceptor already returns response.data, we can directly return it
+      // Check if it's a success response
+      if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
+        return response;
+      } else {
+        throw new Error('Failed to send message');
+      }
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to send message');
     }
   }
 };

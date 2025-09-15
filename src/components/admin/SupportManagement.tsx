@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { 
   Plus, 
   Filter, 
@@ -53,6 +53,9 @@ export default function SupportManagement() {
   const [selectedTicket, setSelectedTicket] = useState<AdminSupportTicketDetail | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [modalLoading, setModalLoading] = useState(false)
+  const [replyMessage, setReplyMessage] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Fetch tickets from API
   const fetchTickets = async () => {
@@ -85,15 +88,15 @@ export default function SupportManagement() {
         priority: ticket.priority,
         category: 'general', // Default category since API doesn't provide it
         customer: {
-          id: ticket.user.id,
-          name: ticket.user.fullName,
-          email: ticket.user.email,
-          // Phone property doesn't exist in the new API interface
-          phone: undefined
+          id: (ticket.user as any).id || ticket.user.id,
+          name: (ticket.user as any).full_name || (ticket.user as any).fullName || ticket.user.fullName,
+          email: (ticket.user as any).email || ticket.user.email,
+          // Extract phone if it exists in the API response
+          phone: (ticket.user as any).phone || undefined
         },
-        assignedTo: ticket.assigned_to || ticket.assignedTo,
-        createdAt: ticket.created_at || ticket.createdAt,
-        updatedAt: ticket.updated_at || ticket.updatedAt,
+        assignedTo: (ticket as any).assigned_to || ticket.assignedTo,
+        createdAt: (ticket as any).created_at || ticket.createdAt,
+        updatedAt: (ticket as any).updated_at || ticket.updatedAt,
         lastMessage: ticket.messages && ticket.messages.length > 0 ? {
           content: ticket.messages[ticket.messages.length - 1].message,
           from: ticket.messages[ticket.messages.length - 1].isAdmin ? 'admin' : 'customer',
@@ -247,8 +250,36 @@ export default function SupportManagement() {
   const closeModal = () => {
     setShowModal(false)
     setSelectedTicket(null)
+    setReplyMessage('')
   }
 
+  const sendMessage = async (ticketId: string, message: string) => {
+    if (!message.trim() || isSending) return
+    
+    try {
+      setIsSending(true)
+      await adminSupportApi.sendMessage(ticketId, { message })
+      
+      // Refresh ticket details to show the new message
+      const updatedTicket = await adminSupportApi.getTicket(ticketId)
+      setSelectedTicket(updatedTicket)
+      setReplyMessage('')
+      
+      // Also refresh the tickets list
+      fetchTickets()
+    } catch (err) {
+      console.error('Error sending message:', err)
+      setError('Failed to send message: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  // Scroll to bottom of messages when new messages are added
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [selectedTicket?.messages])
+  
   // Add debugging effect to log ticket data
   useEffect(() => {
     if (tickets.length > 0) {
@@ -580,6 +611,9 @@ export default function SupportManagement() {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{ticket.customer.name}</div>
                           <div className="text-sm text-gray-500">{ticket.customer.email}</div>
+                          {ticket.customer.phone && (
+                            <div className="text-sm text-gray-500">{ticket.customer.phone}</div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -677,14 +711,17 @@ export default function SupportManagement() {
                   <div className="mb-6">
                     <h4 className="text-md font-semibold text-gray-900 mb-2">Customer Information</h4>
                     <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-gray-500">Name: {selectedTicket.user.fullName}</p>
+                      <p className="text-gray-500">Name: {(selectedTicket.user as any).full_name || selectedTicket.user.fullName}</p>
                       <p className="text-gray-500">Email: {selectedTicket.user.email}</p>
+                      {selectedTicket.user.phone && (
+                        <p className="text-gray-500">Phone: {selectedTicket.user.phone}</p>
+                      )}
                     </div>
                   </div>
                   
                   <div>
                     <h4 className="text-md font-semibold text-gray-900 mb-2">Messages</h4>
-                    <div className="space-y-4">
+                    <div className="space-y-4 mb-4">
                       {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
                         selectedTicket.messages.map((message) => (
                           <div 
@@ -710,6 +747,38 @@ export default function SupportManagement() {
                       ) : (
                         <p className="text-gray-500 italic">No messages found</p>
                       )}
+                      <div ref={messagesEndRef} />
+                    </div>
+                    
+                    {/* Reply Form */}
+                    <div className="mt-6">
+                      <h4 className="text-md font-semibold text-gray-900 mb-2">Reply to Customer</h4>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <textarea
+                          value={replyMessage}
+                          onChange={(e) => setReplyMessage(e.target.value)}
+                          placeholder="Type your reply here..."
+                          className="w-full h-24 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          disabled={isSending}
+                        />
+                        <div className="flex justify-end mt-3">
+                          <button
+                            type="button"
+                            onClick={() => sendMessage(selectedTicket.id, replyMessage)}
+                            disabled={isSending || !replyMessage.trim()}
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSending ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              'Send Reply'
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
