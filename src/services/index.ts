@@ -91,3 +91,7 @@ export type {
   ErrorResponseDto,
   PaginatedResponse 
 } from '../types';
+
+// Debug and verification scripts
+export { default as verifySupportApi } from './verifySupportApi';
+export { default as debugSupportApi } from './debugSupportApi';

@@ -11,9 +11,10 @@ import {
   User,
   RefreshCw,
   Eye,
-  ArrowRight
+  ArrowRight,
+  X
 } from 'lucide-react'
-import adminSupportApi, { type AdminSupportTicket, type AdminSupportFilters } from '../../services/adminSupportApi'
+import adminSupportApi, { type AdminSupportTicket, type AdminSupportTicketDetail } from '../../services/adminSupportApi'
 
 // Updated interface to match backend response
 interface SupportTicket {
@@ -49,6 +50,9 @@ export default function SupportManagement() {
   const [priorityFilter, setPriorityFilter] = useState<string>('')
   const [categoryFilter, setCategoryFilter] = useState<string>('')
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedTicket, setSelectedTicket] = useState<AdminSupportTicketDetail | null>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [modalLoading, setModalLoading] = useState(false)
 
   // Fetch tickets from API
   const fetchTickets = async () => {
@@ -56,19 +60,25 @@ export default function SupportManagement() {
       setLoading(true)
       setError('')
       
-      const filters: AdminSupportFilters = {
-        page: 1,
-        limit: 100
+      // Use the new API interface with proper parameters
+      const response = await adminSupportApi.getTickets(1, 100, statusFilter, priorityFilter)
+      
+      // Debug the response structure
+      console.log('AdminSupportApi response:', response);
+      
+      // Check if response has the expected structure
+      if (!response || !response.chats || !Array.isArray(response.chats)) {
+        throw new Error('Invalid response structure from server');
       }
       
-      if (searchTerm) filters.search = searchTerm
-      if (statusFilter) filters.status = statusFilter as any
-      if (priorityFilter) filters.priority = priorityFilter as any
-      
-      const response = await adminSupportApi.getTickets(filters)
+      // Log a sample ticket to see its structure
+      if (response.chats.length > 0) {
+        console.log('Sample API ticket:', response.chats[0]);
+      }
       
       // Transform API response to match component interface
-      const transformedTickets: SupportTicket[] = (response.data || []).map((ticket: AdminSupportTicket) => ({
+      // The new API returns an object with chats array, not a direct array
+      const transformedTickets: SupportTicket[] = response.chats.map((ticket) => ({
         id: ticket.id,
         subject: ticket.subject,
         status: ticket.status,
@@ -78,20 +88,30 @@ export default function SupportManagement() {
           id: ticket.user.id,
           name: ticket.user.fullName,
           email: ticket.user.email,
-          phone: ticket.user.phone || undefined
+          // Phone property doesn't exist in the new API interface
+          phone: undefined
         },
-        assignedTo: ticket.assignedTo,
-        createdAt: ticket.createdAt,
-        updatedAt: ticket.updatedAt,
+        assignedTo: ticket.assigned_to || ticket.assignedTo,
+        createdAt: ticket.created_at || ticket.createdAt,
+        updatedAt: ticket.updated_at || ticket.updatedAt,
         lastMessage: ticket.messages && ticket.messages.length > 0 ? {
-          content: ticket.messages[ticket.messages.length - 1].content,
-          from: ticket.messages[ticket.messages.length - 1].isFromCustomer ? 'customer' : 'admin',
+          content: ticket.messages[ticket.messages.length - 1].message,
+          from: ticket.messages[ticket.messages.length - 1].isAdmin ? 'admin' : 'customer',
           timestamp: ticket.messages[ticket.messages.length - 1].createdAt
         } : null,
-        messageCount: ticket.messages?.length || 0
+        messageCount: ticket._count?.messages || ticket.messages?.length || 0
       }))
       
-      setTickets(transformedTickets)
+      // Apply search filter locally since the API doesn't support search yet
+      const searchedTickets = searchTerm 
+        ? transformedTickets.filter(ticket => 
+            ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ticket.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ticket.customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        : transformedTickets
+      
+      setTickets(searchedTickets)
     } catch (err) {
       console.error('Error fetching tickets:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch tickets'
@@ -173,13 +193,28 @@ export default function SupportManagement() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    try {
+      // Handle various date formats
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.log('Invalid date string:', dateString);
+        return 'Invalid Date';
+      }
+      
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting date:', dateString, error);
+      return 'Invalid Date';
+    }
   }
 
   const getTicketStats = () => {
@@ -194,6 +229,48 @@ export default function SupportManagement() {
 
   const stats = getTicketStats()
 
+  const viewTicketDetails = async (ticketId: string) => {
+    try {
+      setModalLoading(true)
+      console.log('Fetching ticket details for ID:', ticketId)
+      const ticketDetails = await adminSupportApi.getTicket(ticketId)
+      setSelectedTicket(ticketDetails)
+      setShowModal(true)
+    } catch (err) {
+      console.error('Error fetching ticket details:', err)
+      setError('Failed to load ticket details: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    setSelectedTicket(null)
+  }
+
+  // Add debugging effect to log ticket data
+  useEffect(() => {
+    if (tickets.length > 0) {
+      console.log('Ticket data sample:', tickets[0]);
+      console.log('Ticket date values:', { 
+        createdAt: tickets[0].createdAt, 
+        updatedAt: tickets[0].updatedAt 
+      });
+    }
+  }, [tickets]);
+  
+  // Add debugging effect to log selected ticket data
+  useEffect(() => {
+    if (selectedTicket) {
+      console.log('Selected ticket data:', selectedTicket);
+      console.log('Selected ticket date values:', { 
+        createdAt: selectedTicket.createdAt, 
+        updatedAt: selectedTicket.updatedAt 
+      });
+    }
+  }, [selectedTicket]);
+  
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -526,6 +603,7 @@ export default function SupportManagement() {
                       <div className="flex items-center space-x-3 justify-end">
                         <button
                           type="button"
+                          onClick={() => viewTicketDetails(ticket.id)}
                           className="text-indigo-600 hover:text-indigo-900"
                           title="View ticket"
                         >
@@ -547,6 +625,119 @@ export default function SupportManagement() {
           </div>
         )}
       </div>
+
+      {/* Ticket Detail Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {modalLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <RefreshCw className="h-8 w-8 text-indigo-500 animate-spin" />
+                <span className="ml-2 text-gray-500">Loading ticket details...</span>
+              </div>
+            ) : selectedTicket ? (
+              <>
+                <div className="flex justify-between items-center border-b px-6 py-4">
+                  <h2 className="text-xl font-bold text-gray-900">Ticket #{selectedTicket.id}</h2>
+                  <button 
+                    onClick={closeModal}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedTicket.subject}</h3>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                      <p>Status: 
+                        <span className={`ml-1 px-2 py-1 rounded-full text-xs ${
+                          selectedTicket.status === 'OPEN' ? 'bg-yellow-100 text-yellow-800' :
+                          selectedTicket.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {selectedTicket.status.replace('_', ' ')}
+                        </span>
+                      </p>
+                      <p>Priority: 
+                        <span className={`ml-1 px-2 py-1 rounded-full text-xs ${
+                          selectedTicket.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
+                          selectedTicket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {selectedTicket.priority}
+                        </span>
+                      </p>
+                      <p>Created: {formatDate(selectedTicket.createdAt)}</p>
+                      {selectedTicket.updatedAt && <p>Updated: {formatDate(selectedTicket.updatedAt)}</p>}
+                    </div>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <h4 className="text-md font-semibold text-gray-900 mb-2">Customer Information</h4>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-gray-500">Name: {selectedTicket.user.fullName}</p>
+                      <p className="text-gray-500">Email: {selectedTicket.user.email}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-900 mb-2">Messages</h4>
+                    <div className="space-y-4">
+                      {selectedTicket.messages && selectedTicket.messages.length > 0 ? (
+                        selectedTicket.messages.map((message) => (
+                          <div 
+                            key={message.id} 
+                            className={`border rounded-lg p-4 ${
+                              message.isAdmin ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center">
+                                <User className="h-5 w-5 text-gray-400 mr-2" />
+                                <span className="font-medium text-gray-900">
+                                  {message.sender.fullName} {message.isAdmin && '(Support Staff)'}
+                                </span>
+                              </div>
+                              <span className="text-sm text-gray-500">
+                                {formatDate(message.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-gray-700 whitespace-pre-wrap">{message.message}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 italic">No messages found</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border-t px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Reply
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">No ticket selected</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

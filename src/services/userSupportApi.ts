@@ -72,11 +72,15 @@ const userSupportApi = {
     try {
       const response = await post<UserSupportTicket>('/customer-support/chat', ticketData);
       
-      if (response.success && response.data) {
+      // Since the apiClient interceptor already returns response.data, we can directly check the structure
+      if ('success' in response && response.success && 'data' in response) {
         return response.data;
+      } else if ('id' in response && 'subject' in response) {
+        // Direct data object (legacy format or direct data)
+        return response as unknown as UserSupportTicket;
       } else {
-        // Instead of throwing a generic error, let's check if there's an error in the response
-        if (response.success === false && response.error) {
+        // Handle error response
+        if ('success' in response && !response.success && 'error' in response) {
           throw new Error(response.error.message || 'Failed to create support ticket');
         } else {
           throw new Error('Failed to create support ticket');
@@ -121,10 +125,19 @@ const userSupportApi = {
     try {
       const response = await get<UserSupportTicket[]>('/customer-support/my-chats');
       
-      if (response.success && response.data) {
+      // Since the apiClient interceptor already returns response.data, we can directly check the structure
+      if ('success' in response && response.success && 'data' in response) {
         return response.data;
+      } else if (Array.isArray(response)) {
+        // Direct array of tickets (legacy format or direct data)
+        return response;
       } else {
-        throw new Error(response.success === false ? response.error.message : 'Failed to fetch support tickets');
+        // Handle error response
+        if ('success' in response && !response.success && 'error' in response) {
+          throw new Error(response.error.message || 'Failed to fetch support tickets');
+        } else {
+          throw new Error('Failed to fetch support tickets');
+        }
       }
     } catch (error: any) {
       console.error('Error fetching support tickets:', error);
@@ -150,10 +163,19 @@ const userSupportApi = {
     try {
       const response = await get<SupportTicketDetail>(`/customer-support/chat/${ticketId}`);
       
-      if (response.success && response.data) {
+      // Since the apiClient interceptor already returns response.data, we can directly check the structure
+      if ('success' in response && response.success && 'data' in response) {
         return response.data;
+      } else if ('id' in response && 'subject' in response) {
+        // Direct data object (legacy format or direct data)
+        return response as unknown as SupportTicketDetail;
       } else {
-        throw new Error(response.success === false ? response.error.message : 'Failed to fetch ticket details');
+        // Handle error response
+        if ('success' in response && !response.success && 'error' in response) {
+          throw new Error(response.error.message || 'Failed to fetch ticket details');
+        } else {
+          throw new Error('Failed to fetch ticket details');
+        }
       }
     } catch (error: any) {
       console.error('Error fetching ticket details:', error);
@@ -178,10 +200,19 @@ const userSupportApi = {
     try {
       const response = await post(`/customer-support/chat/${ticketId}/message`, messageData);
       
-      if (response.success && response.data) {
+      // Since the apiClient interceptor already returns response.data, we can directly check the structure
+      if ('success' in response && response.success && 'data' in response) {
         return response.data;
+      } else if ('id' in response) {
+        // Direct data object (legacy format or direct data)
+        return response;
       } else {
-        throw new Error(response.success === false ? response.error.message : 'Failed to send message');
+        // Handle error response
+        if ('success' in response && !response.success && 'error' in response) {
+          throw new Error(response.error.message || 'Failed to send message');
+        } else {
+          throw new Error('Failed to send message');
+        }
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
@@ -201,7 +232,13 @@ const userSupportApi = {
   checkAvailability: async (): Promise<boolean> => {
     try {
       const response = await get<UserSupportTicket[]>('/customer-support/my-chats');
-      return response.success !== false;
+      // Since the apiClient interceptor already returns response.data, we can directly check the structure
+      if ('success' in response) {
+        return response.success !== false;
+      } else {
+        // For arrays or direct data, assume success
+        return true;
+      }
     } catch (error: any) {
       // If we get an error that indicates the support system is not implemented or available
       if (error.statusCode === 500 || error.response?.status === 500 || error.status === 500 || 
