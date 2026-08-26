@@ -292,7 +292,7 @@ const ordersApi = {
   getAll: async (params: OrdersQueryParams = {}): Promise<ApiResponse<Order[]>> => {
     try {
       console.log('🔍 Orders API: Making request to GET /orders with params:', params);
-      console.log('🌍 Orders API: Base URL being used:', import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev/api/v1');
+      console.log('🌍 Orders API: Base URL being used:', import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev');
       console.log('🔑 Orders API: Auth token exists:', !!localStorage.getItem('access_token'));
       
       // Debug: Log the actual token being used (first/last 10 chars for security)
@@ -317,7 +317,7 @@ const ordersApi = {
       
       // Compare with your curl test - let's see the exact query parameters being sent
       console.log('🔍 Orders API: Query params being sent:', params);
-      console.log('🔍 Orders API: Full URL would be:', `https://jj-essencial-b33c39ba.afribase.dev/api/v1/orders?${new URLSearchParams(params as any).toString()}`);
+      console.log('🔍 Orders API: Full URL would be:', `https://jj-essencial-b33c39ba.afribase.dev/orders?${new URLSearchParams(params as any).toString()}`);
       
       // Debug: Compare token with your working curl token
       const curlToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0OWU1OGQxMi1hNjFhLTRmYzUtYmRiYS03MjUyNTM5OTBmYjYiLCJlbWFpbCI6ImZhbGFkZXJhc2FxMjJAZ21haWwuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NTc3OTkzNDMsImV4cCI6MTc1ODQwNDE0M30.0Y-lLAE8u5kKaicVhzHg1CABqqe8_UogDocvSilqd1I";

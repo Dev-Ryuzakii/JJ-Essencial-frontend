@@ -13,7 +13,7 @@ const createAdminApiClient = (
   logout: () => void
 ): AxiosInstance => {
   const client = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev/api/v1'
+    baseURL: import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev'
   });
 
   // Request interceptor

@@ -74,7 +74,7 @@ export function getImageUrl(url: string): string {
   if (url.startsWith('http')) return url
   
   // Use the API base URL for uploads
-  const apiBase = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev/api/v1'
+  const apiBase = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev'
   return `${apiBase}/uploads/${url}`
 }
 
@@ -89,21 +89,21 @@ export function parseProductImage(image: any): string {
         const parsed = JSON.parse(image)
         if (parsed.url) {
           // Ensure the URL uses the correct API path
-          return parsed.url.startsWith('http') ? parsed.url : `/api/v1/uploads/${parsed.url}`
+          return getImageUrl(parsed.url)
         }
         return createPlaceholderImage(400, 400)
       } catch {
         // If JSON parsing fails, treat as regular URL
-        return image.startsWith('http') ? image : `/api/v1/uploads/${image}`
+        return getImageUrl(image)
       }
     }
     // Regular string URL
-    return image.startsWith('http') ? image : `/api/v1/uploads/${image}`
+    return getImageUrl(image)
   }
   
   // If it's an object with url property
   if (typeof image === 'object' && image.url) {
-    return image.url.startsWith('http') ? image.url : `/api/v1/uploads/${image.url}`
+    return getImageUrl(image.url)
   }
   
   return createPlaceholderImage(400, 400)

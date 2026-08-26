@@ -76,8 +76,7 @@ export const useAuth = () => {
       // Enhanced logging for debugging
       console.log('Registration attempt - API URL check:', {
         envApiUrl: import.meta.env.VITE_API_URL || 'Not set',
-        usingProxy: true,
-        endpoint: '/api/v1/auth/signup'
+        endpoint: '/auth/signup'
       });
       
       // First, test the API connection

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 // API Configuration - Use environment variable for backend URL
 console.log('🔍 Environment variable VITE_API_URL:', import.meta.env.VITE_API_URL)
 console.log('🔍 All import.meta.env:', import.meta.env)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev'
 
 console.log('🌍 API Base URL (final):', API_BASE_URL) // Debug log to confirm URL
 
