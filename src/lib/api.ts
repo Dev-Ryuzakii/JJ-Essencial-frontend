@@ -288,7 +288,7 @@ export const productsApi = {
   delete: (id: string) =>
     api.delete<ApiResponse<any>>(`/products/${id}`),
   
-  updateStock: (id: string, data: { stock: number; notes?: string }) =>
+  updatetock: (id: string, data: { stock: number; notes?: string }) =>
     api.patch<ApiResponse<any>>(`/products/${id}/stock`, data),
 }
 
@@ -332,7 +332,7 @@ export const ordersApi = {
     getAll: (params?: Record<string, any>) =>
       api.get<ApiResponse<PaginatedResponse<any>>>('/orders/admin', { params }),
     
-    updateStatus: (id: string, data: { status: string; notes?: string }) =>
+    updatetatus: (id: string, data: { status: string; notes?: string }) =>
       api.patch<ApiResponse<any>>(`/orders/${id}/status`, data),
   },
 }
@@ -475,7 +475,7 @@ export const supportApi = {
     getAll: (params?: Record<string, any>) =>
       api.get<ApiResponse<PaginatedResponse<any>>>('/support/admin/tickets', { params }),
     
-    updateStatus: (id: string, data: any) =>
+    updatetatus: (id: string, data: any) =>
       api.patch<ApiResponse<any>>(`/support/admin/tickets/${id}/status`, data),
   },
 }
@@ -499,7 +499,7 @@ export const tradesApi = {
     getAll: (params?: Record<string, any>) =>
       api.get<ApiResponse<PaginatedResponse<any>>>('/trades/admin', { params }),
     
-    updateStatus: (id: string, data: { status: string; notes?: string }) =>
+    updatetatus: (id: string, data: { status: string; notes?: string }) =>
       api.patch<ApiResponse<any>>(`/trades/${id}/status`, data),
   },
 }

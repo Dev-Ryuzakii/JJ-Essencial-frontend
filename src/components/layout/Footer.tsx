@@ -197,7 +197,7 @@ const Footer: React.FC = () => {
           <div className="max-w-md mx-auto text-center">
             <h3 className="text-lg font-semibold mb-2">Stay Updated</h3>
             <p className="text-gray-400 text-sm mb-4">
-              Subscribe to get special offers, free giveaways, and updates on new arrivals.
+              Subscribe to get special offers, free giveaways, and update on new arrivals.
             </p>
             <form className="flex space-x-2">
               <input

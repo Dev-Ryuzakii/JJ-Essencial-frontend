@@ -96,7 +96,7 @@ class CategoriesCache {
     }
   }
 
-  // Clear cache (useful for admin updates)
+  // Clear cache (useful for admin update)
   clearCache(): void {
     this.categories = null
     this.lastFetch = 0

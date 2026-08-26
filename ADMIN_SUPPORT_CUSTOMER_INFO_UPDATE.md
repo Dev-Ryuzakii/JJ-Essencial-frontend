@@ -1,7 +1,7 @@
 # Admin Support Customer Information Update
 
 ## Overview
-This document explains the updates made to display customer name and phone number in the admin support management panel.
+This document explains the update made to display customer name and phone number in the admin support management panel.
 
 ## Changes Made
 

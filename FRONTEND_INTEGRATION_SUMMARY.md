@@ -173,7 +173,7 @@ With these frontend changes implemented alongside your backend fixes:
 
 ### 4. Response Handling:
 - [ ] Verify order data displays correctly
-- [ ] Test payment status updates
+- [ ] Test payment status update
 - [ ] Confirm order item details are accurate
 - [ ] Test user information display
 

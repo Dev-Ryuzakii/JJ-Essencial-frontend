@@ -101,7 +101,7 @@ export default function Settings() {
       setSaving(true)
       setError(null)
       
-      const updatedSettings = await adminApi.settings.updateSettings(settingsForm)
+      const updatedSettings = await adminApi.settings.updateettings(settingsForm)
       setSettings(updatedSettings)
       setSuccessMessage('Settings updated successfully!')
       

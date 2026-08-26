@@ -40,7 +40,7 @@ export interface NotificationPreferences {
   emailNotifications: boolean;
   pushNotifications: boolean;
   smsNotifications: boolean;
-  orderUpdates: boolean;
+  orderupdate: boolean;
   promotionalOffers: boolean;
   securityAlerts: boolean;
   priceAlerts: boolean;

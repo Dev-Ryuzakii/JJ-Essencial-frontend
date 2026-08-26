@@ -142,7 +142,7 @@ export interface PaymentDetails {
 }
 
 export interface OrderTracking {
-  updates: TrackingUpdate[]
+  update: TrackingUpdate[]
 }
 
 export interface TrackingUpdate {

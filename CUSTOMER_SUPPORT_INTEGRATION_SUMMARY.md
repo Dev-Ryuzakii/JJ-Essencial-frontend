@@ -109,7 +109,7 @@ The integration has been thoroughly tested:
 ## Future Improvements
 
 While the core integration is complete, the following enhancements could be considered:
-1. Add real-time updates using WebSocket connections
+1. Add real-time update using WebSocket connections
 2. Implement file attachment functionality for screenshots/documents
 3. Add push notifications for support staff replies
 4. Implement search and filter functionality for users with many tickets

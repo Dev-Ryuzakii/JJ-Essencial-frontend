@@ -99,7 +99,7 @@ export default function Settings() {
       setSaving(true)
       setError(null)
       
-      const updatedSettings = await adminApi.settings.updateSettings(settingsForm)
+      const updatedSettings = await adminApi.settings.updateettings(settingsForm)
       setSuccessMessage('Settings updated successfully!')
       
       setTimeout(() => setSuccessMessage(null), 3000)

@@ -132,7 +132,7 @@ export default function PaymentManagement() {
         updateOrder: updateFormData.updateOrder
       }
       
-      const updatedPayment = await adminApi.payments.updateStatus(selectedPayment.id, updateData)
+      const updatedPayment = await adminApi.payments.updatetatus(selectedPayment.id, updateData)
       setPayments(payments.map(payment => 
         payment.id === selectedPayment.id ? updatedPayment : payment
       ))

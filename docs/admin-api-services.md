@@ -98,7 +98,7 @@ files.forEach(file => formData.append('images', file));
 const product = await adminProductsApi.createProduct(formData);
 
 // Inventory management
-const stockUpdate = await adminProductsApi.updateStock('product-id', {
+const stockUpdate = await adminProductsApi.updatetock('product-id', {
   quantity: 50,
   type: 'IN',
   reason: 'Restock from supplier',
@@ -384,11 +384,11 @@ const loadData = async () => {
 ### 3. Use Bulk Operations for Efficiency
 ```typescript
 // ✅ Good - Bulk operation
-await adminProductsApi.bulkUpdateProducts(productIds, updates);
+await adminProductsApi.bulkUpdateProducts(productIds, update);
 
-// ❌ Inefficient - Individual updates
+// ❌ Inefficient - Individual update
 for (const id of productIds) {
-  await adminProductsApi.updateProduct(id, updates);
+  await adminProductsApi.updateProduct(id, update);
 }
 ```
 
@@ -397,7 +397,7 @@ for (const id of productIds) {
 // Get comprehensive dashboard data
 const dashboard = await adminAnalyticsApi.getDashboardAnalytics();
 
-// Use real-time data for live updates
+// Use real-time data for live update
 const realTimeStats = await adminAnalyticsApi.getRealTimeStats();
 
 // Generate reports for business intelligence
@@ -444,9 +444,9 @@ import { adminProductsApi } from '@/services';
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
   
-  const handleBulkUpdate = async (productIds: string[], updates: any) => {
+  const handleBulkUpdate = async (productIds: string[], update: any) => {
     try {
-      await adminProductsApi.bulkUpdateProducts(productIds, updates);
+      await adminProductsApi.bulkUpdateProducts(productIds, update);
       // Refresh product list
       const refreshedProducts = await adminProductsApi.getProducts();
       setProducts(refreshedProducts.items);
@@ -457,7 +457,7 @@ const ProductManagement = () => {
   
   const handleStockUpdate = async (productId: string, stockData: any) => {
     try {
-      await adminProductsApi.updateStock(productId, stockData);
+      await adminProductsApi.updatetock(productId, stockData);
       // Update local state
     } catch (error) {
       console.error('Stock update failed:', error);

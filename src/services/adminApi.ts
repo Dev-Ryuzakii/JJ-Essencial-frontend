@@ -235,7 +235,7 @@ export interface UpdateChatStatusDto {
 
 export interface ReplySupportChatDto {
   message: string;
-  updateStatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  updatetatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 }
 
 // Admin Settings DTOs
@@ -452,7 +452,7 @@ const adminApi = {
      * Update payment status
      * PATCH /admin/payments/:id/status
      */
-    updateStatus: async (id: string, data: UpdatePaymentStatusDto): Promise<AdminPaymentDto> => {
+    updatetatus: async (id: string, data: UpdatePaymentStatusDto): Promise<AdminPaymentDto> => {
       const response = await patch<AdminPaymentDto>(`/payments/${id}/status`, data);
       return response.data;
     },
@@ -500,7 +500,7 @@ const adminApi = {
      * Update chat status
      * PATCH /admin/support/:id/status
      */
-    updateStatus: async (id: string, data: UpdateChatStatusDto): Promise<AdminSupportChatDto> => {
+    updatetatus: async (id: string, data: UpdateChatStatusDto): Promise<AdminSupportChatDto> => {
       const response = await patch<AdminSupportChatDto>(`/customer-support/admin/chat/${id}/status`, data);
       return response.data;
     },
@@ -530,7 +530,7 @@ const adminApi = {
      * Update system settings
      * PUT /admin/settings
      */
-    updateSettings: async (data: UpdateAdminSettingsDto): Promise<AdminSettingsDto> => {
+    updateettings: async (data: UpdateAdminSettingsDto): Promise<AdminSettingsDto> => {
       const response = await put<AdminSettingsDto>('/admin/settings', data);
       return response.data;
     },
