@@ -393,9 +393,9 @@ export default function ProductManagement() {
         productId = newProduct.id
         console.log('Product created:', newProduct)
       } else if (showEditModal && currentProduct) {
-        const updatedProduct = await adminProductsApi.updateProduct(currentProduct.id, apiData)
+        const updatesdProduct = await adminProductsApi.updatesProduct(currentProduct.id, apiData)
         productId = currentProduct.id
-        console.log('Product updated:', updatedProduct)
+        console.log('Product updatesd:', updatesdProduct)
         
         // Process any image deletions if in edit mode
         if (imagesToDelete.length > 0) {
@@ -408,7 +408,7 @@ export default function ProductManagement() {
             console.log('Deleted images:', imagesToDelete);
           } catch (deleteError) {
             console.error('Error deleting images:', deleteError);
-            setError('Product updated but there was an issue removing some images');
+            setError('Product updatesd but there was an issue removing some images');
           }
         }
       } else {
@@ -428,7 +428,7 @@ export default function ProductManagement() {
             showCreateModal || 
             (showEditModal && !existingImages.some(img => img.isMain));
           
-          setUploadProgress(30); // Update progress
+          setUploadProgress(30); // updates progress
           
           const uploadedImages = await adminProductsApi.uploadProductImages(
             productId, 
@@ -506,7 +506,7 @@ export default function ProductManagement() {
       // Refresh product list with a slight delay to ensure backend has processed everything
       setTimeout(() => {
         fetchProducts()
-        console.log('Refreshing products list after create/update')
+        console.log('Refreshing products list after create/updates')
       }, 500)
     } catch (err: any) {
       console.error('Error saving product:', err)
@@ -1050,7 +1050,7 @@ export default function ProductManagement() {
                                     onClick={async () => {
                                       try {
                                         await adminProductsApi.setMainImage(currentProduct.id, image.id);
-                                        // Update local state to reflect the change
+                                        // updates local state to reflect the change
                                         setExistingImages(existingImages.map(img => ({
                                           ...img,
                                           isMain: img.id === image.id

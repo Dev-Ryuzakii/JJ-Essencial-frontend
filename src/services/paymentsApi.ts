@@ -126,15 +126,15 @@ export const paymentsApi = {
 
       // Handle both new and legacy response formats
       if (response.success && response.data) {
-        // After successful receipt upload, attempt to update payment status to PAID
+        // After successful receipt upload, attempt to updates payment status to PAID
         try {
           await api.patch(`/payments/status/${reference}`, {
             status: 'PAID',
             notes: 'Payment receipt uploaded by customer'
           });
-          console.log('✅ Payment status updated to PAID after receipt upload');
+          console.log('✅ Payment status updatesd to PAID after receipt upload');
         } catch (statusError) {
-          console.warn('⚠️ Could not update payment status, but receipt was uploaded:', statusError);
+          console.warn('⚠️ Could not updates payment status, but receipt was uploaded:', statusError);
         }
         
         return response as ApiResponse<any>

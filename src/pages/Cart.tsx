@@ -27,7 +27,7 @@ interface Coupon {
 }
 
 const Cart: React.FC = () => {
-  const { items, updateQuantity, removeFromCart, getSubtotal, getFinalAmount, appliedCoupon, applyCoupon, removeCoupon } = useCart()
+  const { items, updatesQuantity, removeFromCart, getSubtotal, getFinalAmount, appliedCoupon, applyCoupon, removeCoupon } = useCart()
   const { isAuthenticated } = useAuth()
   const [couponCode, setCouponCode] = useState('')
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
@@ -37,8 +37,8 @@ const Cart: React.FC = () => {
   const finalAmount = getFinalAmount()
   // Removed shipping fee - now always free
 
-  const handleQuantityUpdate = (productId: string, newQuantity: number) => {
-    updateQuantity(productId, newQuantity)
+  const handleQuantityupdates = (productId: string, newQuantity: number) => {
+    updatesQuantity(productId, newQuantity)
   }
 
   const handleRemoveItem = (productId: string) => {
@@ -188,7 +188,7 @@ const Cart: React.FC = () => {
                           <button
                             type="button"
                             className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                            onClick={() => handleQuantityUpdate(item.productId, item.quantity - 1)}
+                            onClick={() => handleQuantityupdates(item.productId, item.quantity - 1)}
                             disabled={item.quantity <= 1}
                           >
                             <Minus className="w-4 h-4" />
@@ -197,7 +197,7 @@ const Cart: React.FC = () => {
                           <button
                             type="button"
                             className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                            onClick={() => handleQuantityUpdate(item.productId, item.quantity + 1)}
+                            onClick={() => handleQuantityupdates(item.productId, item.quantity + 1)}
                             disabled={item.quantity >= item.stock}
                           >
                             <Plus className="w-4 h-4" />

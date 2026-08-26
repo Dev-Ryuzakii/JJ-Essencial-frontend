@@ -123,7 +123,7 @@ export interface AdminPaymentDto {
   gateway: string;
   status: string;
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   order: {
     id: string;
     user: {
@@ -156,16 +156,16 @@ export interface AdminPaymentDetailDto extends AdminPaymentDto {
   }>;
 }
 
-export interface UpdatePaymentStatusDto {
+export interface updatesPaymentStatusDto {
   status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
   notes?: string;
-  updateOrder?: boolean;
+  updatesOrder?: boolean;
 }
 
 export interface VerifyReceiptDto {
   status: 'APPROVED' | 'REJECTED';
   notes?: string;
-  updatePaymentStatus?: boolean;
+  updatesPaymentStatus?: boolean;
 }
 
 // Support Management DTOs
@@ -177,7 +177,7 @@ export interface AdminSupportChatDto {
   status: string;
   priority: string;
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   user: {
     fullName: string;
     email: string;
@@ -199,7 +199,7 @@ export interface AdminSupportChatDetailDto {
     status: string;
     priority: string;
     createdAt: string;
-    updatedAt: string;
+    updatesdAt: string;
     user: {
       id: string;
       fullName: string;
@@ -226,7 +226,7 @@ export interface AdminSupportChatDetailDto {
   }>;
 }
 
-export interface UpdateChatStatusDto {
+export interface updatesChatStatusDto {
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   assignedTo?: string;
@@ -235,7 +235,7 @@ export interface UpdateChatStatusDto {
 
 export interface ReplySupportChatDto {
   message: string;
-  updatetatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  updatestatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 }
 
 // Admin Settings DTOs
@@ -259,7 +259,7 @@ export interface AdminSettingsDto {
   timeFormat: string;
 }
 
-export interface UpdateAdminSettingsDto {
+export interface updatesAdminSettingsDto {
   siteName?: string;
   siteDescription?: string;
   contactEmail?: string;
@@ -289,7 +289,7 @@ export interface BankAccountDto {
   is_default: boolean;
   is_active: boolean;
   created_at: string;
-  updated_at: string;
+  updatesd_at: string;
 }
 
 export interface CreateBankAccountDto {
@@ -301,7 +301,7 @@ export interface CreateBankAccountDto {
   is_active?: boolean;
 }
 
-export interface UpdateBankAccountDto {
+export interface updatesBankAccountDto {
   bank_name?: string;
   account_name?: string;
   account_number?: string;
@@ -449,10 +449,10 @@ const adminApi = {
     },
 
     /**
-     * Update payment status
+     * updates payment status
      * PATCH /admin/payments/:id/status
      */
-    updatetatus: async (id: string, data: UpdatePaymentStatusDto): Promise<AdminPaymentDto> => {
+    updatestatus: async (id: string, data: updatesPaymentStatusDto): Promise<AdminPaymentDto> => {
       const response = await patch<AdminPaymentDto>(`/payments/${id}/status`, data);
       return response.data;
     },
@@ -497,10 +497,10 @@ const adminApi = {
     },
 
     /**
-     * Update chat status
+     * updates chat status
      * PATCH /admin/support/:id/status
      */
-    updatetatus: async (id: string, data: UpdateChatStatusDto): Promise<AdminSupportChatDto> => {
+    updatestatus: async (id: string, data: updatesChatStatusDto): Promise<AdminSupportChatDto> => {
       const response = await patch<AdminSupportChatDto>(`/customer-support/admin/chat/${id}/status`, data);
       return response.data;
     },
@@ -527,10 +527,10 @@ const adminApi = {
     },
 
     /**
-     * Update system settings
+     * updates system settings
      * PUT /admin/settings
      */
-    updateettings: async (data: UpdateAdminSettingsDto): Promise<AdminSettingsDto> => {
+    updatesettings: async (data: updatesAdminSettingsDto): Promise<AdminSettingsDto> => {
       const response = await put<AdminSettingsDto>('/admin/settings', data);
       return response.data;
     },
@@ -554,10 +554,10 @@ const adminApi = {
     },
 
     /**
-     * Update bank account
+     * updates bank account
      * PUT /admin/settings/bank-accounts/:id
      */
-    updateBankAccount: async (id: string, data: UpdateBankAccountDto): Promise<BankAccountDto> => {
+    updatesBankAccount: async (id: string, data: updatesBankAccountDto): Promise<BankAccountDto> => {
       const response = await put<BankAccountDto>(`/admin/settings/bank-accounts/${id}`, data);
       return response.data;
     },

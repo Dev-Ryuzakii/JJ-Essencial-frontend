@@ -14,7 +14,7 @@ interface CartState extends Cart {
   // Actions
   addItem: (item: Omit<CartItem, 'quantity'>) => void
   removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  updatesQuantity: (productId: string, quantity: number) => void
   clearCart: () => void
   getCartTotal: () => number
   getCartCount: () => number
@@ -36,32 +36,32 @@ export const useCartStore = create<CartState>()(
         const state = get()
         const existingItem = state.items.find(item => item.productId === newItem.productId)
         
-        let updatedItems: CartItem[]
+        let updatesdItems: CartItem[]
         
         if (existingItem) {
-          // Update quantity of existing item
-          updatedItems = state.items.map(item =>
+          // updates quantity of existing item
+          updatesdItems = state.items.map(item =>
             item.productId === newItem.productId
               ? { ...item, quantity: Math.min(item.quantity + 1, item.stock) }
               : item
           )
         } else {
           // Add new item
-          updatedItems = [...state.items, { ...newItem, quantity: 1 }]
+          updatesdItems = [...state.items, { ...newItem, quantity: 1 }]
         }
         
-        const totals = calculateTotals(updatedItems, state.appliedCoupon)
-        set({ items: updatedItems, ...totals })
+        const totals = calculateTotals(updatesdItems, state.appliedCoupon)
+        set({ items: updatesdItems, ...totals })
       },
 
       removeItem: (productId) => {
         const state = get()
-        const updatedItems = state.items.filter(item => item.productId !== productId)
-        const totals = calculateTotals(updatedItems, state.appliedCoupon)
-        set({ items: updatedItems, ...totals })
+        const updatesdItems = state.items.filter(item => item.productId !== productId)
+        const totals = calculateTotals(updatesdItems, state.appliedCoupon)
+        set({ items: updatesdItems, ...totals })
       },
 
-      updateQuantity: (productId, quantity) => {
+      updatesQuantity: (productId, quantity) => {
         const state = get()
         
         if (quantity <= 0) {
@@ -70,14 +70,14 @@ export const useCartStore = create<CartState>()(
           return
         }
         
-        const updatedItems = state.items.map(item =>
+        const updatesdItems = state.items.map(item =>
           item.productId === productId
             ? { ...item, quantity: Math.min(quantity, item.stock) }
             : item
         )
         
-        const totals = calculateTotals(updatedItems, state.appliedCoupon)
-        set({ items: updatedItems, ...totals })
+        const totals = calculateTotals(updatesdItems, state.appliedCoupon)
+        set({ items: updatesdItems, ...totals })
       },
 
       clearCart: () => {

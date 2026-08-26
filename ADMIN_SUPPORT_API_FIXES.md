@@ -10,13 +10,13 @@
 
 ## Fixes Implemented
 
-### 1. Updated adminSupportApi.ts
+### 1. updatesd adminSupportApi.ts
 
 - Fixed parameter handling in the [getTickets](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/adminSupportApi.ts#L96-L131) method to correctly format URL parameters
-- Updated all methods to properly work with the apiClient interceptor that already returns `response.data`
+- updatesd all methods to properly work with the apiClient interceptor that already returns `response.data`
 - Added proper type checking and error handling
 
-### 2. Updated SupportManagement.tsx
+### 2. updatesd SupportManagement.tsx
 
 - Modified the [fetchTickets](file:///Users/kurohiko/JJ-Essencial-frontend/src/components/admin/SupportManagement.tsx#L56-L101) function to work with the new API response structure
 - Fixed import issues by removing the non-existent `AdminSupportFilters` import

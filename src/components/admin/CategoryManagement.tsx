@@ -39,8 +39,8 @@ export default function CategoryManagement() {
   }, [])
 
   useEffect(() => {
-    // Update displayed categories when page or search changes
-    updateDisplayedCategories()
+    // updates displayed categories when page or search changes
+    updatesDisplayedCategories()
   }, [page, searchTerm, allCategories])
 
   const fetchCategories = async () => {
@@ -70,7 +70,7 @@ export default function CategoryManagement() {
     }
   }
 
-  const updateDisplayedCategories = () => {
+  const updatesDisplayedCategories = () => {
     // Filter categories based on search term
     let filteredCategories = allCategories
     if (searchTerm) {
@@ -93,7 +93,7 @@ export default function CategoryManagement() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
-    // updateDisplayedCategories will be called automatically via useEffect
+    // updatesDisplayedCategories will be called automatically via useEffect
   }
 
   const handleSelectAll = () => {
@@ -199,8 +199,8 @@ export default function CategoryManagement() {
         // Reset to page 1 to show the new category
         setPage(1)
       } else if (showEditModal && currentCategory) {
-        // Use the single updateCategory method that handles both with/without image
-        await adminCategoriesApi.updateCategory(currentCategory.id, cleanFormData, selectedImage || undefined)
+        // Use the single updatesCategory method that handles both with/without image
+        await adminCategoriesApi.updatesCategory(currentCategory.id, cleanFormData, selectedImage || undefined)
         // Refetch all categories to ensure we have the latest data
         await fetchCategories()
       }

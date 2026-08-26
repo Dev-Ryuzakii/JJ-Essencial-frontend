@@ -92,7 +92,7 @@ const Categories: React.FC = () => {
             description: 'Essential kitchen equipment',
             productCount: 15,
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            updatesdAt: new Date().toISOString(),
             isFeatured: true,
             imageUrl: '/api/placeholder/400/300',
             featuredProducts: [

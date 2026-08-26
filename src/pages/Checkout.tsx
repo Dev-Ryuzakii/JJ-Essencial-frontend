@@ -314,7 +314,7 @@ const Checkout = () => {
     toast.loading('Refreshing cart...', { id: 'refresh' });
     
     try {
-      let updatedCount = 0;
+      let updatesdCount = 0;
       let removedCount = 0;
       
       for (const item of items) {
@@ -349,7 +349,7 @@ const Checkout = () => {
           
           if (isActive && product.stockQuantity > 0) {
             console.log(`✅ Refreshed: ${item.name}`);
-            updatedCount++;
+            updatesdCount++;
           } else {
             console.log(`❌ Removing unavailable product: ${item.name} (Active: ${isActive}, Stock: ${product.stockQuantity})`);
             removeFromCart(item.productId || item.id);
@@ -363,7 +363,7 @@ const Checkout = () => {
       }
       
       toast.success(
-        `Cart refreshed! Updated: ${updatedCount}, Removed: ${removedCount}`,
+        `Cart refreshed! updatesd: ${updatesdCount}, Removed: ${removedCount}`,
         { id: 'refresh', duration: 4000 }
       );
     } catch (error) {
@@ -730,7 +730,7 @@ const Checkout = () => {
           duration: 6000,
         });
       } else if (errorMessage.includes('stock')) {
-        toast.error('Some items in your cart are out of stock. Please update quantities or remove them.', {
+        toast.error('Some items in your cart are out of stock. Please updates quantities or remove them.', {
           duration: 6000,
         });
       } else if (errorMessage.includes('address') || errorMessage.includes('delivery')) {

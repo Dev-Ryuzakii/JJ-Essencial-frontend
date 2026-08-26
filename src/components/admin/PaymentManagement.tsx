@@ -20,7 +20,7 @@ export default function PaymentManagement() {
   const [error, setError] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<AdminPaymentDetailDto | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
-  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [showupdatesModal, setShowupdatesModal] = useState(false)
   
   // Pagination and filters
   const [page, setPage] = useState(1)
@@ -43,15 +43,15 @@ export default function PaymentManagement() {
     totalAmount: '0.00' // Would need to calculate from actual payment amounts
   }
 
-  // Update form data
-  const [updateFormData, setUpdateFormData] = useState<{
+  // updates form data
+  const [updatesFormData, setupdatesFormData] = useState<{
     status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | '';
     notes: string;
-    updateOrder: boolean;
+    updatesOrder: boolean;
   }>({
     status: '',
     notes: '',
-    updateOrder: true
+    updatesOrder: true
   })
 
   useEffect(() => {
@@ -110,38 +110,38 @@ export default function PaymentManagement() {
     }
   }
 
-  const handleUpdatePaymentStatus = (payment: AdminPaymentDto) => {
+  const handleupdatesPaymentStatus = (payment: AdminPaymentDto) => {
     setSelectedPayment(payment as AdminPaymentDetailDto)
-    setUpdateFormData({
+    setupdatesFormData({
       status: (payment.status as 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED') || 'PENDING',
       notes: '',
-      updateOrder: true
+      updatesOrder: true
     })
-    setShowUpdateModal(true)
+    setShowupdatesModal(true)
   }
 
-  const handleSubmitStatusUpdate = async (e: React.FormEvent) => {
+  const handleSubmitStatusupdates = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedPayment || !updateFormData.status) return
+    if (!selectedPayment || !updatesFormData.status) return
 
     try {
-      // Create a proper UpdatePaymentStatusDto object
-      const updateData = {
-        status: updateFormData.status as 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED',
-        notes: updateFormData.notes || undefined,
-        updateOrder: updateFormData.updateOrder
+      // Create a proper updatesPaymentStatusDto object
+      const updatesData = {
+        status: updatesFormData.status as 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED',
+        notes: updatesFormData.notes || undefined,
+        updatesOrder: updatesFormData.updatesOrder
       }
       
-      const updatedPayment = await adminApi.payments.updatetatus(selectedPayment.id, updateData)
+      const updatesdPayment = await adminApi.payments.updatestatus(selectedPayment.id, updatesData)
       setPayments(payments.map(payment => 
-        payment.id === selectedPayment.id ? updatedPayment : payment
+        payment.id === selectedPayment.id ? updatesdPayment : payment
       ))
-      setShowUpdateModal(false)
+      setShowupdatesModal(false)
       setSelectedPayment(null)
-      fetchPayments() // Refresh to get updated summary
+      fetchPayments() // Refresh to get updatesd summary
     } catch (err) {
       console.error('Error updating payment status:', err)
-      setError('Failed to update payment status.')
+      setError('Failed to updates payment status.')
     }
   }
 
@@ -418,7 +418,7 @@ export default function PaymentManagement() {
                           </button>
                           {payment.status === 'PENDING' && (
                             <button
-                              onClick={() => handleUpdatePaymentStatus(payment)}
+                              onClick={() => handleupdatesPaymentStatus(payment)}
                               className="text-green-600 hover:text-green-900"
                             >
                               <CheckCircle className="h-4 w-4" />
@@ -636,15 +636,15 @@ export default function PaymentManagement() {
         </div>
       )}
 
-      {/* Update Status Modal */}
-      {showUpdateModal && selectedPayment && (
+      {/* updates Status Modal */}
+      {showupdatesModal && selectedPayment && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
-            <div className="fixed inset-0 bg-gray-500 opacity-75" onClick={() => setShowUpdateModal(false)}></div>
+            <div className="fixed inset-0 bg-gray-500 opacity-75" onClick={() => setShowupdatesModal(false)}></div>
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
-              <form onSubmit={handleSubmitStatusUpdate}>
+              <form onSubmit={handleSubmitStatusupdates}>
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Update Payment Status</h3>
+                  <h3 className="text-lg font-medium text-gray-900">updates Payment Status</h3>
                 </div>
                 
                 <div className="p-6 space-y-4">
@@ -653,9 +653,9 @@ export default function PaymentManagement() {
                       Payment Status
                     </label>
                     <select
-                      value={updateFormData.status}
-                      onChange={(e) => setUpdateFormData({
-                        ...updateFormData, 
+                      value={updatesFormData.status}
+                      onChange={(e) => setupdatesFormData({
+                        ...updatesFormData, 
                         status: e.target.value as 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | ''
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -673,23 +673,23 @@ export default function PaymentManagement() {
                       Notes (Optional)
                     </label>
                     <textarea
-                      value={updateFormData.notes}
-                      onChange={(e) => setUpdateFormData({...updateFormData, notes: e.target.value})}
+                      value={updatesFormData.notes}
+                      onChange={(e) => setupdatesFormData({...updatesFormData, notes: e.target.value})}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Add any notes about this status update..."
+                      placeholder="Add any notes about this status updates..."
                     />
                   </div>
                   
                   <div className="flex items-center">
                     <input
                       type="checkbox"
-                      checked={updateFormData.updateOrder}
-                      onChange={(e) => setUpdateFormData({...updateFormData, updateOrder: e.target.checked})}
+                      checked={updatesFormData.updatesOrder}
+                      onChange={(e) => setupdatesFormData({...updatesFormData, updatesOrder: e.target.checked})}
                       className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                     />
                     <label className="ml-2 block text-sm text-gray-900">
-                      Update order status as well
+                      updates order status as well
                     </label>
                   </div>
                 </div>
@@ -697,7 +697,7 @@ export default function PaymentManagement() {
                 <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => setShowUpdateModal(false)}
+                    onClick={() => setShowupdatesModal(false)}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
                   >
                     Cancel
@@ -706,7 +706,7 @@ export default function PaymentManagement() {
                     type="submit"
                     className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                   >
-                    Update Status
+                    updates Status
                   </button>
                 </div>
               </form>

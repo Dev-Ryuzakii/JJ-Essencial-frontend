@@ -58,9 +58,9 @@ const Wishlist: React.FC = () => {
       console.error('Error removing item from wishlist:', error)
     } finally {
       setRemovingItems(prev => {
-        const updated = new Set(prev)
-        updated.delete(itemId)
-        return updated
+        const updatesd = new Set(prev)
+        updatesd.delete(itemId)
+        return updatesd
       })
     }
   }
@@ -89,7 +89,7 @@ const Wishlist: React.FC = () => {
           slug: '',
           productCount: 0,
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatesdAt: new Date().toISOString()
         } : {
           id: '', 
           name: '', 
@@ -98,12 +98,12 @@ const Wishlist: React.FC = () => {
           slug: '',
           productCount: 0,
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatesdAt: new Date().toISOString()
         },
         averageRating: product.averageRating || 0,
         reviewCount: product.reviewCount || 0,
         createdAt: product.createdAt || new Date().toISOString(),
-        updatedAt: product.updatedAt || new Date().toISOString(),
+        updatesdAt: product.updatesdAt || new Date().toISOString(),
       }
       
       // @ts-ignore - Handle type mismatch for cart

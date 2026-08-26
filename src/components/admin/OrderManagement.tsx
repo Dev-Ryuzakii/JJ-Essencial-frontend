@@ -235,7 +235,7 @@ export default function OrderManagement() {
     console.log('View button clicked for order:', order.id)
     setSelectedOrder(order)
     setShowOrderDetail(true)
-    // Update URL with order ID
+    // updates URL with order ID
     window.history.pushState({}, '', `/admin/orders/${order.id}`)
   }
 
@@ -502,18 +502,18 @@ Total Spent: ${typeof totalSpent === 'string' ? formatCurrency(totalSpent) : for
                         <button
                           onClick={async () => {
                             try {
-                              await adminOrdersApi.updatePaymentStatus(order.id, {
+                              await adminOrdersApi.updatesPaymentStatus(order.id, {
                                 paymentStatus: 'PAID',
                                 note: 'Payment verified by admin after receipt review',
                                 notifyCustomer: true
                               });
-                              toast.success('Payment status updated to PAID');
-                              // Refresh orders to show updated status
+                              toast.success('Payment status updatesd to PAID');
+                              // Refresh orders to show updatesd status
                               fetchOrders();
                               onClose();
                             } catch (error) {
-                              console.error('Failed to update payment status:', error);
-                              toast.error('Failed to update payment status');
+                              console.error('Failed to updates payment status:', error);
+                              toast.error('Failed to updates payment status');
                             }
                           }}
                           className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"

@@ -17,7 +17,7 @@ export interface AdminUser {
   totalOrders: number;
   totalSpent: number;
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
 }
 
 export interface AdminUserFilter {
@@ -33,7 +33,7 @@ export interface AdminUserFilter {
   endDate?: string;
 }
 
-export interface UpdateUserStatusDto {
+export interface updatesUserStatusDto {
   isActive: boolean;
   reason?: string;
 }
@@ -123,7 +123,7 @@ const adminUsersApi = {
       totalOrders: user.totalOrders || user.total_orders || 0,
       totalSpent: user.totalSpent || user.total_spent || 0,
       createdAt: user.createdAt || user.created_at || new Date().toISOString(),
-      updatedAt: user.updatedAt || user.updated_at || new Date().toISOString()
+      updatesdAt: user.updatesdAt || user.updatesd_at || new Date().toISOString()
     }));
     
     console.log('AdminUsersApi: Transformed users sample:', transformedUsers.slice(0, 2));
@@ -150,10 +150,10 @@ const adminUsersApi = {
   },
 
   /**
-   * Update user status (Admin only)
+   * updates user status (Admin only)
    * PATCH /admin/users/:id/status
    */
-  updateUserStatus: async (id: string, data: UpdateUserStatusDto): Promise<AdminUser> => {
+  updatesUserStatus: async (id: string, data: updatesUserStatusDto): Promise<AdminUser> => {
     const response = await patch<AdminUser>(`/admin/users/${id}/status`, data);
     return extractData(response);
   },
@@ -203,15 +203,15 @@ const adminUsersApi = {
   },
 
   /**
-   * Bulk update users (Admin only)
+   * Bulk updates users (Admin only)
    * PATCH /admin/users/bulk
    */
-  bulkUpdateUsers: async (userIds: string[], data: {
+  bulkupdatesUsers: async (userIds: string[], data: {
     isActive?: boolean;
     role?: 'USER' | 'ADMIN';
     emailVerified?: boolean;
-  }): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/admin/users/bulk', {
+  }): Promise<{ updatesd: number }> => {
+    const response = await patch<{ updatesd: number }>('/admin/users/bulk', {
       userIds,
       ...data
     });

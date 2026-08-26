@@ -5,8 +5,8 @@ This document summarizes the integration of the customer support system into the
 
 ## Changes Made
 
-### 1. API Endpoint update
-Updated the [userSupportApi.ts](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/userSupportApi.ts) file to use the correct API endpoints without the `/api/v1` prefix since it's already included in the base URL:
+### 1. API Endpoint updates
+updatesd the [userSupportApi.ts](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/userSupportApi.ts) file to use the correct API endpoints without the `/api/v1` prefix since it's already included in the base URL:
 
 - `POST /customer-support/chat` - Create a new support ticket
 - `GET /customer-support/my-chats` - Get user's support tickets
@@ -43,14 +43,14 @@ The following components were already implemented and are working correctly:
 The development server is running successfully at http://localhost:5173/. The support system can be accessed through the "Support" link in the user dashboard.
 
 ## Future Improvements
-1. Add real-time update using WebSocket connections
+1. Add real-time updates using WebSocket connections
 2. Implement file attachment functionality for screenshots/documents
 3. Add push notifications for support staff replies
 4. Implement search and filter functionality for users with many tickets
 5. Add pagination for users with many tickets
 6. Implement message batching for long conversations
 7. Add caching for ticket data to reduce API calls
-8. Implement optimistic update for better user experience
+8. Implement optimistic updates for better user experience
 
 ## Security Considerations
 - All API requests require authentication via JWT tokens

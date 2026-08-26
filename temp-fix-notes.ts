@@ -5,7 +5,7 @@ import { fix_api_response_calls } from './utils/quick-fixes';
  * This fixes the most critical issues preventing deployment
  */
 
-// Fix 1: Update API response handling
+// Fix 1: updates API response handling
 const files_to_fix = [
   'src/services/cartApi.ts',
   'src/services/adminOrdersApi.ts', 

@@ -10,7 +10,7 @@ GET /api/v1/admin/support/tickets/:id 404 (Not Found)
 The adminSupportApi was using an incorrect endpoint pattern for retrieving ticket details. The endpoint `/admin/support/tickets/:id` does not exist in the backend API.
 
 ## Solution
-Updated the [getTicket](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/adminSupportApi.ts#L165-L182) method in [adminSupportApi.ts](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/adminSupportApi.ts) to use the correct endpoint pattern that matches the userSupportApi:
+updatesd the [getTicket](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/adminSupportApi.ts#L165-L182) method in [adminSupportApi.ts](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/adminSupportApi.ts) to use the correct endpoint pattern that matches the userSupportApi:
 
 **Before:**
 ```typescript
@@ -47,7 +47,7 @@ After implementing this fix:
 - The fix maintains consistency with the existing userSupportApi endpoint patterns
 - Admin users can access the same ticket details as regular users, but with additional administrative capabilities
 - All other adminSupportApi functionality remains unchanged
-- The modal component in SupportManagement.tsx now works correctly with the updated API
+- The modal component in SupportManagement.tsx now works correctly with the updatesd API
 
 ## Testing
 To verify the fix:

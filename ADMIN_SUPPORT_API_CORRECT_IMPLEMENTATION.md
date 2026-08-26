@@ -80,7 +80,7 @@ const getAuthHeaders = () => {
 - Automatically handles authentication tokens
 
 ### 3. Maintainability
-- Easier to update if authentication or error handling patterns change
+- Easier to updates if authentication or error handling patterns change
 - Less code to maintain (no duplicate auth logic)
 - Follows DRY principles
 

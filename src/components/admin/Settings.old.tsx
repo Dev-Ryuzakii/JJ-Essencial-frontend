@@ -18,7 +18,7 @@ import adminApi, {
   AdminSettingsDto, 
   BankAccountDto, 
   CreateBankAccountDto, 
-  UpdateBankAccountDto 
+  updatesBankAccountDto 
 } from '../../services/adminApi'
 
 export default function Settings() {
@@ -153,9 +153,9 @@ export default function Settings() {
       setSaving(true)
       setError(null)
       
-      const updatedSettings = await adminApi.settings.updateettings(settingsForm)
-      setSettings(updatedSettings)
-      setSuccessMessage('Settings updated successfully!')
+      const updatesdSettings = await adminApi.settings.updatesettings(settingsForm)
+      setSettings(updatesdSettings)
+      setSuccessMessage('Settings updatesd successfully!')
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000)
@@ -163,7 +163,7 @@ export default function Settings() {
       if (err?.statusCode === 404 || err?.response?.status === 404) {
         setError('Settings functionality is not yet implemented on the backend.')
       } else {
-        setError('Failed to update settings. Please try again.')
+        setError('Failed to updates settings. Please try again.')
       }
       console.error('Error updating settings:', err)
     } finally {
@@ -190,27 +190,27 @@ export default function Settings() {
     }
   }
 
-  const handleUpdateBankAccount = async (e: React.FormEvent) => {
+  const handleupdatesBankAccount = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedBank) return
 
     try {
-      const updatedAccount = await adminApi.settings.updateBankAccount(
+      const updatesdAccount = await adminApi.settings.updatesBankAccount(
         selectedBank.id, 
-        bankForm as UpdateBankAccountDto
+        bankForm as updatesBankAccountDto
       )
       setBankAccounts(bankAccounts.map(account => 
-        account.id === selectedBank.id ? updatedAccount : account
+        account.id === selectedBank.id ? updatesdAccount : account
       ))
       setShowBankModal(false)
       resetBankForm()
-      setSuccessMessage('Bank account updated successfully!')
+      setSuccessMessage('Bank account updatesd successfully!')
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err: any) {
       if (err?.statusCode === 404 || err?.response?.status === 404) {
         setError('Bank account management is not yet implemented on the backend.')
       } else {
-        setError('Failed to update bank account. Please try again.')
+        setError('Failed to updates bank account. Please try again.')
       }
       console.error('Error updating bank account:', err)
     }
@@ -579,7 +579,7 @@ export default function Settings() {
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
             <div className="fixed inset-0 bg-gray-500 opacity-75" onClick={() => setShowBankModal(false)}></div>
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
-              <form onSubmit={isEditMode ? handleUpdateBankAccount : handleCreateBankAccount}>
+              <form onSubmit={isEditMode ? handleupdatesBankAccount : handleCreateBankAccount}>
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h3 className="text-lg font-medium text-gray-900">
                     {isEditMode ? 'Edit Bank Account' : 'Add Bank Account'}
@@ -664,7 +664,7 @@ export default function Settings() {
                     type="submit"
                     className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                   >
-                    {isEditMode ? 'Update Account' : 'Add Account'}
+                    {isEditMode ? 'updates Account' : 'Add Account'}
                   </button>
                 </div>
               </form>

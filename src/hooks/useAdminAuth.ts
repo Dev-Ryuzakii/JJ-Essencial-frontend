@@ -14,7 +14,7 @@ interface AdminUser {
   dateOfBirth?: string | null
   isActive: boolean
   createdAt: string
-  updatedAt: string
+  updatesdAt: string
 }
 
 export const useAdminAuth = () => {
@@ -81,7 +81,7 @@ export const useAdminAuth = () => {
         dateOfBirth: user.dateOfBirth || null,
         isActive: true,
         createdAt: user.createdAt || new Date().toISOString(),
-        updatedAt: user.updatedAt || new Date().toISOString()
+        updatesdAt: user.updatesdAt || new Date().toISOString()
       })
       
       console.log('Admin auth check: Successfully authenticated from local storage');

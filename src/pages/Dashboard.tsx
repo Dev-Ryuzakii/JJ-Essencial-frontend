@@ -163,7 +163,7 @@ const Dashboard: React.FC = () => {
           setWishlistItems([]);
         }
         
-        // Update stats state with calculated values
+        // updates stats state with calculated values
         setStats(userStats);
         console.log('✅ Dashboard: Final user stats:', userStats);
 
@@ -454,7 +454,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div>
               <p className="font-medium text-gray-900">Edit Profile</p>
-              <p className="text-sm text-gray-500">Update your info</p>
+              <p className="text-sm text-gray-500">updates your info</p>
             </div>
           </Link>
 

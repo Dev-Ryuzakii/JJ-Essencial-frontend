@@ -16,7 +16,7 @@ export interface Notification {
   category?: string;
   expiresAt?: string;
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
 }
 
 export type NotificationType = 
@@ -30,7 +30,7 @@ export type NotificationType =
   | 'PRICE_DROP'
   | 'REVIEW_REQUEST'
   | 'WISHLIST_ITEM_SALE'
-  | 'ACCOUNT_UPDATE'
+  | 'ACCOUNT_updates'
   | 'SECURITY_ALERT'
   | 'SYSTEM_MAINTENANCE'
   | 'MARKETING'
@@ -40,7 +40,7 @@ export interface NotificationPreferences {
   emailNotifications: boolean;
   pushNotifications: boolean;
   smsNotifications: boolean;
-  orderupdate: boolean;
+  orderupdates: boolean;
   promotionalOffers: boolean;
   securityAlerts: boolean;
   priceAlerts: boolean;
@@ -126,8 +126,8 @@ const notificationsApi = {
    * Mark all notifications as read
    * PATCH /api/v1/notifications/mark-all-read
    */
-  markAllAsRead: async (): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/notifications/mark-all-read', {});
+  markAllAsRead: async (): Promise<{ updatesd: number }> => {
+    const response = await patch<{ updatesd: number }>('/notifications/mark-all-read', {});
     
     if (response.success && response.data) {
       return response.data;
@@ -191,16 +191,16 @@ const notificationsApi = {
   },
 
   /**
-   * Update notification preferences
+   * updates notification preferences
    * PUT /api/v1/notifications/preferences
    */
-  updateNotificationPreferences: async (preferences: Partial<NotificationPreferences>): Promise<NotificationPreferences> => {
+  updatesNotificationPreferences: async (preferences: Partial<NotificationPreferences>): Promise<NotificationPreferences> => {
     const response = await put<NotificationPreferences>('/notifications/preferences', preferences);
     
     if (response.success && response.data) {
       return response.data;
     } else {
-      throw new Error(response.message || 'Failed to update notification preferences');
+      throw new Error(response.message || 'Failed to updates notification preferences');
     }
   },
 

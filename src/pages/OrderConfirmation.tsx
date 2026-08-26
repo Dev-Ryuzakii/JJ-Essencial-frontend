@@ -124,7 +124,7 @@ const OrderConfirmation: React.FC = () => {
                     <div>
                       <h4 className="text-sm font-medium text-yellow-800">Order Processing</h4>
                       <p className="text-sm text-yellow-700 mt-1">
-                        Your order is being processed and you will receive update via email.
+                        Your order is being processed and you will receive updates via email.
                       </p>
                     </div>
                   </div>

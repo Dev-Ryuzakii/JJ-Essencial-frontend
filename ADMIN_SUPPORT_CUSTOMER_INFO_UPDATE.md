@@ -1,12 +1,12 @@
-# Admin Support Customer Information Update
+# Admin Support Customer Information updates
 
 ## Overview
-This document explains the update made to display customer name and phone number in the admin support management panel.
+This document explains the updates made to display customer name and phone number in the admin support management panel.
 
 ## Changes Made
 
-### 1. Updated AdminSupportTicket Interfaces
-Updated both `AdminSupportTicket` and `AdminSupportTicketDetail` interfaces in [adminSupportApi.ts](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/adminSupportApi.ts) to include an optional phone property in the user object:
+### 1. updatesd AdminSupportTicket Interfaces
+updatesd both `AdminSupportTicket` and `AdminSupportTicketDetail` interfaces in [adminSupportApi.ts](file:///Users/kurohiko/JJ-Essencial-frontend/src/services/adminSupportApi.ts) to include an optional phone property in the user object:
 
 ```typescript
 user: {
@@ -18,7 +18,7 @@ user: {
 ```
 
 ### 2. Enhanced Ticket Data Transformation
-Updated the ticket data transformation logic in [SupportManagement.tsx](file:///Users/kurohiko/JJ-Essencial-frontend/src/components/admin/SupportManagement.tsx) to extract phone number information if it exists in the API response:
+updatesd the ticket data transformation logic in [SupportManagement.tsx](file:///Users/kurohiko/JJ-Essencial-frontend/src/components/admin/SupportManagement.tsx) to extract phone number information if it exists in the API response:
 
 ```typescript
 customer: {
@@ -30,7 +30,7 @@ customer: {
 }
 ```
 
-### 3. Updated Customer Information Display
+### 3. updatesd Customer Information Display
 Enhanced both the table view and modal view to display customer phone numbers when available:
 
 #### Table View (Customer Column)

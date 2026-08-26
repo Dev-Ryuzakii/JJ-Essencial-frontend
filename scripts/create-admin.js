@@ -42,14 +42,14 @@ async function createAdminUser() {
       return
     }
 
-    // Update the user's role in the auth.users table
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    // updates the user's role in the auth.users table
+    const { error: updatesError } = await supabaseAdmin.auth.admin.updatesUserById(
       userData.user.id,
       { role: 'ADMIN' }
     )
 
-    if (updateError) {
-      console.error('Error updating user role:', updateError.message)
+    if (updatesError) {
+      console.error('Error updating user role:', updatesError.message)
       return
     }
 

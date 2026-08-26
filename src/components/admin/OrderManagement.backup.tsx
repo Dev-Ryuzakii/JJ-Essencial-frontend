@@ -163,19 +163,19 @@ export default function OrderManagement() {
     }))
   }
 
-  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
+  const handleupdatesOrderStatus = async (orderId: string, status: OrderStatus) => {
     try {
-      await adminOrdersApi.updateOrderStatus(orderId, { 
+      await adminOrdersApi.updatesOrderStatus(orderId, { 
         status,
         notifyCustomer: true 
       })
       
-      // Update local state
+      // updates local state
       setOrders(prev => prev.map(order => 
         order.id === orderId ? { ...order, status } : order
       ))
     } catch (error) {
-      console.error('Failed to update order status:', error)
+      console.error('Failed to updates order status:', error)
     }
   }
 
@@ -332,8 +332,8 @@ export default function OrderManagement() {
                   <h4 className="font-semibold text-gray-700">Order Date</h4>
                 </div>
                 <p className="text-gray-600">{formatDate(order.createdAt)}</p>
-                {order.updatedAt && order.updatedAt !== order.createdAt && (
-                  <p className="text-xs text-gray-500 mt-1">Updated: {formatDate(order.updatedAt)}</p>
+                {order.updatesdAt && order.updatesdAt !== order.createdAt && (
+                  <p className="text-xs text-gray-500 mt-1">updatesd: {formatDate(order.updatesdAt)}</p>
                 )}
               </div>
 
@@ -539,10 +539,10 @@ export default function OrderManagement() {
             {/* Actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0 pt-6 border-t border-gray-200">
               <div className="flex items-center space-x-3">
-                <label className="text-sm font-medium text-gray-700">Update Status:</label>
+                <label className="text-sm font-medium text-gray-700">updates Status:</label>
                 <select
                   value={order.status}
-                  onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
+                  onChange={(e) => handleupdatesOrderStatus(order.id, e.target.value as OrderStatus)}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="PENDING">Pending</option>
@@ -835,7 +835,7 @@ export default function OrderManagement() {
                   </button>
                   <select
                     value={order.status}
-                    onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
+                    onChange={(e) => handleupdatesOrderStatus(order.id, e.target.value as OrderStatus)}
                     className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="PENDING">Pending</option>
@@ -949,7 +949,7 @@ export default function OrderManagement() {
                           
                           <select
                             value={order.status}
-                            onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
+                            onChange={(e) => handleupdatesOrderStatus(order.id, e.target.value as OrderStatus)}
                             className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="PENDING">Pending</option>

@@ -8,7 +8,7 @@ export interface User {
   dateOfBirth?: string
   role: 'USER' | 'ADMIN'
   createdAt: string
-  updatedAt: string
+  updatesdAt: string
 }
 
 export interface UserStats {
@@ -55,7 +55,7 @@ export interface Product {
   isInWishlist?: boolean // Frontend field
   featured?: boolean // Backend field
   createdAt: string
-  updatedAt: string
+  updatesdAt: string
 }
 
 export interface Category {
@@ -69,10 +69,10 @@ export interface Category {
   children?: Category[]
   productCount: number
   createdAt: string
-  updatedAt: string
+  updatesdAt: string
 }
 
-// Order types - Updated to match backend schema fixes
+// Order types - updatesd to match backend schema fixes
 export interface Order {
   id: string
   orderNumber?: string                // ✅ NEW: 6-digit order number (e.g., "123456") - optional for backward compatibility
@@ -90,7 +90,7 @@ export interface Order {
   notes?: string                     // ✅ Added notes field to match backend
   user?: User                        // ✅ Added user object
   createdAt: string
-  updatedAt?: string                 // ✅ Added updatedAt
+  updatesdAt?: string                 // ✅ Added updatesdAt
   // ✅ Delivery address fields from backend response
   deliveryPhone?: string
   deliveryAddressText?: string        // ✅ Renamed to avoid conflict
@@ -142,10 +142,10 @@ export interface PaymentDetails {
 }
 
 export interface OrderTracking {
-  update: TrackingUpdate[]
+  updates: Trackingupdates[]
 }
 
-export interface TrackingUpdate {
+export interface Trackingupdates {
   status: string
   timestamp: string
   message: string
@@ -184,7 +184,7 @@ export interface BankAccountDto {
   accountName: string
   isActive?: boolean
   createdAt?: string
-  updatedAt?: string
+  updatesdAt?: string
 }
 
 export interface PaymentReceipt {
@@ -208,7 +208,7 @@ export interface Trade {
   description: string
   images: string[]
   createdAt: string
-  updatedAt: string
+  updatesdAt: string
 }
 
 export type TradeStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SOLD'
@@ -230,7 +230,7 @@ export interface Review {
   user?: User
   verified: boolean
   createdAt: string
-  updatedAt: string
+  updatesdAt: string
 }
 
 // Support types
@@ -245,7 +245,7 @@ export interface SupportTicket {
   lastActivity: string
   unreadCount?: number
   createdAt: string
-  updatedAt: string
+  updatesdAt: string
 }
 
 export interface TicketMessage {

@@ -15,7 +15,7 @@ import adminApi, {
   type AdminSettingsDto, 
   type BankAccountDto, 
   type CreateBankAccountDto, 
-  type UpdateBankAccountDto 
+  type updatesBankAccountDto 
 } from '../../services/adminApi'
 
 export default function Settings() {
@@ -101,13 +101,13 @@ export default function Settings() {
       setSaving(true)
       setError(null)
       
-      const updatedSettings = await adminApi.settings.updateettings(settingsForm)
-      setSettings(updatedSettings)
-      setSuccessMessage('Settings updated successfully!')
+      const updatesdSettings = await adminApi.settings.updatesettings(settingsForm)
+      setSettings(updatesdSettings)
+      setSuccessMessage('Settings updatesd successfully!')
       
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err: any) {
-      setError('Failed to update settings. Please try again.')
+      setError('Failed to updates settings. Please try again.')
       console.error('Error updating settings:', err)
     } finally {
       setSaving(false)
@@ -129,24 +129,24 @@ export default function Settings() {
     }
   }
 
-  const handleUpdateBankAccount = async (e: React.FormEvent) => {
+  const handleupdatesBankAccount = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedBank) return
 
     try {
-      const updatedAccount = await adminApi.settings.updateBankAccount(
+      const updatesdAccount = await adminApi.settings.updatesBankAccount(
         selectedBank.id,
-        bankForm as UpdateBankAccountDto
+        bankForm as updatesBankAccountDto
       )
       setBankAccounts(bankAccounts.map(acc => 
-        acc.id === selectedBank.id ? updatedAccount : acc
+        acc.id === selectedBank.id ? updatesdAccount : acc
       ))
       setShowBankModal(false)
       resetBankForm()
-      setSuccessMessage('Bank account updated successfully!')
+      setSuccessMessage('Bank account updatesd successfully!')
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError('Failed to update bank account. Please try again.')
+      setError('Failed to updates bank account. Please try again.')
       console.error('Error updating bank account:', err)
     }
   }
@@ -532,7 +532,7 @@ export default function Settings() {
               {isEditMode ? 'Edit Bank Account' : 'Add Bank Account'}
             </h3>
             
-            <form onSubmit={isEditMode ? handleUpdateBankAccount : handleCreateBankAccount}>
+            <form onSubmit={isEditMode ? handleupdatesBankAccount : handleCreateBankAccount}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -624,7 +624,7 @@ export default function Settings() {
                   type="submit"
                   className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                 >
-                  {isEditMode ? 'Update' : 'Add'} Account
+                  {isEditMode ? 'updates' : 'Add'} Account
                 </button>
               </div>
             </form>

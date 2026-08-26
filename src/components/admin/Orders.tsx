@@ -106,7 +106,7 @@ export default function Orders() {
       setLoading(true)
       setError(null)
       
-      const updatedFilters = {
+      const updatesdFilters = {
         ...filters,
         search: debouncedSearchQuery,
         sortBy: sortField,
@@ -114,7 +114,7 @@ export default function Orders() {
         page: currentPage
       }
       
-      const response = await adminOrdersApi.getOrders(updatedFilters)
+      const response = await adminOrdersApi.getOrders(updatesdFilters)
       setOrders(response.data)
       setTotalOrders(response.total)
       setTotalPages(Math.ceil(response.total / filters.limit!))
@@ -150,15 +150,15 @@ export default function Orders() {
     setCurrentPage(page)
   }
 
-  const handleBulkStatusUpdate = async (status: OrderStatus) => {
+  const handleBulkStatusupdates = async (status: OrderStatus) => {
     if (window.confirm(`Are you sure you want to mark ${selectedOrders.length} orders as ${status}?`)) {
       try {
-        await adminOrdersApi.bulkUpdateOrders(selectedOrders, { status })
+        await adminOrdersApi.bulkupdatesOrders(selectedOrders, { status })
         setSelectedOrders([])
         fetchOrders()
       } catch (err) {
         console.error(`Error updating orders to ${status}:`, err)
-        setError(`Failed to update orders to ${status}. Please try again.`)
+        setError(`Failed to updates orders to ${status}. Please try again.`)
       }
     }
   }
@@ -387,28 +387,28 @@ export default function Orders() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => handleBulkStatusUpdate('PROCESSING')}
+              onClick={() => handleBulkStatusupdates('PROCESSING')}
               className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Mark Processing
             </button>
             <button
-              onClick={() => handleBulkStatusUpdate('SHIPPED')}
+              onClick={() => handleBulkStatusupdates('SHIPPED')}
               className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               <Truck className="h-4 w-4 mr-2" />
               Mark Shipped
             </button>
             <button
-              onClick={() => handleBulkStatusUpdate('DELIVERED')}
+              onClick={() => handleBulkStatusupdates('DELIVERED')}
               className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               Mark Delivered
             </button>
             <button
-              onClick={() => handleBulkStatusUpdate('CANCELLED')}
+              onClick={() => handleBulkStatusupdates('CANCELLED')}
               className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
               <XCircle className="h-4 w-4 mr-2" />

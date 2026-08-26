@@ -116,7 +116,7 @@ export const useScrollDirection = () => {
   useEffect(() => {
     let lastScrollY = window.pageYOffset
 
-    const updatecrollDirection = () => {
+    const updatescrollDirection = () => {
       const scrollY = window.pageYOffset
       const direction = scrollY > lastScrollY ? 'down' : 'up'
       
@@ -127,8 +127,8 @@ export const useScrollDirection = () => {
       lastScrollY = scrollY > 0 ? scrollY : 0
     }
 
-    window.addEventListener('scroll', updatecrollDirection)
-    return () => window.removeEventListener('scroll', updatecrollDirection)
+    window.addEventListener('scroll', updatescrollDirection)
+    return () => window.removeEventListener('scroll', updatescrollDirection)
   }, [scrollDirection])
 
   return scrollDirection

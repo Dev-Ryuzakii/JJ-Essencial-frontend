@@ -21,7 +21,7 @@ for file in "${FILES[@]}"; do
     sed -i '' 's/import {.*AdminSettingsDto.*/import type { AdminSettingsDto } from "..\/..\/services\/adminApi"/g' "$file"
     sed -i '' 's/import {.*BankAccountDto.*/import type { BankAccountDto } from "..\/..\/services\/adminApi"/g' "$file"
     sed -i '' 's/import {.*CreateBankAccountDto.*/import type { CreateBankAccountDto } from "..\/..\/services\/adminApi"/g' "$file"
-    sed -i '' 's/import {.*UpdateBankAccountDto.*/import type { UpdateBankAccountDto } from "..\/..\/services\/adminApi"/g' "$file"
+    sed -i '' 's/import {.*updatesBankAccountDto.*/import type { updatesBankAccountDto } from "..\/..\/services\/adminApi"/g' "$file"
     
     # Fix Product and ProductFilter imports  
     sed -i '' 's/import {.*Product.*ProductFilter.*/import type { Product, ProductFilter } from "..\/..\/services\/productsApi"/g' "$file"

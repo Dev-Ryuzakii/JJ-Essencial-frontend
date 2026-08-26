@@ -39,7 +39,7 @@ interface TradeItem {
   images: string[]
   status: 'active' | 'pending' | 'completed' | 'cancelled'
   createdAt: string
-  updatedAt: string
+  updatesdAt: string
   views: number
   interests: number
   user: {
@@ -135,7 +135,7 @@ const Trades: React.FC = () => {
           images: ['/api/placeholder/300/300', '/api/placeholder/300/300'],
           status: 'active',
           createdAt: '2024-01-15T10:30:00Z',
-          updatedAt: '2024-01-15T10:30:00Z',
+          updatesdAt: '2024-01-15T10:30:00Z',
           views: 47,
           interests: 8,
           user: {
@@ -157,7 +157,7 @@ const Trades: React.FC = () => {
           images: ['/api/placeholder/300/300'],
           status: 'active',
           createdAt: '2024-01-14T15:20:00Z',
-          updatedAt: '2024-01-14T15:20:00Z',
+          updatesdAt: '2024-01-14T15:20:00Z',
           views: 23,
           interests: 5,
           user: {

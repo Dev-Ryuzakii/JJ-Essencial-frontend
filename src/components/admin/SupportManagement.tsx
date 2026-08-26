@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import adminSupportApi, { type AdminSupportTicket, type AdminSupportTicketDetail } from '../../services/adminSupportApi'
 
-// Updated interface to match backend response
+// updatesd interface to match backend response
 interface SupportTicket {
   id: string
   subject: string
@@ -31,7 +31,7 @@ interface SupportTicket {
   }
   assignedTo?: string | null
   createdAt: string
-  updatedAt?: string
+  updatesdAt?: string
   lastMessage?: {
     content: string
     from: 'customer' | 'admin'
@@ -96,7 +96,7 @@ export default function SupportManagement() {
         },
         assignedTo: (ticket as any).assigned_to || ticket.assignedTo,
         createdAt: (ticket as any).created_at || ticket.createdAt,
-        updatedAt: (ticket as any).updated_at || ticket.updatedAt,
+        updatesdAt: (ticket as any).updatesd_at || ticket.updatesdAt,
         lastMessage: ticket.messages && ticket.messages.length > 0 ? {
           content: ticket.messages[ticket.messages.length - 1].message,
           from: ticket.messages[ticket.messages.length - 1].isAdmin ? 'admin' : 'customer',
@@ -279,8 +279,8 @@ export default function SupportManagement() {
       await adminSupportApi.sendMessage(ticketId, { message })
       
       // Refresh ticket details to show the new message
-      const updatedTicket = await adminSupportApi.getTicket(ticketId)
-      setSelectedTicket(updatedTicket)
+      const updatesdTicket = await adminSupportApi.getTicket(ticketId)
+      setSelectedTicket(updatesdTicket)
       setReplyMessage('')
       
       // Also refresh the tickets list
@@ -312,7 +312,7 @@ export default function SupportManagement() {
       console.log('Ticket data sample:', tickets[0]);
       console.log('Ticket date values:', { 
         createdAt: tickets[0].createdAt, 
-        updatedAt: tickets[0].updatedAt 
+        updatesdAt: tickets[0].updatesdAt 
       });
     }
   }, [tickets]);
@@ -323,7 +323,7 @@ export default function SupportManagement() {
       console.log('Selected ticket data:', selectedTicket);
       console.log('Selected ticket date values:', { 
         createdAt: selectedTicket.createdAt, 
-        updatedAt: selectedTicket.updatedAt 
+        updatesdAt: selectedTicket.updatesdAt 
       });
     }
   }, [selectedTicket]);
@@ -606,7 +606,7 @@ export default function SupportManagement() {
                     Category
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Updated
+                    Last updatesd
                   </th>
                   <th scope="col" className="relative px-6 py-3">
                     <span className="sr-only">Actions</span>
@@ -657,7 +657,7 @@ export default function SupportManagement() {
                       {ticket.category || 'General'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(ticket.updatedAt || ticket.createdAt)}
+                      {formatDate(ticket.updatesdAt || ticket.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-3 justify-end">
@@ -730,7 +730,7 @@ export default function SupportManagement() {
                         </span>
                       </p>
                       <p>Created: {formatDate(selectedTicket.createdAt)}</p>
-                      {selectedTicket.updatedAt && <p>Updated: {formatDate(selectedTicket.updatedAt)}</p>}
+                      {selectedTicket.updatesdAt && <p>updatesd: {formatDate(selectedTicket.updatesdAt)}</p>}
                     </div>
                   </div>
                   

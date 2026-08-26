@@ -77,7 +77,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         toast.success('Added to wishlist')
       }
     } catch (error) {
-      toast.error('Failed to update wishlist')
+      toast.error('Failed to updates wishlist')
     }
   }
 

@@ -6,7 +6,7 @@ export interface AdminSupportTicket {
   status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   assignedTo?: string | null;
   user: {
     id: string;
@@ -36,7 +36,7 @@ export interface AdminSupportTicketDetail {
   status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   assignedTo?: string | null;
   user: {
     id: string;
@@ -59,7 +59,7 @@ export interface AdminSupportTicketDetail {
   }>;
 }
 
-export interface UpdateTicketStatusDto {
+export interface updatesTicketStatusDto {
   status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
   notes?: string;
 }
@@ -228,10 +228,10 @@ const adminSupportApi = {
   },
 
   /**
-   * Update support ticket status
+   * updates support ticket status
    * PUT /api/v1/admin/support/tickets/:id/status
    */
-  updateTicketStatus: async (ticketId: string, statusData: UpdateTicketStatusDto): Promise<any> => {
+  updatesTicketStatus: async (ticketId: string, statusData: updatesTicketStatusDto): Promise<any> => {
     try {
       console.log('Updating ticket status for ID:', ticketId);
       const response = await put(`/admin/support/tickets/${ticketId}/status`, statusData);
@@ -239,14 +239,14 @@ const adminSupportApi = {
       // Since the apiClient interceptor already returns response.data, we can directly return it
       // Check if it's a success response
       if (response && typeof response === 'object' && !('success' in response && response.success === false)) {
-        console.log('Successfully updated ticket status');
+        console.log('Successfully updatesd ticket status');
         return response;
       } else {
-        throw new Error('Failed to update ticket status');
+        throw new Error('Failed to updates ticket status');
       }
     } catch (error: any) {
       console.error('Error updating ticket status:', error);
-      throw new Error(error.response?.data?.message || error.message || 'Failed to update ticket status');
+      throw new Error(error.response?.data?.message || error.message || 'Failed to updates ticket status');
     }
   },
 

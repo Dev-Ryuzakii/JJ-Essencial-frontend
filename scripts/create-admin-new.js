@@ -34,14 +34,14 @@ async function createAdminUser() {
       return
     }
 
-    // Step 2: Update the user's role to admin
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
+    // Step 2: updates the user's role to admin
+    const { error: updatesError } = await supabase.auth.admin.updatesUserById(
       user.id,
       { role: 'service_role' }
     )
 
-    if (updateError) {
-      console.error('Error updating user role:', updateError)
+    if (updatesError) {
+      console.error('Error updating user role:', updatesError)
       return
     }
 

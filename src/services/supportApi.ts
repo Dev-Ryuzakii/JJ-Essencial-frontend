@@ -27,7 +27,7 @@ export interface SupportTicket {
   estimatedResolutionTime?: string;
   actualResolutionTime?: string;
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   closedAt?: string;
   customer: {
     id: string;
@@ -122,7 +122,7 @@ export interface FAQItem {
   notHelpfulCount: number;
   tags: string[];
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
 }
 
 export interface ContactInfo {

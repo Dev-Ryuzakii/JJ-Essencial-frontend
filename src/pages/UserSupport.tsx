@@ -45,7 +45,7 @@ const UserSupport: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // When support availability changes, update the view accordingly
+    // When support availability changes, updates the view accordingly
     if (supportAvailable === false && currentView === 'list') {
       setCurrentView('fallback');
     } else if (supportAvailable === true && currentView === 'fallback') {
@@ -207,7 +207,7 @@ const UserSupport: React.FC = () => {
             <div className="bg-white rounded-lg p-4 border border-blue-100">
               <h4 className="font-medium text-gray-900 mb-2">Account Help</h4>
               <p className="text-sm text-gray-600 mb-3">
-                Login issues, profile update, or security concerns
+                Login issues, profile updates, or security concerns
               </p>
               <button
                 onClick={handleCreateNew}

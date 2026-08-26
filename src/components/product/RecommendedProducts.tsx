@@ -63,11 +63,11 @@ const RecommendedProducts: React.FC = () => {
         stock: product.stock,
         // Add required fields for Product type
         description: '',
-        category: { id: '', name: '', slug: '', productCount: 0, createdAt: '', updatedAt: '' },
+        category: { id: '', name: '', slug: '', productCount: 0, createdAt: '', updatesdAt: '' },
         averageRating: 0,
         reviewCount: 0,
         createdAt: '',
-        updatedAt: ''
+        updatesdAt: ''
       };
       
       addToCart(productForCart);

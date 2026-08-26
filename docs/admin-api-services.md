@@ -41,7 +41,7 @@ import {
 
 // Direct access to specialized functionality
 const userAnalytics = await adminUsersApi.getUserAnalytics();
-const productBulkUpdate = await adminProductsApi.bulkUpdateProducts(data);
+const productBulkupdates = await adminProductsApi.bulkupdatesProducts(data);
 const realTimeStats = await adminAnalyticsApi.getRealTimeStats();
 ```
 
@@ -66,15 +66,15 @@ const users = await adminUsersApi.getUsers({
 // Get detailed user information
 const userDetails = await adminUsersApi.getUser('user-id');
 
-// Update user status and role
-const updatedUser = await adminUsersApi.updateUser('user-id', {
+// updates user status and role
+const updatesdUser = await adminUsersApi.updatesUser('user-id', {
   isActive: false,
   role: 'ADMIN',
   adminNote: 'Account suspended for review'
 });
 
 // Bulk operations
-const bulkResult = await adminUsersApi.bulkUpdateUsers(['id1', 'id2'], {
+const bulkResult = await adminUsersApi.bulkupdatesUsers(['id1', 'id2'], {
   isActive: true,
   role: 'CUSTOMER'
 });
@@ -98,7 +98,7 @@ files.forEach(file => formData.append('images', file));
 const product = await adminProductsApi.createProduct(formData);
 
 // Inventory management
-const stockUpdate = await adminProductsApi.updatetock('product-id', {
+const stockupdates = await adminProductsApi.updatestock('product-id', {
   quantity: 50,
   type: 'IN',
   reason: 'Restock from supplier',
@@ -112,7 +112,7 @@ const analytics = await adminProductsApi.getProductAnalytics({
 });
 
 // Bulk operations
-const bulkResult = await adminProductsApi.bulkUpdateProducts(['id1', 'id2'], {
+const bulkResult = await adminProductsApi.bulkupdatesProducts(['id1', 'id2'], {
   isActive: true,
   featured: true
 });
@@ -132,8 +132,8 @@ const orders = await adminOrdersApi.getOrders({
   maxAmount: 1000
 });
 
-// Update order status with tracking
-const order = await adminOrdersApi.updateOrderStatus('order-id', {
+// updates order status with tracking
+const order = await adminOrdersApi.updatesOrderStatus('order-id', {
   status: 'SHIPPED',
   location: 'Distribution Center',
   notes: 'Package dispatched via courier',
@@ -195,7 +195,7 @@ const reviews = await adminReviewsApi.getReviews({
 });
 
 // Moderate reviews
-const review = await adminReviewsApi.updateReviewStatus('review-id', {
+const review = await adminReviewsApi.updatesReviewStatus('review-id', {
   isApproved: true,
   isVerified: true,
   adminNote: 'Review approved after verification'
@@ -207,7 +207,7 @@ const response = await adminReviewsApi.addAdminResponse('review-id', {
 });
 
 // Bulk moderation
-const bulkResult = await adminReviewsApi.bulkUpdateReviews(['id1', 'id2'], {
+const bulkResult = await adminReviewsApi.bulkupdatesReviews(['id1', 'id2'], {
   isVisible: true,
   isApproved: true
 });
@@ -384,11 +384,11 @@ const loadData = async () => {
 ### 3. Use Bulk Operations for Efficiency
 ```typescript
 // ✅ Good - Bulk operation
-await adminProductsApi.bulkUpdateProducts(productIds, update);
+await adminProductsApi.bulkupdatesProducts(productIds, updates);
 
-// ❌ Inefficient - Individual update
+// ❌ Inefficient - Individual updates
 for (const id of productIds) {
-  await adminProductsApi.updateProduct(id, update);
+  await adminProductsApi.updatesProduct(id, updates);
 }
 ```
 
@@ -397,7 +397,7 @@ for (const id of productIds) {
 // Get comprehensive dashboard data
 const dashboard = await adminAnalyticsApi.getDashboardAnalytics();
 
-// Use real-time data for live update
+// Use real-time data for live updates
 const realTimeStats = await adminAnalyticsApi.getRealTimeStats();
 
 // Generate reports for business intelligence
@@ -444,23 +444,23 @@ import { adminProductsApi } from '@/services';
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
   
-  const handleBulkUpdate = async (productIds: string[], update: any) => {
+  const handleBulkupdates = async (productIds: string[], updates: any) => {
     try {
-      await adminProductsApi.bulkUpdateProducts(productIds, update);
+      await adminProductsApi.bulkupdatesProducts(productIds, updates);
       // Refresh product list
       const refreshedProducts = await adminProductsApi.getProducts();
       setProducts(refreshedProducts.items);
     } catch (error) {
-      console.error('Bulk update failed:', error);
+      console.error('Bulk updates failed:', error);
     }
   };
   
-  const handleStockUpdate = async (productId: string, stockData: any) => {
+  const handleStockupdates = async (productId: string, stockData: any) => {
     try {
-      await adminProductsApi.updatetock(productId, stockData);
-      // Update local state
+      await adminProductsApi.updatestock(productId, stockData);
+      // updates local state
     } catch (error) {
-      console.error('Stock update failed:', error);
+      console.error('Stock updates failed:', error);
     }
   };
   

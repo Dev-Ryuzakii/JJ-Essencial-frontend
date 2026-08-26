@@ -14,16 +14,16 @@ const token = data.data.token; // undefined
 localStorage.setItem('auth_token', token);
 ```
 
-**Solution**: Updated to use correct response structure
+**Solution**: updatesd to use correct response structure
 ```typescript
 // ✅ CORRECT (now)
 const { access_token, user } = response.data; // From SuccessResponseDto<T>
 localStorage.setItem('access_token', access_token);
 ```
 
-**Files Updated**:
+**Files updatesd**:
 - `src/services/authApi.ts` - Fixed token extraction
-- `src/lib/api.ts` - Updated to use `access_token` key
+- `src/lib/api.ts` - updatesd to use `access_token` key
 - `src/services/apiClient.ts` - Fixed token reference
 
 ### 2. ✅ **Order Creation DTO Structure Fixed**
@@ -63,7 +63,7 @@ localStorage.setItem('access_token', access_token);
 }
 ```
 
-**Files Updated**:
+**Files updatesd**:
 - `src/services/ordersApi.ts` - Correct DTO structure implemented
 - `src/pages/Checkout.tsx` - Already properly structured
 
@@ -85,7 +85,7 @@ headers: {
 }
 ```
 
-**Files Updated**:
+**Files updatesd**:
 - All API clients now use proper `Bearer ${token}` format
 - Token key changed from `auth_token` to `access_token` for consistency
 
@@ -104,7 +104,7 @@ const API_BASE_URL = 'https://jj-essencial-b33c39ba.afribase.dev/api/v1  ';
 // All APIs now call: https://jj-essencial-b33c39ba.afribase.dev/api/v1  /...
 ```
 
-**Files Updated**:
+**Files updatesd**:
 - `src/lib/api.ts` - Fixed base URL
 - `src/services/apiClient.ts` - Aligned base URL
 - Both services now consistently use localhost:3000
@@ -132,8 +132,8 @@ const requestPayload = {
 };
 ```
 
-**Files Updated**:
-- `src/services/paymentsApi.ts` - Updated to match your guide structure
+**Files updatesd**:
+- `src/services/paymentsApi.ts` - updatesd to match your guide structure
 
 ## 🚀 **Expected Results**
 

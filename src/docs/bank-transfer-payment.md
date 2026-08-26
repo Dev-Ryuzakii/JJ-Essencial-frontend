@@ -12,7 +12,7 @@ The manual bank transfer payment system allows customers to pay for orders by tr
 2. **User receives bank account details** for making the transfer
 3. **User makes the transfer** using their bank's app or website
 4. **User uploads proof of payment** (receipt/screenshot)
-5. **Admin verifies the payment** and update the order status
+5. **Admin verifies the payment** and updates the order status
 6. **User receives confirmation** once payment is verified
 
 ## Components

@@ -83,7 +83,7 @@ export default function Products() {
       setLoading(true)
       setError(null)
       
-      const updatedFilters = {
+      const updatesdFilters = {
         ...filters,
         search: debouncedSearchQuery,
         sortBy: sortField,
@@ -91,7 +91,7 @@ export default function Products() {
         page: currentPage
       }
       
-      const response = await productsApi.getProducts(updatedFilters)
+      const response = await productsApi.getProducts(updatesdFilters)
       setProducts(response.data)
       setTotalProducts(response.total)
       setTotalPages(Math.ceil(response.total / filters.limit!))

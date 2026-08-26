@@ -12,7 +12,7 @@ interface AdminUser {
   avatar?: string | null;
   dateOfBirth?: string | null;
   createdAt?: string;
-  updatedAt?: string;
+  updatesdAt?: string;
 }
 
 interface UseAdminTokenValidationResult {

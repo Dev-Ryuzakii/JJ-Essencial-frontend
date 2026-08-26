@@ -39,7 +39,7 @@ export interface AdminOrder {
   refundAmount?: string;
   refundReason?: string;
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   statusHistory: OrderStatusHistory[];
   receiptUrl?: string; // Added to handle payment receipt URLs
 }
@@ -122,7 +122,7 @@ export interface AdminOrderFilter {
   sortOrder?: 'ASC' | 'DESC';
 }
 
-export interface UpdateOrderStatusDto {
+export interface updatesOrderStatusDto {
   status: OrderStatus;
   note?: string;
   trackingNumber?: string;
@@ -131,7 +131,7 @@ export interface UpdateOrderStatusDto {
   notifyCustomer?: boolean;
 }
 
-export interface UpdatePaymentStatusDto {
+export interface updatesPaymentStatusDto {
   paymentStatus: PaymentStatus;
   paymentId?: string;
   note?: string;
@@ -302,7 +302,7 @@ const adminOrdersApi = {
           refundAmount: order.refund_amount?.toString() || '0',
           refundReason: order.refund_reason || '',
           createdAt: order.created_at,
-          updatedAt: order.updated_at,
+          updatesdAt: order.updatesd_at,
           statusHistory: []
         } as AdminOrder;
       });
@@ -419,7 +419,7 @@ const adminOrdersApi = {
         refundAmount: order.refund_amount?.toString() || '0',
         refundReason: order.refund_reason || '',
         createdAt: order.created_at,
-        updatedAt: order.updated_at,
+        updatesdAt: order.updatesd_at,
         statusHistory: []
       };
       
@@ -435,30 +435,30 @@ const adminOrdersApi = {
   },
 
   /**
-   * Update order status
+   * updates order status
    * PATCH /admin/orders/:id/status
    */
-  updateOrderStatus: async (id: string, data: UpdateOrderStatusDto): Promise<AdminOrder> => {
+  updatesOrderStatus: async (id: string, data: updatesOrderStatusDto): Promise<AdminOrder> => {
     const response = await patch<AdminOrder>(`/admin/orders/${id}/status`, data);
     
     if (response.success && response.data) {
       return response.data;
     } else {
-      throw new Error(response.message || 'Failed to update order status');
+      throw new Error(response.message || 'Failed to updates order status');
     }
   },
 
   /**
-   * Update payment status
+   * updates payment status
    * PATCH /admin/orders/:id/payment-status
    */
-  updatePaymentStatus: async (id: string, data: UpdatePaymentStatusDto): Promise<AdminOrder> => {
+  updatesPaymentStatus: async (id: string, data: updatesPaymentStatusDto): Promise<AdminOrder> => {
     const response = await patch<AdminOrder>(`/admin/orders/${id}/payment-status`, data);
     
     if (response.success && response.data) {
       return response.data;
     } else {
-      throw new Error(response.message || 'Failed to update payment status');
+      throw new Error(response.message || 'Failed to updates payment status');
     }
   },
 
@@ -535,16 +535,16 @@ const adminOrdersApi = {
   },
 
   /**
-   * Bulk update orders
+   * Bulk updates orders
    * PATCH /admin/orders/bulk
    */
-  bulkUpdateOrders: async (orderIds: string[], data: {
+  bulkupdatesOrders: async (orderIds: string[], data: {
     status?: OrderStatus;
     paymentStatus?: PaymentStatus;
     note?: string;
     notifyCustomers?: boolean;
-  }): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/admin/orders/bulk', {
+  }): Promise<{ updatesd: number }> => {
+    const response = await patch<{ updatesd: number }>('/admin/orders/bulk', {
       orderIds,
       ...data
     });
@@ -552,7 +552,7 @@ const adminOrdersApi = {
     if (response.success && response.data) {
       return response.data;
     } else {
-      throw new Error(response.message || 'Failed to bulk update orders');
+      throw new Error(response.message || 'Failed to bulk updates orders');
     }
   },
 

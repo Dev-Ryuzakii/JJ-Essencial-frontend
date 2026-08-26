@@ -108,7 +108,7 @@ const Products: React.FC = () => {
     loadProducts()
   }, [filters])
 
-  // Update URL when filters change
+  // updates URL when filters change
   useEffect(() => {
     const newParams = new URLSearchParams()
     

@@ -67,7 +67,7 @@ const SupportDashboard: React.FC = () => {
 
   const getRecentTickets = () => {
     return tickets
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .sort((a, b) => new Date(b.updatesdAt).getTime() - new Date(a.updatesdAt).getTime())
       .slice(0, 3);
   };
 
@@ -343,7 +343,7 @@ const SupportDashboard: React.FC = () => {
                         </div>
                       )}
                       <div className="mt-2 text-xs text-gray-500">
-                        Updated {formatDate(ticket.updatedAt)}
+                        updatesd {formatDate(ticket.updatesdAt)}
                       </div>
                     </div>
                   );

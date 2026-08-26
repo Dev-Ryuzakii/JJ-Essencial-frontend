@@ -24,13 +24,13 @@ export interface DeliveryAddress {
 
 export interface OrderItem {
   id: string;
-  productId: string;                  // ✅ Updated to match backend field
+  productId: string;                  // ✅ updatesd to match backend field
   quantity: number;
-  price: number;                      // ✅ Updated to match backend field (not unitPrice)
-  product?: {                         // ✅ Updated to match backend structure
+  price: number;                      // ✅ updatesd to match backend field (not unitPrice)
+  product?: {                         // ✅ updatesd to match backend structure
     id: string;
     name: string;
-    images?: string[];                // ✅ Updated from image to images array
+    images?: string[];                // ✅ updatesd from image to images array
     price?: number;                   // ✅ Made optional
     sku?: string;                     // ✅ Made optional
     attributes?: Record<string, string>; // ✅ Made optional
@@ -50,7 +50,7 @@ export interface Order {
   orderItems?: OrderItem[];           // ✅ Renamed from items to orderItems to match backend
   items?: OrderItem[];                // ✅ Keep items for backward compatibility
   createdAt: string;
-  updatedAt?: string;                 // ✅ Added updatedAt
+  updatesdAt?: string;                 // ✅ Added updatesdAt
   subtotal?: number;                  // ✅ Made optional
   shippingCost?: number;              // ✅ Made optional
   tax?: number;                       // ✅ Made optional
@@ -131,7 +131,7 @@ const formatOrderResponse = (backendOrder: any): Order => {
     paymentRef: backendOrder.paymentRef || backendOrder.payment_ref,
     receiptUrl: backendOrder.receiptUrl || backendOrder.receipt_url,
     createdAt: backendOrder.createdAt || backendOrder.created_at,
-    updatedAt: backendOrder.updatedAt || backendOrder.updated_at,
+    updatesdAt: backendOrder.updatesdAt || backendOrder.updatesd_at,
     
     // ✅ Add delivery address fields from backend response
     deliveryPhone: backendOrder.deliveryPhone,
@@ -180,7 +180,7 @@ const formatOrderResponse = (backendOrder: any): Order => {
   };
 };
 
-// ✅ Updated interfaces to match backend SuccessResponseDto
+// ✅ updatesd interfaces to match backend SuccessResponseDto
 interface BackendApiResponse<T> {
   success: boolean;
   data: T;
@@ -203,7 +203,7 @@ interface BackendOrdersResponse {
 
 const ordersApi = {
   /**
-   * Create a new order - Updated for backend schema compatibility
+   * Create a new order - updatesd for backend schema compatibility
    * POST /orders
    */
   create: async (data: CreateOrderData): Promise<ApiResponse<Order>> => {
@@ -286,7 +286,7 @@ const ordersApi = {
   },
 
   /**
-   * Get all user orders - updated to match backend response format
+   * Get all user orders - updatesd to match backend response format
    * GET /orders
    */
   getAll: async (params: OrdersQueryParams = {}): Promise<ApiResponse<Order[]>> => {
@@ -375,7 +375,7 @@ const ordersApi = {
   },
 
   /**
-   * Get order details by ID - updated with response formatting
+   * Get order details by ID - updatesd with response formatting
    * GET /orders/:id
    */
   getById: async (id: string): Promise<ApiResponse<Order>> => {

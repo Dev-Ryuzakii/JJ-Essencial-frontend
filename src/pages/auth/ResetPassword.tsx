@@ -108,7 +108,7 @@ const ResetPassword: React.FC = () => {
               </span>
             </h2>
             <p className="text-white/90 text-lg max-w-md">
-              Your password has been updated. You can now sign in with your new password.
+              Your password has been updatesd. You can now sign in with your new password.
             </p>
           </div>
         </div>
@@ -135,7 +135,7 @@ const ResetPassword: React.FC = () => {
                   Password Reset!
                 </h2>
                 <p className="text-gray-600">
-                  Your password has been successfully updated
+                  Your password has been successfully updatesd
                 </p>
               </div>
 
@@ -425,7 +425,7 @@ const ResetPassword: React.FC = () => {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center space-x-2">
-                    <span>Update Password</span>
+                    <span>updates Password</span>
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </div>
                 )}

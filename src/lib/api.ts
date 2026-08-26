@@ -262,8 +262,8 @@ export const authApi = {
   getUserProfile: () =>
     api.get<ApiResponse<any>>('/auth/profile'),
     
-  // Update user profile
-  updateProfile: (data: { fullName?: string }) =>
+  // updates user profile
+  updatesProfile: (data: { fullName?: string }) =>
     api.put<ApiResponse<any>>('/auth/profile', data),
     
   // Get current user from token
@@ -282,13 +282,13 @@ export const productsApi = {
   create: (data: any) =>
     api.post<ApiResponse<any>>('/products', data),
   
-  update: (id: string, data: any) =>
+  updates: (id: string, data: any) =>
     api.put<ApiResponse<any>>(`/products/${id}`, data),
   
   delete: (id: string) =>
     api.delete<ApiResponse<any>>(`/products/${id}`),
   
-  updatetock: (id: string, data: { stock: number; notes?: string }) =>
+  updatestock: (id: string, data: { stock: number; notes?: string }) =>
     api.patch<ApiResponse<any>>(`/products/${id}/stock`, data),
 }
 
@@ -303,7 +303,7 @@ export const categoriesApi = {
   create: (data: any) =>
     api.post<ApiResponse<any>>('/categories', data),
   
-  update: (id: string, data: any) =>
+  updates: (id: string, data: any) =>
     api.put<ApiResponse<any>>(`/categories/${id}`, data),
   
   delete: (id: string) =>
@@ -332,7 +332,7 @@ export const ordersApi = {
     getAll: (params?: Record<string, any>) =>
       api.get<ApiResponse<PaginatedResponse<any>>>('/orders/admin', { params }),
     
-    updatetatus: (id: string, data: { status: string; notes?: string }) =>
+    updatestatus: (id: string, data: { status: string; notes?: string }) =>
       api.patch<ApiResponse<any>>(`/orders/${id}/status`, data),
   },
 }
@@ -342,7 +342,7 @@ export const usersApi = {
   getProfile: () =>
     api.get<ApiResponse<any>>('/users/profile'),
   
-  updateProfile: (data: any) =>
+  updatesProfile: (data: any) =>
     api.put<ApiResponse<any>>('/users/profile', data),
   
   getStats: () =>
@@ -355,7 +355,7 @@ export const usersApi = {
     create: (data: any) =>
       api.post<ApiResponse<any>>('/users/addresses', data),
     
-    update: (id: string, data: any) =>
+    updates: (id: string, data: any) =>
       api.put<ApiResponse<any>>(`/users/addresses/${id}`, data),
     
     delete: (id: string) =>
@@ -426,7 +426,7 @@ export const reviewsApi = {
   getByUser: (params?: Record<string, any>) =>
     api.get<ApiResponse<PaginatedResponse<any>>>('/reviews/user', { params }),
   
-  update: (id: string, data: any) =>
+  updates: (id: string, data: any) =>
     api.put<ApiResponse<any>>(`/reviews/${id}`, data),
   
   delete: (id: string) =>
@@ -475,7 +475,7 @@ export const supportApi = {
     getAll: (params?: Record<string, any>) =>
       api.get<ApiResponse<PaginatedResponse<any>>>('/support/admin/tickets', { params }),
     
-    updatetatus: (id: string, data: any) =>
+    updatestatus: (id: string, data: any) =>
       api.patch<ApiResponse<any>>(`/support/admin/tickets/${id}/status`, data),
   },
 }
@@ -499,7 +499,7 @@ export const tradesApi = {
     getAll: (params?: Record<string, any>) =>
       api.get<ApiResponse<PaginatedResponse<any>>>('/trades/admin', { params }),
     
-    updatetatus: (id: string, data: { status: string; notes?: string }) =>
+    updatestatus: (id: string, data: { status: string; notes?: string }) =>
       api.patch<ApiResponse<any>>(`/trades/${id}/status`, data),
   },
 }

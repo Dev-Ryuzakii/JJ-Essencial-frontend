@@ -131,7 +131,7 @@ apiClient.interceptors.response.use(
           window.location.href = '/admin/login';
         }
       } else {
-        localStorage.removeItem('access_token'); // ✅ Updated to use correct key
+        localStorage.removeItem('access_token'); // ✅ updatesd to use correct key
         localStorage.removeItem('user');
         if (!window.location.pathname.startsWith('/login')) {
           window.location.href = '/login';

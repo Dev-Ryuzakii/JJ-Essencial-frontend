@@ -13,7 +13,7 @@ const adaptUser = (authUser: any): User => {
     phone: authUser.phone || '',  // Default to empty string if not provided
     role: authUser.role,
     createdAt: authUser.createdAt || new Date().toISOString(),
-    updatedAt: authUser.updatedAt || new Date().toISOString(),
+    updatesdAt: authUser.updatesdAt || new Date().toISOString(),
   };
 };
 

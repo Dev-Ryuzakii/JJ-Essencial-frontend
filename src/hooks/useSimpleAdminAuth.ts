@@ -13,7 +13,7 @@ interface AdminUser {
   dateOfBirth?: string | null;
   isActive: boolean;
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
 }
 
 export const useSimpleAdminAuth = () => {
@@ -77,7 +77,7 @@ export const useSimpleAdminAuth = () => {
         dateOfBirth: user.dateOfBirth || null,
         isActive: true,
         createdAt: user.createdAt || new Date().toISOString(),
-        updatedAt: user.updatedAt || new Date().toISOString()
+        updatesdAt: user.updatesdAt || new Date().toISOString()
       });
       
       console.log('✅ Admin auth check: Successfully authenticated from local storage');
@@ -118,7 +118,7 @@ export const useSimpleAdminAuth = () => {
         throw new Error('Access denied. Admin privileges required.');
       }
 
-      // Update local state
+      // updates local state
       setToken(token);
       setIsAuthenticated(true);
       setAdminUser({
@@ -131,7 +131,7 @@ export const useSimpleAdminAuth = () => {
         dateOfBirth: (user as any).dateOfBirth || null,
         isActive: true,
         createdAt: user.createdAt || new Date().toISOString(),
-        updatedAt: user.updatedAt || new Date().toISOString()
+        updatesdAt: user.updatesdAt || new Date().toISOString()
       });
 
       console.log('✅ Admin login: Success - user authenticated');

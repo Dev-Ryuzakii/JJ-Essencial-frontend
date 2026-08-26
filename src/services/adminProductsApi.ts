@@ -21,7 +21,7 @@ export interface AdminProduct {
   featured: boolean;
   isActive: boolean;
   createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
+  updatesdAt: string; // ISO date string
   attributes: ProductAttribute[];
 }
 
@@ -50,7 +50,7 @@ export interface CreateProductDto {
   // Note: Images are uploaded separately
 }
 
-export interface UpdateProductDto extends Partial<CreateProductDto> {}
+export interface updatesProductDto extends Partial<CreateProductDto> {}
 
 export interface AdminProductFilter {
   page?: number;
@@ -118,10 +118,10 @@ const adminProductsApi = {
   },
 
   /**
-   * Update product
+   * updates product
    * PUT /admin/products/:id
    */
-  updateProduct: async (id: string, data: UpdateProductDto): Promise<AdminProduct> => {
+  updatesProduct: async (id: string, data: updatesProductDto): Promise<AdminProduct> => {
     const response = await put<AdminProduct>(`/admin/products/${id}`, data);
     return response.data;
   },

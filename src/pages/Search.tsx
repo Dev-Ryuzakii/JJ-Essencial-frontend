@@ -93,9 +93,9 @@ const Search: React.FC = () => {
 
   const saveRecentSearch = (query: string) => {
     if (query.trim() && !recentSearches.includes(query)) {
-      const updated = [query, ...recentSearches.slice(0, 4)]
-      setRecentSearches(updated)
-      localStorage.setItem('recentSearches', JSON.stringify(updated))
+      const updatesd = [query, ...recentSearches.slice(0, 4)]
+      setRecentSearches(updatesd)
+      localStorage.setItem('recentSearches', JSON.stringify(updatesd))
     }
   }
 
@@ -151,9 +151,9 @@ const Search: React.FC = () => {
   }
 
   const removeRecentSearch = (searchToRemove: string) => {
-    const updated = recentSearches.filter(search => search !== searchToRemove)
-    setRecentSearches(updated)
-    localStorage.setItem('recentSearches', JSON.stringify(updated))
+    const updatesd = recentSearches.filter(search => search !== searchToRemove)
+    setRecentSearches(updatesd)
+    localStorage.setItem('recentSearches', JSON.stringify(updatesd))
   }
 
   const hasActiveFilters = Object.keys(filters).length > 0

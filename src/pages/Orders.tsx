@@ -24,7 +24,7 @@ import { formatCurrency, cn, parseProductImage } from '../lib/utils'
 import ordersApi, { type Order as ApiOrder, type OrderStatus } from '../services/ordersApi'
 import toast from 'react-hot-toast'
 
-// Updated interface to match the API structure
+// updatesd interface to match the API structure
 interface Order {
   id: string
   orderNumber: string
@@ -318,7 +318,7 @@ const Orders: React.FC = () => {
     const workingToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0OWU1OGQxMi1hNjFhLTRmYzUtYmRiYS03MjUyNTM5OTBmYjYiLCJlbWFpbCI6ImZhbGFkZXJhc2FxMjJAZ21haWwuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NTc3OTkzNDMsImV4cCI6MTc1ODQwNDE0M30.0Y-lLAE8u5kKaicVhzHg1CABqqe8_UogDocvSilqd1I"
     
     localStorage.setItem('access_token', workingToken)
-    toast.success('Token updated! Refreshing orders...')
+    toast.success('Token updatesd! Refreshing orders...')
     
     // Reload orders with new token
     loadOrders()

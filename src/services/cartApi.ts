@@ -36,8 +36,8 @@ export interface AddToCartData {
   quantity: number
 }
 
-// Update cart item request
-export interface UpdateCartItemData {
+// updates cart item request
+export interface updatesCartItemData {
   quantity: number
 }
 
@@ -61,10 +61,10 @@ const cartApi = {
   },
 
   /**
-   * Update cart item quantity
+   * updates cart item quantity
    * PUT /api/v1/cart/items/:id
    */
-  updateItem: async (id: string, data: UpdateCartItemData): Promise<CartItem> => {
+  updatesItem: async (id: string, data: updatesCartItemData): Promise<CartItem> => {
     const response = await put<CartItem>(`/cart/items/${id}`, data)
     return response.data
   },

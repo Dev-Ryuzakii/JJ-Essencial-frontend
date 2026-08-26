@@ -57,7 +57,7 @@ const userData = await get<User>('/users/123');
 const newProduct = await post<Product>('/products', productData);
 
 // PUT request
-const updatedUser = await put<User>('/users/123', updateData);
+const updatesdUser = await put<User>('/users/123', updatesData);
 
 // DELETE request
 const result = await del<DeleteResponse>('/products/123');
@@ -109,7 +109,7 @@ const adminSupportApi = {
 
 ### 3. Maintainability
 - Single source of truth for API interactions
-- Easier to update when requirements change
+- Easier to updates when requirements change
 - Reduced code duplication
 
 ### 4. Security

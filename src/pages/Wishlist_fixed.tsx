@@ -85,9 +85,9 @@ const Wishlist: React.FC = () => {
       toast.error('Failed to remove item from wishlist')
     } finally {
       setRemovingItems(prev => {
-        const updated = new Set(prev)
-        updated.delete(itemId)
-        return updated
+        const updatesd = new Set(prev)
+        updatesd.delete(itemId)
+        return updatesd
       })
     }
   }

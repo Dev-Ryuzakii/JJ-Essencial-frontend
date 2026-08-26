@@ -97,14 +97,14 @@ export default function ReviewManagement() {
 
   const handleToggleVisibility = async (review: AdminReviewDto) => {
     try {
-      const updatedReview = await adminApi.reviews.updateVisibility(review.id, !review.isVisible)
+      const updatesdReview = await adminApi.reviews.updatesVisibility(review.id, !review.isVisible)
       setReviews(reviews.map(r => 
-        r.id === review.id ? { ...r, isVisible: updatedReview.isVisible } : r
+        r.id === review.id ? { ...r, isVisible: updatesdReview.isVisible } : r
       ))
-      fetchReviews() // Refresh to get updated summary
+      fetchReviews() // Refresh to get updatesd summary
     } catch (err) {
       console.error('Error updating review visibility:', err)
-      setError('Failed to update review visibility.')
+      setError('Failed to updates review visibility.')
     }
   }
 
@@ -116,7 +116,7 @@ export default function ReviewManagement() {
       setReviews(reviews.filter(r => r.id !== selectedReview.id))
       setShowDeleteModal(false)
       setSelectedReview(null)
-      fetchReviews() // Refresh to get updated summary
+      fetchReviews() // Refresh to get updatesd summary
     } catch (err) {
       console.error('Error deleting review:', err)
       setError('Failed to delete review.')
@@ -567,8 +567,8 @@ export default function ReviewManagement() {
                       <p className="mt-1 text-sm text-gray-900">{formatDate(selectedReview.createdAt)}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-500">Last Updated</label>
-                      <p className="mt-1 text-sm text-gray-900">{formatDate(selectedReview.updatedAt)}</p>
+                      <label className="block text-sm font-medium text-gray-500">Last updatesd</label>
+                      <p className="mt-1 text-sm text-gray-900">{formatDate(selectedReview.updatesdAt)}</p>
                     </div>
                   </div>
                 </div>

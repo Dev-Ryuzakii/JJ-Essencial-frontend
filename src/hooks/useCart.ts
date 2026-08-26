@@ -11,7 +11,7 @@ export const useCart = () => {
     finalAmount,
     addItem,
     removeItem,
-    updateQuantity,
+    updatesQuantity,
     clearCart,
     getCartTotal,
     getCartCount,
@@ -55,7 +55,7 @@ export const useCart = () => {
     toast.success('Item removed from cart')
   }
 
-  const handleUpdateQuantity = (productId: string, quantity: number) => {
+  const handleupdatesQuantity = (productId: string, quantity: number) => {
     const item = items.find(item => item.productId === productId)
     
     if (!item) return false
@@ -70,7 +70,7 @@ export const useCart = () => {
       return true
     }
     
-    updateQuantity(productId, quantity)
+    updatesQuantity(productId, quantity)
     return true
   }
 
@@ -124,7 +124,7 @@ export const useCart = () => {
     hasItems,
     addToCart,
     removeFromCart,
-    updateQuantity: handleUpdateQuantity,
+    updatesQuantity: handleupdatesQuantity,
     clearCart: handleClearCart,
     isInCart,
     getItemQuantity,

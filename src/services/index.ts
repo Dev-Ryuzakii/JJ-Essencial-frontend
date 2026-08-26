@@ -61,15 +61,15 @@ export type {
   AdminDashboardStats,
   AdminPaymentDto,
   AdminPaymentDetailDto,
-  UpdatePaymentStatusDto,
+  updatesPaymentStatusDto,
   VerifyReceiptDto,
   AdminSupportChatDto,
   AdminSupportChatDetailDto,
-  UpdateChatStatusDto,
+  updatesChatStatusDto,
   ReplySupportChatDto,
   BankAccountDto,
   CreateBankAccountDto,
-  UpdateBankAccountDto,
+  updatesBankAccountDto,
   SalesReportDto,
   InventoryReportDto
 } from './adminApi';

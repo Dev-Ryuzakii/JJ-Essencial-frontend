@@ -19,7 +19,7 @@ export interface WishlistItem {
       name: string;
     };
     createdAt?: string;
-    updatedAt?: string;
+    updatesdAt?: string;
   };
   addedAt?: string;
 }

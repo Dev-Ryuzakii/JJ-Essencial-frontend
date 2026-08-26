@@ -482,7 +482,7 @@ const OrderDetail: React.FC = () => {
                             </h4>
                             {step.completed && step.key === order.status && (
                               <p className="text-sm text-gray-600 mt-1">
-                                Updated on {new Date(order.createdAt).toLocaleDateString()}
+                                updatesd on {new Date(order.createdAt).toLocaleDateString()}
                               </p>
                             )}
                           </div>

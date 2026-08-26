@@ -95,7 +95,7 @@ const AdminDashboard: React.FC = () => {
           dashboardApi.getLowStockProducts()
         ])
         
-        // Update state with the fetched data
+        // updates state with the fetched data
         setStats({
           totalRevenue: dashboardStats.revenue.current,
           totalOrders: dashboardStats.orders.current,
@@ -490,7 +490,7 @@ const AdminDashboard: React.FC = () => {
               <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <Activity className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div>
-                  <h4 className="text-sm font-medium text-blue-800">System Update</h4>
+                  <h4 className="text-sm font-medium text-blue-800">System updates</h4>
                   <p className="text-sm text-blue-700 mt-1">
                     New features have been added to the admin panel. Check the changelog.
                   </p>

@@ -70,7 +70,7 @@ This document outlines the comprehensive user support system that has been integ
 
 ## Navigation Integration
 
-### Updated Navbar (`src/components/Navbar.tsx`)
+### updatesd Navbar (`src/components/Navbar.tsx`)
 - Added support link to desktop navigation for authenticated users
 - Added support option to mobile menu
 - Uses MessageCircle icon for visual recognition

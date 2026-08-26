@@ -49,7 +49,7 @@ interface PasswordData {
 }
 
 const Profile: React.FC = () => {
-  const { user, updateProfile, changePassword, logout } = useAuth()
+  const { user, updatesProfile, changePassword, logout } = useAuth()
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'addresses'>('profile')
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -102,11 +102,11 @@ const Profile: React.FC = () => {
   const handleSaveProfile = async () => {
     setIsSaving(true)
     try {
-      await updateProfile(formData)
+      await updatesProfile(formData)
       setIsEditing(false)
-      toast.success('Profile updated successfully!')
+      toast.success('Profile updatesd successfully!')
     } catch (error) {
-      toast.error('Failed to update profile')
+      toast.error('Failed to updates profile')
     } finally {
       setIsSaving(false)
     }
@@ -152,7 +152,7 @@ const Profile: React.FC = () => {
     const file = event.target.files?.[0]
     if (file) {
       // Handle avatar upload
-      toast.success('Avatar updated successfully!')
+      toast.success('Avatar updatesd successfully!')
     }
   }
 
@@ -496,7 +496,7 @@ const Profile: React.FC = () => {
                     </div>
 
                     <Button onClick={handleChangePassword}>
-                      Update Password
+                      updates Password
                     </Button>
                   </div>
                 </div>
@@ -530,7 +530,7 @@ const Profile: React.FC = () => {
                     <h3 className="text-md font-medium text-gray-900 mb-4">Email Notifications</h3>
                     <div className="space-y-4">
                       {[
-                        { key: 'emailOrders', label: 'Order update', description: 'Receive emails about order status and shipping' },
+                        { key: 'emailOrders', label: 'Order updates', description: 'Receive emails about order status and shipping' },
                         { key: 'emailSecurity', label: 'Security Alerts', description: 'Important security notifications about your account' },
                         { key: 'emailMarketing', label: 'Marketing Communications', description: 'Promotional emails and special offers' }
                       ].map((item) => (
@@ -557,7 +557,7 @@ const Profile: React.FC = () => {
                     <h3 className="text-md font-medium text-gray-900 mb-4">Push Notifications</h3>
                     <div className="space-y-4">
                       {[
-                        { key: 'pushOrders', label: 'Order update', description: 'Push notifications about order status' },
+                        { key: 'pushOrders', label: 'Order updates', description: 'Push notifications about order status' },
                         { key: 'pushSecurity', label: 'Security Alerts', description: 'Important security notifications' },
                         { key: 'pushMarketing', label: 'Promotional Offers', description: 'Notifications about sales and special offers' }
                       ].map((item) => (

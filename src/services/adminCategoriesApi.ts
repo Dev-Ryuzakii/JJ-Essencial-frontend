@@ -20,7 +20,7 @@ export interface AdminCategory {
   seo_keywords?: string; // Backend uses snake_case
   created_by?: string; // Backend uses snake_case
   created_at: string; // Backend uses snake_case
-  updated_at: string; // Backend uses snake_case
+  updatesd_at: string; // Backend uses snake_case
 }
 
 export interface CreateCategoryDto {
@@ -34,7 +34,7 @@ export interface CreateCategoryDto {
   seoKeywords?: string;
 }
 
-export interface UpdateCategoryDto extends Partial<CreateCategoryDto> {}
+export interface updatesCategoryDto extends Partial<CreateCategoryDto> {}
 
 export interface AdminCategoryFilter {
   page?: number;
@@ -145,15 +145,15 @@ const adminCategoriesApi = {
   },
 
   /**
-   * Update category with or without image
+   * updates category with or without image
    * PUT /admin/categories/:id
    */
-  updateCategory: async (id: string, data: UpdateCategoryDto, image?: File): Promise<AdminCategory> => {
+  updatesCategory: async (id: string, data: updatesCategoryDto, image?: File): Promise<AdminCategory> => {
     if (image) {
       // Use FormData when image is provided
       const formData = new FormData();
       
-      // Add fields that are being updated
+      // Add fields that are being updatesd
       if (data.name) formData.append('name', data.name);
       if (data.description) formData.append('description', data.description);
       if (data.parentId) formData.append('parentId', data.parentId);
@@ -190,15 +190,15 @@ const adminCategoriesApi = {
   },
 
   /**
-   * Bulk update categories
+   * Bulk updates categories
    * PATCH /admin/categories/bulk
    */
-  bulkUpdateCategories: async (categoryIds: string[], data: {
+  bulkupdatesCategories: async (categoryIds: string[], data: {
     isActive?: boolean;
     parentId?: string;
     sortOrder?: number;
-  }): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/admin/categories/bulk', {
+  }): Promise<{ updatesd: number }> => {
+    const response = await patch<{ updatesd: number }>('/admin/categories/bulk', {
       categoryIds,
       ...data
     });
@@ -213,8 +213,8 @@ const adminCategoriesApi = {
     id: string;
     sortOrder: number;
     parentId?: string;
-  }[]): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/admin/categories/reorder', {
+  }[]): Promise<{ updatesd: number }> => {
+    const response = await patch<{ updatesd: number }>('/admin/categories/reorder', {
       categoryOrders
     });
     return response.data;

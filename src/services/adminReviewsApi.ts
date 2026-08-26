@@ -21,7 +21,7 @@ export interface AdminReview {
   helpfulCount: number;
   unhelpfulCount: number;
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   user: {
     id: string;
     fullName: string;
@@ -55,12 +55,12 @@ export interface AdminReviewFilter {
   endDate?: string;
 }
 
-export interface UpdateReviewVisibilityDto {
+export interface updatesReviewVisibilityDto {
   isVisible: boolean;
   reason?: string;
 }
 
-export interface UpdateReviewStatusDto {
+export interface updatesReviewStatusDto {
   isApproved?: boolean;
   isVerified?: boolean;
   isFlagged?: boolean;
@@ -153,19 +153,19 @@ const adminReviewsApi = {
   },
 
   /**
-   * Update review visibility
+   * updates review visibility
    * PATCH /admin/reviews/:id/visibility
    */
-  updateReviewVisibility: async (id: string, data: UpdateReviewVisibilityDto): Promise<AdminReview> => {
+  updatesReviewVisibility: async (id: string, data: updatesReviewVisibilityDto): Promise<AdminReview> => {
     const response = await patch<AdminReview>(`/admin/reviews/${id}/visibility`, data);
     return response.data;
   },
 
   /**
-   * Update review status (approve/reject/flag)
+   * updates review status (approve/reject/flag)
    * PATCH /admin/reviews/:id/status
    */
-  updateReviewStatus: async (id: string, data: UpdateReviewStatusDto): Promise<AdminReview> => {
+  updatesReviewStatus: async (id: string, data: updatesReviewStatusDto): Promise<AdminReview> => {
     const response = await patch<AdminReview>(`/admin/reviews/${id}/status`, data);
     return response.data;
   },
@@ -188,17 +188,17 @@ const adminReviewsApi = {
   },
 
   /**
-   * Bulk update reviews
+   * Bulk updates reviews
    * PATCH /admin/reviews/bulk
    */
-  bulkUpdateReviews: async (reviewIds: string[], data: {
+  bulkupdatesReviews: async (reviewIds: string[], data: {
     isVisible?: boolean;
     isApproved?: boolean;
     isVerified?: boolean;
     isFlagged?: boolean;
     flagReason?: string;
-  }): Promise<{ updated: number }> => {
-    const response = await patch<{ updated: number }>('/admin/reviews/bulk', {
+  }): Promise<{ updatesd: number }> => {
+    const response = await patch<{ updatesd: number }>('/admin/reviews/bulk', {
       reviewIds,
       ...data
     });
@@ -206,7 +206,7 @@ const adminReviewsApi = {
     if (response.success && response.data) {
       return response.data;
     } else {
-      throw new Error(response.message || 'Failed to bulk update reviews');
+      throw new Error(response.message || 'Failed to bulk updates reviews');
     }
   },
 

@@ -148,22 +148,22 @@ export default function CustomerManagement() {
     setShowEditModal(true)
   }
 
-  const handleUpdateCustomer = async (e: React.FormEvent) => {
+  const handleupdatesCustomer = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedCustomer) return
 
     try {
-      const updatedCustomer = await adminUsersApi.updateUserStatus(selectedCustomer.id, {
+      const updatesdCustomer = await adminUsersApi.updatesUserStatus(selectedCustomer.id, {
         isActive: editFormData.isActive
       })
       setCustomers(customers.map(customer => 
-        customer.id === selectedCustomer.id ? updatedCustomer : customer
+        customer.id === selectedCustomer.id ? updatesdCustomer : customer
       ))
       setShowEditModal(false)
       setSelectedCustomer(null)
     } catch (err) {
       console.error('Error updating customer:', err)
-      setError('Failed to update customer.')
+      setError('Failed to updates customer.')
     }
   }
 
@@ -658,9 +658,9 @@ export default function CustomerManagement() {
                           </span>
                         </div>
                         <div>
-                          <span className="font-medium text-gray-700">Last Updated:</span>
+                          <span className="font-medium text-gray-700">Last updatesd:</span>
                           <span className="ml-2 text-gray-600">
-                            {formatDate(selectedCustomer.updatedAt)}
+                            {formatDate(selectedCustomer.updatesdAt)}
                           </span>
                         </div>
                         <div>
@@ -724,7 +724,7 @@ export default function CustomerManagement() {
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
             <div className="fixed inset-0 bg-gray-500 opacity-75" onClick={() => setShowEditModal(false)}></div>
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
-              <form onSubmit={handleUpdateCustomer}>
+              <form onSubmit={handleupdatesCustomer}>
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h3 className="text-lg font-medium text-gray-900">Edit Customer</h3>
                   <p className="text-sm text-gray-600 mt-1">
@@ -819,7 +819,7 @@ export default function CustomerManagement() {
                     type="submit"
                     className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
                   >
-                    Update Customer
+                    updates Customer
                   </button>
                 </div>
               </form>

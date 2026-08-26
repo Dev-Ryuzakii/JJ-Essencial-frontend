@@ -57,7 +57,7 @@ For bank account transfers, use these test accounts:
 
 3. **Payment Verification**:
    - After submitting payment, check that the system redirects to the order confirmation page
-   - Verify that the order status is updated correctly in the database
+   - Verify that the order status is updatesd correctly in the database
    - Check that the payment confirmation webhook is received and processed
 
 ## Debugging Tips
@@ -75,7 +75,7 @@ If you encounter issues with the Flutterwave integration:
 Before going live with Flutterwave payments:
 
 - [ ] Switch API keys from test to live
-- [ ] Update webhook URL to production endpoint
+- [ ] updates webhook URL to production endpoint
 - [ ] Test the entire payment flow in a staging environment
 - [ ] Ensure error handling is robust for all edge cases
 - [ ] Configure proper security headers and CORS policies

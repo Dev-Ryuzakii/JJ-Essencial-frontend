@@ -8,7 +8,7 @@ export interface UserSupportTicket {
   status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   assignedTo?: string | null;
   messages: Array<{
     id: string;
@@ -42,7 +42,7 @@ export interface SupportTicketDetail {
   status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   createdAt: string;
-  updatedAt: string;
+  updatesdAt: string;
   user: {
     id: string;
     email: string;
