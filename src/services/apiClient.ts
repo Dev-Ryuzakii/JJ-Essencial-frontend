@@ -18,7 +18,7 @@ export type ApiError = {
 
 // Base API URL - Use environment variable or fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || 
-                     (import.meta.env.PROD ? 'https://jj-essencial.onrender.com/api/v1' : '/api/v1');
+                     (import.meta.env.PROD ? 'https://jj-essencial-b33c39ba.afribase.dev/api/v1' : '/api/v1');
 
 console.log('🔍 Environment variable VITE_API_URL:', import.meta.env.VITE_API_URL);
 console.log('🔍 All import.meta.env:', import.meta.env);
