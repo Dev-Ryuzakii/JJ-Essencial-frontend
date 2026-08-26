@@ -100,8 +100,8 @@ POST http://localhost:5173/api/v1/... 404 (Not Found)
 **Solution**: Proper backend URL
 ```typescript
 // ✅ CORRECT (now)
-const API_BASE_URL = 'http://api.jandjessential.org/api/v1  ';
-// All APIs now call: http://api.jandjessential.org/api/v1  /...
+const API_BASE_URL = 'https://jj-essencial-b33c39ba.afribase.dev/api/v1  ';
+// All APIs now call: https://jj-essencial-b33c39ba.afribase.dev/api/v1  /...
 ```
 
 **Files Updated**:
@@ -151,7 +151,7 @@ With these fixes, the frontend now:
 - Backend calculates prices and totals
 
 ### ✅ **API Communication**:
-- All calls go to `http://api.jandjessential.org/api/v1  ` instead of Vite dev server
+- All calls go to `https://jj-essencial-b33c39ba.afribase.dev/api/v1  ` instead of Vite dev server
 - Consistent token handling across all services
 - Proper error handling for API responses
 
