@@ -29,7 +29,7 @@ const useAdminTokenValidation = (token: string | null): UseAdminTokenValidationR
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev';
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://jj-essencial.afribase.dev';
 
   const validateAdminTokenOnServer = async () => {
     if (!token) {

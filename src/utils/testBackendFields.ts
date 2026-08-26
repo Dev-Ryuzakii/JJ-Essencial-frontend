@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL for API calls
-const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev';
+const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.afribase.dev';
 
 /**
  * Test the API connection

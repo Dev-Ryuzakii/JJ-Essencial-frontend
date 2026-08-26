@@ -5,7 +5,7 @@ import axios from 'axios';
  */
 export const testApiConnection = async () => {
   try {
-    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev';
+    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.afribase.dev';
     const response = await axios.get(API_URL, {
       headers: {
         'Content-Type': 'application/json',
@@ -44,7 +44,7 @@ export const testApiConnection = async () => {
 // Export a function to test the signup endpoint specifically
 export const testSignupEndpoint = async () => {
   try {
-    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev';
+    const API_URL = import.meta.env.VITE_API_URL || 'https://jj-essencial.afribase.dev';
     const response = await axios.post(
       `${API_URL}/auth/signup`,
       {

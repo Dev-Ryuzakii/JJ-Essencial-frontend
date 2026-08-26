@@ -74,7 +74,7 @@ export function getImageUrl(url: string): string {
   if (url.startsWith('http')) return url
   
   // Use the API base URL for uploads
-  const apiBase = import.meta.env.VITE_API_URL || 'https://jj-essencial-b33c39ba.afribase.dev'
+  const apiBase = import.meta.env.VITE_API_URL || 'https://jj-essencial.afribase.dev'
   return `${apiBase}/uploads/${url}`
 }
 
